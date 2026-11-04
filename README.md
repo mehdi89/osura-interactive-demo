@@ -1,5 +1,7 @@
 # Osura interactive demo
 
+[Live demo](https://osura-interactive-demo.vercel.app) · [Public repository](https://github.com/mehdi89/osura-interactive-demo)
+
 A standalone React/Vite interactive supplier-assurance demo: 16 customer screens, 16 Osura operations screens and 3 supplier portal screens. All example data is synthetic.
 
 ```sh
