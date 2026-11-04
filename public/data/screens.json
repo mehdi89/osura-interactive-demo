@@ -1,0 +1,342 @@
+{
+  "navigation": {
+    "customer": [
+      ["C01", "Overview", "LayoutDashboard"],
+      ["C14", "Suppliers", "Layers"],
+      ["C15", "Assessments", "FileText"],
+      ["C10", "Portfolio risk", "ChartNoAxesColumn"],
+      ["C12", "Findings & actions", "TriangleAlert"],
+      ["C16", "Decisions & reports", "Folder"],
+      ["C08", "Monitoring", "Clock"]
+    ],
+    "analyst": [
+      ["O01", "My work", "LayoutDashboard"],
+      ["O16", "Supplier directory", "Layers"],
+      ["O02", "Assessments", "FileText"],
+      ["O03", "Evidence", "Folder"],
+      ["O07", "Findings", "TriangleAlert"],
+      ["O14", "Communications", "MessageSquare"],
+      ["O08", "Independent QA", "ShieldCheck"],
+      ["O15", "Monitoring", "Clock"],
+      ["O10", "Programme", "SlidersHorizontal"]
+    ]
+  },
+  "screens": [
+    {
+      "id": "C01",
+      "role": "customer",
+      "label": "Customer overview",
+      "title": "Supplier assurance",
+      "subtitle": "Nine scoped engagements across eight suppliers \u00b7 31 October 2026",
+      "nav": "C01",
+      "reference": "Customer Panel.html#s1"
+    },
+    {
+      "id": "C14",
+      "role": "customer",
+      "label": "Supplier register",
+      "title": "Suppliers",
+      "subtitle": "Eight supplier entities \u00b7 nine service engagements",
+      "nav": "C14",
+      "reference": "Customer Panel.html#s2"
+    },
+    {
+      "id": "C15",
+      "role": "customer",
+      "label": "Assessment register",
+      "title": "Assessments",
+      "subtitle": "Every review and its current human or external dependency",
+      "nav": "C15",
+      "reference": "Customer Panel.html#s3"
+    },
+    {
+      "id": "C10",
+      "role": "customer",
+      "label": "Portfolio risk",
+      "title": "Portfolio risk",
+      "subtitle": "Service-scoped risk and where assurance work is currently concentrated",
+      "nav": "C10",
+      "reference": "Customer Panel.html#s4"
+    },
+    {
+      "id": "C11",
+      "role": "customer",
+      "label": "Supplier record",
+      "title": "Supplier record",
+      "subtitle": "Company information and two distinct service engagements",
+      "nav": "C14",
+      "reference": "Customer Panel.html#s5",
+      "previewEngagement": "hubspot"
+    },
+    {
+      "id": "C12",
+      "role": "customer",
+      "label": "Findings and actions",
+      "title": "Findings & actions",
+      "subtitle": "Risks, agreed responses and conditions across the supplier estate.",
+      "nav": "C12",
+      "reference": "Customer Panel.html#s6"
+    },
+    {
+      "id": "C13",
+      "role": "customer",
+      "label": "Evidence conclusions",
+      "title": "Evidence & conclusions",
+      "subtitle": "See what each requirement establishes\u2014and what remains uncertain.",
+      "nav": "C16",
+      "reference": "Customer Panel.html#s7"
+    },
+    {
+      "id": "C16",
+      "role": "customer",
+      "label": "Decision report library",
+      "title": "Decisions & reports",
+      "subtitle": "Search current and historical evaluations, with original evidence preserved.",
+      "nav": "C16",
+      "reference": "Customer Panel.html#s8"
+    },
+    {
+      "id": "C02",
+      "role": "customer",
+      "label": "Add a supplier",
+      "title": "Add a supplier",
+      "subtitle": "Start with the right legal entity. We will only ask about your intended use next.",
+      "nav": "C14",
+      "reference": "Customer Panel.html#s9"
+    },
+    {
+      "id": "C03",
+      "role": "customer",
+      "label": "Intended use",
+      "title": "What will you use {supplier} for?",
+      "subtitle": "Choose the activities that apply to your team, or describe your own.",
+      "nav": "C14",
+      "reference": "Customer Panel.html#s10"
+    },
+    {
+      "id": "C04",
+      "role": "customer",
+      "label": "Business context",
+      "title": "A few details about your use",
+      "subtitle": "We only need information your organisation can confirm.",
+      "nav": "C14",
+      "reference": "Customer Panel.html#s11"
+    },
+    {
+      "id": "C05",
+      "role": "customer",
+      "label": "Review and submit",
+      "title": "Review your request",
+      "subtitle": "Everything remains editable until you submit. Submission is not approval.",
+      "nav": "C14",
+      "reference": "Customer Panel.html#s12"
+    },
+    {
+      "id": "C09",
+      "role": "customer",
+      "label": "Assessment progress",
+      "title": "Assessment progress",
+      "subtitle": "{supplier} \u00b7 {service}",
+      "nav": "C15",
+      "reference": "Customer Panel.html#s13"
+    },
+    {
+      "id": "C06",
+      "role": "customer",
+      "label": "Decision ready",
+      "title": "Customer decision",
+      "subtitle": "{supplier} \u00b7 {service}",
+      "nav": "C16",
+      "reference": "Customer Panel.html#s14"
+    },
+    {
+      "id": "C07",
+      "role": "customer",
+      "label": "Decision pack",
+      "title": "Decision Pack",
+      "subtitle": "{supplier} \u00b7 {service} \u00b7 signed synthetic example",
+      "nav": "C16",
+      "reference": "Customer Panel.html#s15"
+    },
+    {
+      "id": "C08",
+      "role": "customer",
+      "label": "Active supplier assurance",
+      "title": "Active supplier assurance",
+      "subtitle": "{supplier} \u00b7 assurance after the customer decision",
+      "nav": "C08",
+      "reference": "Customer Panel.html#s16"
+    },
+    {
+      "id": "O01",
+      "role": "analyst",
+      "label": "Operations overview",
+      "title": "Operations command centre",
+      "subtitle": "The next substantive action across authorised client workspaces.",
+      "nav": "O01",
+      "reference": "Analyst Panel.html#s1"
+    },
+    {
+      "id": "O16",
+      "role": "analyst",
+      "label": "Cross-client supplier directory",
+      "title": "Supplier directory",
+      "subtitle": "Supplier entities across the client workspaces you may access.",
+      "nav": "O16",
+      "reference": "Analyst Panel.html#s2"
+    },
+    {
+      "id": "O02",
+      "role": "analyst",
+      "label": "Assessment case",
+      "title": "{supplier} \u00b7 assessment",
+      "subtitle": "Northstar Payments \u00b7 {service}",
+      "nav": "O02",
+      "reference": "Analyst Panel.html#s3"
+    },
+    {
+      "id": "O12",
+      "role": "analyst",
+      "label": "CTP risk impact",
+      "title": "CTP risk & impact",
+      "subtitle": "Exact source of inherent classification for this service.",
+      "nav": "O02",
+      "reference": "Analyst Panel.html#s4"
+    },
+    {
+      "id": "O03",
+      "role": "analyst",
+      "label": "Evidence inventory and coverage",
+      "title": "Evidence inventory",
+      "subtitle": "{supplier} \u00b7 current source versions and the requirements they inform.",
+      "nav": "O03",
+      "reference": "Analyst Panel.html#s5"
+    },
+    {
+      "id": "O04",
+      "role": "analyst",
+      "label": "Verify evidence",
+      "title": "Source verification",
+      "subtitle": "Recovery exercise requirement needs addressing.",
+      "nav": "O03",
+      "reference": "Analyst Panel.html#s6"
+    },
+    {
+      "id": "O05",
+      "role": "analyst",
+      "label": "Consolidated supplier request",
+      "title": "Prepare supplier follow-up",
+      "subtitle": "One consolidated packet for the remaining evidence gaps.",
+      "nav": "O14",
+      "reference": "Analyst Panel.html#s7"
+    },
+    {
+      "id": "O14",
+      "role": "analyst",
+      "label": "Supplier communication outbox",
+      "title": "Supplier communications",
+      "subtitle": "Drafts, delivery, evidence, replies and reminders.",
+      "nav": "O14",
+      "reference": "Analyst Panel.html#s8"
+    },
+    {
+      "id": "O06",
+      "role": "analyst",
+      "label": "Response received and targeted re-check",
+      "title": "Supplier response received",
+      "subtitle": "Only the affected control is queued for targeted re-verification.",
+      "nav": "O14",
+      "reference": "Analyst Panel.html#s9"
+    },
+    {
+      "id": "O07",
+      "role": "analyst",
+      "label": "Findings and agreed actions",
+      "title": "Findings and remediation",
+      "subtitle": "Open exceptions, accountable owners and reasonable commitments.",
+      "nav": "O07",
+      "reference": "Analyst Panel.html#s10"
+    },
+    {
+      "id": "O08",
+      "role": "analyst",
+      "label": "Independent quality assurance",
+      "title": "Independent quality review",
+      "subtitle": "Challenge the evidence and analyst reasoning before customer sign-off.",
+      "nav": "O08",
+      "reference": "Analyst Panel.html#s11"
+    },
+    {
+      "id": "O09",
+      "role": "analyst",
+      "label": "Evidence-backed condition closure",
+      "title": "Verify condition closure",
+      "subtitle": "Decide whether new evidence satisfies the accepted treatment.",
+      "nav": "O07",
+      "reference": "Analyst Panel.html#s12"
+    },
+    {
+      "id": "O15",
+      "role": "analyst",
+      "label": "Monitoring and reassessment queue",
+      "title": "Monitoring and reassessment",
+      "subtitle": "Scheduled work and material changes after customer approval.",
+      "nav": "O15",
+      "reference": "Analyst Panel.html#s13"
+    },
+    {
+      "id": "O10",
+      "role": "analyst",
+      "label": "Programme methodology setup",
+      "title": "Programme configuration",
+      "subtitle": "The effective rules behind every assessment.",
+      "nav": "O10",
+      "reference": "Analyst Panel.html#s14"
+    },
+    {
+      "id": "O13",
+      "role": "analyst",
+      "label": "Assessment plans and control sets",
+      "title": "Assessment plans and controls",
+      "subtitle": "Versioned requirements applied to each new engagement.",
+      "nav": "O10",
+      "reference": "Analyst Panel.html#s15"
+    },
+    {
+      "id": "O11",
+      "role": "analyst",
+      "label": "Northstar Payments service health",
+      "title": "Client 360",
+      "subtitle": "Northstar Payments \u00b7 delivery health and portfolio overview.",
+      "nav": "O15",
+      "reference": "Analyst Panel.html#s16"
+    },
+    {
+      "id": "S01",
+      "role": "supplier",
+      "label": "Document request",
+      "title": "Evidence request from Northstar Payments",
+      "subtitle": "Help us complete two outstanding assurance items for the payment event processing service.",
+      "nav": "S01",
+      "reference": "Vendor Portal.html#s1"
+    },
+    {
+      "id": "S02",
+      "role": "supplier",
+      "label": "Upload evidence",
+      "title": "Upload recovery evidence",
+      "subtitle": "Show that a recovery exercise covered the contracted payment event processing service.",
+      "nav": "S02",
+      "reference": "Vendor Portal.html#s2"
+    },
+    {
+      "id": "S03",
+      "role": "supplier",
+      "label": "Submission received",
+      "title": "Your response was received",
+      "subtitle": "Northstar Payments\u2019 assurance team can now review the submitted evidence.",
+      "nav": "S03",
+      "reference": "Vendor Portal.html#s3"
+    }
+  ]
+}
