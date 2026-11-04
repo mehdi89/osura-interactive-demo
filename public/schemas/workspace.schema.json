@@ -1,0 +1,959 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://osura.example/schemas/workspace.schema.json",
+  "title": "Osura synthetic demo relational seed",
+  "description": "Each collection maps to a database table; x-references and x-unique declare relational constraints. Not a production authorization or methodology engine.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "modelVersion",
+    "workspaces",
+    "actors",
+    "policyVersions",
+    "suppliers",
+    "services",
+    "engagements",
+    "requirements",
+    "requirementReviews",
+    "documentVersions",
+    "evidenceCitations",
+    "findings",
+    "triageQuestions",
+    "triageAnswers",
+    "biaQuestions",
+    "biaAnswers",
+    "supplierRequests",
+    "requestItems"
+  ],
+  "properties": {
+    "modelVersion": {
+      "const": 1
+    },
+    "workspaces": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/workspaces"
+      }
+    },
+    "actors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/actors"
+      }
+    },
+    "policyVersions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/policyVersions"
+      }
+    },
+    "suppliers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/suppliers"
+      }
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/services"
+      }
+    },
+    "engagements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/engagements"
+      }
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/requirements"
+      }
+    },
+    "requirementReviews": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/requirementReviews"
+      }
+    },
+    "documentVersions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/documentVersions"
+      }
+    },
+    "evidenceCitations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/evidenceCitations"
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/findings"
+      }
+    },
+    "triageQuestions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/triageQuestions"
+      }
+    },
+    "triageAnswers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/triageAnswers"
+      }
+    },
+    "biaQuestions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/biaQuestions"
+      }
+    },
+    "biaAnswers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/biaAnswers"
+      }
+    },
+    "supplierRequests": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/supplierRequests"
+      }
+    },
+    "requestItems": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/requestItems"
+      }
+    }
+  },
+  "$defs": {
+    "workspaces": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "x-unique": []
+    },
+    "actors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "x-unique": []
+    },
+    "policyVersions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "core",
+            "plan",
+            "overlay"
+          ]
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "x-unique": []
+    },
+    "suppliers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "domain",
+        "country",
+        "intakeEnabled"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "domain": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "country": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "intakeEnabled": {
+          "type": "boolean"
+        }
+      },
+      "x-unique": []
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "supplierId",
+        "name",
+        "suggestionOrder"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "supplierId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "suppliers"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "suggestionOrder": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      },
+      "x-unique": [
+        [
+          "supplierId",
+          "name"
+        ]
+      ]
+    },
+    "engagements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workspaceId",
+        "serviceId",
+        "ownerId",
+        "risk",
+        "riskBasis",
+        "stage",
+        "due",
+        "planVersionId",
+        "corePolicyVersionId",
+        "overlayVersionId",
+        "analystId",
+        "qaReviewerId",
+        "decisionOwnerId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "workspaceId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "workspaces"
+        },
+        "serviceId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "services"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "actors"
+        },
+        "risk": {
+          "type": "string",
+          "enum": [
+            "Critical",
+            "High",
+            "Medium",
+            "Low",
+            "Pending triage"
+          ]
+        },
+        "riskBasis": {
+          "type": "string",
+          "enum": [
+            "synthetic-fixture",
+            "awaiting-triage"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "Decision",
+            "Evidence",
+            "Findings",
+            "Active",
+            "Questions",
+            "Awaiting triage",
+            "Rejected"
+          ]
+        },
+        "due": {
+          "type": "string",
+          "format": "date"
+        },
+        "planVersionId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "policyVersions"
+        },
+        "corePolicyVersionId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "policyVersions"
+        },
+        "overlayVersionId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "policyVersions"
+        },
+        "analystId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "actors"
+        },
+        "qaReviewerId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "actors"
+        },
+        "decisionOwnerId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "actors"
+        }
+      },
+      "x-unique": []
+    },
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "policyVersionId",
+        "family",
+        "name",
+        "expectation"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "policyVersionId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "policyVersions"
+        },
+        "family": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "expectation": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "x-unique": []
+    },
+    "requirementReviews": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "engagementId",
+        "requirementId",
+        "conclusion",
+        "sourceLabel",
+        "next",
+        "passage",
+        "proves",
+        "doesNotProve",
+        "preparedProposal"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "engagementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "engagements"
+        },
+        "requirementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "requirements"
+        },
+        "conclusion": {
+          "type": "string",
+          "enum": [
+            "Supported",
+            "Partially supported",
+            "Unknown",
+            "Contradictory",
+            "Out of scope",
+            "Needs review"
+          ]
+        },
+        "sourceLabel": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "next": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "passage": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "proves": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "doesNotProve": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "preparedProposal": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "x-unique": [
+        [
+          "engagementId",
+          "requirementId"
+        ]
+      ]
+    },
+    "documentVersions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "engagementId",
+        "requirementId",
+        "documentKey",
+        "fileName",
+        "status",
+        "version",
+        "page",
+        "pageCount",
+        "receivedOn"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "engagementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "engagements"
+        },
+        "requirementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "requirements"
+        },
+        "documentKey": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "fileName": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Received",
+            "Needs review",
+            "Verified",
+            "Reviewed"
+          ]
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pageCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "receivedOn": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "x-unique": [
+        [
+          "engagementId",
+          "documentKey",
+          "version"
+        ]
+      ]
+    },
+    "evidenceCitations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "reviewId",
+        "documentVersionId",
+        "pageStart",
+        "pageEnd",
+        "excerpt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "reviewId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "requirementReviews"
+        },
+        "documentVersionId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "documentVersions"
+        },
+        "pageStart": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pageEnd": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "excerpt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "x-unique": []
+    },
+    "findings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "engagementId",
+        "requirementId",
+        "issue",
+        "severity",
+        "ownerId",
+        "state",
+        "due",
+        "evidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "engagementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "engagements"
+        },
+        "requirementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "requirements"
+        },
+        "issue": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "Critical",
+            "High",
+            "Medium",
+            "Low"
+          ]
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "actors"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "Open condition",
+            "Awaiting evidence",
+            "In remediation",
+            "Closed"
+          ]
+        },
+        "due": {
+          "type": "string",
+          "format": "date"
+        },
+        "evidence": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "x-unique": []
+    },
+    "triageQuestions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "policyVersionId",
+        "label"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "policyVersionId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "policyVersions"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "x-unique": []
+    },
+    "triageAnswers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "engagementId",
+        "questionId",
+        "value"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "engagementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "engagements"
+        },
+        "questionId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "triageQuestions"
+        },
+        "value": {
+          "type": "boolean"
+        }
+      },
+      "x-unique": [
+        [
+          "engagementId",
+          "questionId"
+        ]
+      ]
+    },
+    "biaQuestions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "policyVersionId",
+        "dimension",
+        "label",
+        "canonicalCode"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "policyVersionId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "policyVersions"
+        },
+        "dimension": {
+          "type": "string",
+          "enum": [
+            "Confidentiality",
+            "Integrity",
+            "Availability"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "canonicalCode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "x-unique": []
+    },
+    "biaAnswers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "engagementId",
+        "questionId",
+        "impact"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "engagementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "engagements"
+        },
+        "questionId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "biaQuestions"
+        },
+        "impact": {
+          "type": "string",
+          "enum": [
+            "Low",
+            "Medium",
+            "High"
+          ]
+        }
+      },
+      "x-unique": [
+        [
+          "engagementId",
+          "questionId"
+        ]
+      ]
+    },
+    "supplierRequests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "engagementId",
+        "recipient",
+        "due",
+        "message",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "engagementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "engagements"
+        },
+        "recipient": {
+          "type": "string",
+          "format": "email"
+        },
+        "due": {
+          "type": "string",
+          "format": "date"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Draft",
+            "Queued locally",
+            "Response received"
+          ]
+        }
+      },
+      "x-unique": []
+    },
+    "requestItems": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "requestId",
+        "requirementId",
+        "label",
+        "position"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "supplierRequests"
+        },
+        "requirementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "requirements"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "x-unique": [
+        [
+          "requestId",
+          "position"
+        ]
+      ]
+    }
+  }
+}

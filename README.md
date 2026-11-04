@@ -13,22 +13,29 @@ Open [localhost:5178](http://localhost:5178). The bottom demo bar switches persp
 
 ## Change the data
 
-The application fetches JSON at runtime; these files are copied into the deployed site:
+Use **Demo data** in the bottom toolbar to add, edit or delete records. Changes survive navigation and perspective switches **until the page is refreshed**. There is no automatic localStorage/database saving. **Reset demo** clears walkthrough progress and overrides while preserving fixture edits; refreshing restores everything from the source JSON. Download the edited data JSON before refreshing if you want to keep it.
 
-| File                         | What to change                                                                                                                                                                                    |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `public/data/workspace.json` | Workspace, supplier/service records, supplier directory, requirements, source excerpts, documents, findings, triage/BIA reference values, supplier request, initial state and post-state previews |
-| `public/data/screens.json`   | The 35 screen titles/subtitles, route IDs, sidebar navigation and gallery reference context                                                                                                       |
+The application fetches these files at runtime:
 
-Preserve the JSON keys and route IDs. `cedar` is the complete assessment walkthrough; the other records are portfolio examples. Increase `schemaVersion` after replacing a dataset to discard incompatible browser-saved state, or use **Reset demo** in the bottom bar. No source-code edit is needed to change the displayed records and source excerpts.
+| File | Purpose |
+| --- | --- |
+| `public/data/workspace.json` | Data only: 124 normalized synthetic records across 17 collections, with stable IDs, foreign keys and ISO dates |
+| `public/schemas/workspace.schema.json` | JSON Schema: types, required fields, enums, relationship and uniqueness annotations; drives validation, editor fields and SQL generation |
+| `public/data/presentation.json` | Display settings, initial workflow state, scenario pins and illustrative panel content |
+| `public/data/examples.json` | Frozen prepared Decision Pack and supplier receipt examples, separate from current records |
+| `public/data/screens.json` | The 35 screen titles, subtitles, routes and navigation |
+
+See [the data model guide](docs/data-model.md) for relationships, changing fixtures, generated database files and prototype limits. After changing source records/schema, run `npm run generate:db`, `npm test` and `npm run build`. The build rejects invalid records or stale database reference files.
+
+The editor validates a whole change before saving. Referenced records cannot be deleted; IDs cannot be changed during editing. CedarCloud's required walkthrough records and two ordered request items are protected. Workflow actions can override base fixture values; reset the walkthrough to clear those overrides. The download contains the normalized base records, while Decision Packs have their own download.
 
 Labels, layout and interaction logic are React components in `src/main.jsx`; styling lives in `src/styles.css`. The Inter font is bundled locally, so the demo needs no font-provider connection.
 
 ## Click-through flows
 
-- **Customer intake:** Overview → Request assessment → confirm a supplier → intended use → business context → review/attachments → submit. A local receipt, new assessment-register row and operations-queue item are created. Draft values survive reload.
+- **Customer intake:** Overview → Request assessment → confirm a supplier → intended use → business context → review/attachments → submit. A local receipt, new assessment-register row and operations-queue item are created. Draft values last until refresh.
 - **Evidence:** Operations → Assessments → CedarCloud → Evidence → inspect a requirement/source version → save independent judgement → compare the prepared proposal. A changed conclusion requires a reason.
-- **Supplier loop:** Prepare supplier follow-up → review the packet → queue locally → supplier portal → upload metadata and describe service scope → submit → persistent receipt. The two requested items have independent drafts and receipts. Response inspection opens the changed recovery evidence for review; receipt alone does not mark it supported.
+- **Supplier loop:** Prepare supplier follow-up → review the packet → queue locally → supplier portal → upload metadata and describe service scope → submit → session receipt. The two requested items have independent drafts and receipts. Response inspection opens the changed recovery evidence for review; receipt alone does not mark it supported.
 - **QA and customer decision:** Independent QA → accept or return for rework → Customer decision → choose one of four outcomes. QA rework blocks signing. Conditional approval requires an owner, due date and required evidence. Returning for clarification produces no signed pack.
 - **Decision Pack:** Recording a customer outcome snapshots the case, evidence, rationale and QA. Open the pack, download its JSON or use **Print / Save PDF**. Later condition changes leave this snapshot unchanged.
 - **Ongoing assurance:** Report a change, create a scheduled review, inspect a condition and record closure reasoning. A closure needs a prior signed condition and newly submitted evidence.
@@ -59,6 +66,6 @@ The state tests cover the 35-route catalog, nine triage/17 BIA inputs, QA and co
 
 ## Preview boundaries
 
-This is an interactive UI prototype with synthetic data and browser-local storage. Perspective switching is a presentation control, not authentication. File pickers persist filenames/metadata, not file contents. Source inspection uses prepared JSON excerpts, not a PDF extraction service. The displayed CTP/BIA values are reference fixtures, not a newly implemented risk engine. Email, AI analysis and worker activity are not live. Only use synthetic information; browser state is not shared between users or devices.
+This is an interactive UI prototype with synthetic data and session memory. Perspective switching is a presentation control, not authentication. File pickers persist filenames/metadata, not file contents. Source inspection uses prepared JSON excerpts, not a PDF extraction service. The displayed CTP/BIA values are reference fixtures, not a newly implemented risk engine. Email, AI analysis and worker activity are not live. Only use synthetic information; session state resets on refresh and is not shared between users or devices.
 
 The full evidence-to-decision journey is scoped to CedarCloud. Submitted intake requests remain accurately awaiting triage rather than receiving invented analysis. Historical portfolio packs are reference previews. These boundaries are visible in the UI.

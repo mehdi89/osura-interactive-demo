@@ -1,0 +1,463 @@
+{
+  "schemaVersion": 2,
+  "intake": {
+    "supplier": "HubSpot",
+    "domain": "hubspot.com",
+    "use": "",
+    "product": "",
+    "purpose": "",
+    "answers": {},
+    "attachments": []
+  },
+  "initialState": {
+    "selected": "cedar",
+    "intakeSubmitted": false,
+    "judgement": "",
+    "conclusion": "Partially supported",
+    "requestStatus": "Draft",
+    "supplierReceipt": null,
+    "supplierDraft": {
+      "fileName": "",
+      "answer": "",
+      "scope": ""
+    },
+    "qa": "Passed with condition",
+    "qaNote": "Checked exact service and document versions. Conditional approval may proceed only with an owned, time-bound service exercise condition.",
+    "decision": null,
+    "signedPack": null,
+    "conditionClosed": false,
+    "events": [],
+    "extraEngagements": [],
+    "scheduledReviews": [],
+    "owners": {},
+    "supplierDrafts": {},
+    "supplierReceipts": {}
+  },
+  "programmeTabs": {
+    "Control sets": {
+      "title": "Versioned control requirements",
+      "rows": [
+        [
+          "R-07 · Resilience",
+          "Recovery exercise scoped to service"
+        ],
+        [
+          "INC-03 · Incident response",
+          "Incident notification roles and timeframes"
+        ],
+        [
+          "DATA-02 · Data protection",
+          "Retention and deletion evidence"
+        ],
+        [
+          "IAM-04 · Identity and access",
+          "Privileged access review"
+        ]
+      ]
+    },
+    "Review rules": {
+      "title": "Independent review and customer authority",
+      "rows": [
+        [
+          "Lead analyst",
+          "Osura analyst 01"
+        ],
+        [
+          "Independent QA",
+          "QA reviewer 02"
+        ],
+        [
+          "Mandatory gate",
+          "New evidence is reviewed before QA passes"
+        ],
+        [
+          "Customer decision owner",
+          "A. Morgan"
+        ],
+        [
+          "Valid outcomes",
+          "Approve · Approve with conditions · Reject · Return for clarification"
+        ]
+      ]
+    },
+    "Communications": {
+      "title": "Supplier communication settings",
+      "rows": [
+        [
+          "Recipient",
+          "security@cedarcloud.example"
+        ],
+        [
+          "Consolidation",
+          "Two genuine gaps in one reviewed packet"
+        ],
+        [
+          "Delivery mode",
+          "Local simulation · no outbound email"
+        ],
+        [
+          "Supplier scope",
+          "CC-2026-104"
+        ],
+        [
+          "Message",
+          "Please provide evidence of a recovery exercise for the payment event processing service and a scoped privileged-access review record. Accepted alternatives are a test log and a recent access export."
+        ]
+      ]
+    },
+    "Lifecycle": {
+      "title": "Monitoring and reassessment rules",
+      "rows": [
+        [
+          "Condition owner",
+          "A. Morgan"
+        ],
+        [
+          "Recovery condition due",
+          "20 Nov 2026"
+        ],
+        [
+          "Evidence expiry",
+          "Creates targeted follow-up"
+        ],
+        [
+          "Material change",
+          "Creates a new scoped review"
+        ],
+        [
+          "Historical packs",
+          "Remain pinned to the earlier effective policy"
+        ]
+      ]
+    },
+    "Evidence standards": {
+      "title": "Evidence applicability and freshness",
+      "rows": [
+        [
+          "Exact supplier and service",
+          "Required before reuse"
+        ],
+        [
+          "Source versions",
+          "Retain original and replacement versions"
+        ],
+        [
+          "Page-level support",
+          "Prepared excerpt must match the requirement"
+        ],
+        [
+          "Supplier claims",
+          "Independent analyst verification required"
+        ],
+        [
+          "Missing or stale evidence",
+          "Unknown or needs review; never supported by default"
+        ]
+      ]
+    },
+    "Publish history": {
+      "title": "Published policy versions",
+      "rows": [
+        [
+          "CTP Core v1",
+          "Locked methodology · original version retained"
+        ],
+        [
+          "Standard v2",
+          "Published · baseline controls and policy QA"
+        ],
+        [
+          "Enhanced v3",
+          "Published · resilience and independent QA"
+        ],
+        [
+          "Next change",
+          "Draft only; original reviews remain pinned"
+        ]
+      ]
+    }
+  },
+  "operationsAttention": {
+    "cedar": "Customer decision required",
+    "atlas": "Evidence scope is ambiguous",
+    "hubspot": "Approve proposed treatment",
+    "glacier": "Supplier file overdue",
+    "nova": "Supplier answer needs review"
+  },
+  "monitoring": [
+    {
+      "supplier": "CedarCloud",
+      "activity": "Recovery condition",
+      "date": "20 Nov 2026",
+      "owner": "A. Morgan",
+      "status": "Awaiting evidence",
+      "route": "O09"
+    },
+    {
+      "supplier": "Atlas Identity",
+      "activity": "Document expiry",
+      "date": "12 Nov 2026",
+      "owner": "Osura / Supplier",
+      "status": "Waiting external",
+      "route": "O05"
+    },
+    {
+      "supplier": "Harbor Analytics",
+      "activity": "CTP refresh",
+      "date": "24 May 2027",
+      "owner": "A. Morgan",
+      "status": "Scheduled",
+      "route": "O12"
+    },
+    {
+      "supplier": "Clearbridge Data",
+      "activity": "Material business change",
+      "date": "05 Nov 2026",
+      "owner": "T. Singh",
+      "status": "Needs triage",
+      "route": "O12"
+    }
+  ],
+  "directoryIdentity": [
+    {
+      "supplier": "HubSpot",
+      "domain": "hubspot.com",
+      "candidate": "HubSpot Inc.",
+      "status": "Needs confirmation"
+    },
+    {
+      "supplier": "CedarCloud",
+      "domain": "cedarcloud.example",
+      "candidate": "CedarCloud",
+      "status": "Confirmed"
+    }
+  ],
+  "riskPalette": {
+    "Critical": "#d85261",
+    "High": "#eea14d",
+    "Medium": "#5288de",
+    "Low": "#38a483",
+    "Pending triage": "#a5adbe"
+  },
+  "overviewActions": [
+    {
+      "engagement": "cedar",
+      "title": "CedarCloud · Payment event processing",
+      "detail": "Decision memo and independent QA completed",
+      "status": "Critical",
+      "action": "Review decision",
+      "route": "C06"
+    },
+    {
+      "engagement": "atlas",
+      "title": "Atlas Identity · Workforce SSO",
+      "detail": "Business owner confirmation required",
+      "status": "Business fact",
+      "action": "Confirm owner",
+      "dialog": "owner"
+    }
+  ],
+  "upcomingAssurance": [
+    [
+      "20 Nov · Recovery exercise evidence",
+      "CedarCloud · condition due",
+      "Due soon"
+    ],
+    [
+      "12 Nov · Supplier response",
+      "Atlas Identity · response expected",
+      "Waiting"
+    ],
+    [
+      "24 May · Scheduled reassessment",
+      "Harbor Analytics · approved service",
+      "Scheduled"
+    ]
+  ],
+  "operationsHandoffs": [
+    [
+      "Northstar · CedarCloud",
+      "Customer decision · waiting for sponsor",
+      "Customer"
+    ],
+    [
+      "Ridgeway · Kite Legal",
+      "Supplier response · delivery confirmed",
+      "Supplier"
+    ],
+    [
+      "Northstar · Atlas Identity",
+      "Internal exception · scope review",
+      "Analyst"
+    ]
+  ],
+  "communications": [
+    [
+      "CC-2026-104",
+      "CedarCloud",
+      "Security team",
+      "Draft",
+      "30 Oct · 14:22",
+      "2 requested items"
+    ],
+    [
+      "AI-2026-117",
+      "Atlas Identity",
+      "Risk contact",
+      "Awaiting supplier",
+      "28 Oct · sent",
+      "1 requested item"
+    ],
+    [
+      "GH-2026-092",
+      "Glacier Hosting",
+      "Assurance",
+      "Queued (local)",
+      "30 Oct · queued",
+      "1 document"
+    ],
+    [
+      "CL-2026-035",
+      "Clearbridge Data",
+      "Security team",
+      "Failed (fixture)",
+      "28 Oct · delivery error",
+      "1 clarification"
+    ]
+  ],
+  "historicalReports": [
+    {
+      "supplier": "HubSpot",
+      "service": "CRM management",
+      "status": "Approved",
+      "date": "17 Aug 2026",
+      "owner": "J. Patel",
+      "file": "Historical reference · preview",
+      "route": "C07"
+    },
+    {
+      "supplier": "Harbor Analytics",
+      "service": "Public-data reporting",
+      "status": "Approved",
+      "date": "17 Aug 2026",
+      "owner": "A. Morgan",
+      "file": "Historical reference · preview",
+      "route": "C07"
+    },
+    {
+      "supplier": "Papertrail",
+      "service": "Printing",
+      "status": "Approved",
+      "date": "17 Aug 2026",
+      "owner": "E. Wright",
+      "file": "Historical reference · preview",
+      "route": "C07"
+    }
+  ],
+  "assessmentActivity": [
+    {
+      "label": "Evidence review",
+      "stage": "Evidence",
+      "detail": "Including supplier follow-up"
+    },
+    {
+      "label": "Questions",
+      "stage": "Questions",
+      "detail": "Awaiting supplier answer"
+    },
+    {
+      "label": "Findings",
+      "stage": "Findings",
+      "detail": "Treatment in progress"
+    },
+    {
+      "label": "Decision",
+      "stage": "Decision",
+      "detail": "Customer signature required"
+    }
+  ],
+  "sourceHistory": [
+    [
+      "BCP v2 · current source",
+      "30 Oct 2026 · supplier upload",
+      "Version pinned"
+    ],
+    [
+      "Recovery test v1 · different service scope",
+      "30 Oct 2026 · original version retained",
+      "Partially supported"
+    ]
+  ],
+  "relationshipHistory": [
+    [
+      "Service review opened",
+      "31 Oct 2026 · business owner request",
+      "Active"
+    ],
+    [
+      "CRM management approved",
+      "17 Aug 2026 · decision pack frozen",
+      "Signed"
+    ]
+  ],
+  "policyConsequences": [
+    [
+      "Harbor Analytics",
+      "Public-data reporting",
+      "Standard v2",
+      "Baseline evidence · policy-valid QA"
+    ],
+    [
+      "CedarCloud",
+      "Critical payment events",
+      "Enhanced v3",
+      "Scoped resilience/privacy proof · independent QA"
+    ]
+  ],
+  "notifications": [
+    [
+      "Customer decision ready",
+      "CedarCloud · payment event processing",
+      "Action"
+    ],
+    [
+      "Supplier response due",
+      "Atlas Identity · 12 Nov",
+      "Waiting"
+    ]
+  ],
+  "defaults": {
+    "conditionOwner": "A. Morgan",
+    "conditionDue": "2026-11-20",
+    "conditionEvidence": "Service-scoped recovery exercise",
+    "rationale": "Proceed subject to recovery test evidence for the contracted payment processing service.",
+    "supplierTeam": "CedarCloud security team",
+    "date": "2026-10-31"
+  },
+  "scenario": {
+    "workspaceId": "northstar",
+    "walkthroughEngagementId": "cedar",
+    "requestId": "CC-2026-104",
+    "directoryIds": [
+      "cedar",
+      "hubspot",
+      "atlas",
+      "clearbridge",
+      "kite"
+    ],
+    "intakeSupplierIds": [
+      "cedarcloud",
+      "atlas-identity",
+      "hubspot",
+      "glacier-hosting",
+      "nova-support",
+      "harbor-analytics",
+      "papertrail",
+      "lumen-ops"
+    ],
+    "displayDate": "2026-10-31",
+    "findingServiceLabels": {
+      "F-02": "Workforce SSO"
+    }
+  }
+}

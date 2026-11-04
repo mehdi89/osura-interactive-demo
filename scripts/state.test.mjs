@@ -9,9 +9,9 @@ import {
   saveRequirementReview,
 } from "../src/state.mjs";
 
-const data = JSON.parse(
-  await readFile(new URL("../public/data/workspace.json", import.meta.url)),
-);
+import { projectWorkspace } from "../src/data-model.mjs";
+const readJSON = async name => JSON.parse(await readFile(new URL(`../public/data/${name}.json`, import.meta.url)));
+const data = projectWorkspace(await readJSON("workspace"), await readJSON("presentation"), await readJSON("examples"));
 const catalog = JSON.parse(
   await readFile(new URL("../public/data/screens.json", import.meta.url)),
 );

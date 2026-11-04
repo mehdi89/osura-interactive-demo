@@ -1,0 +1,132 @@
+{
+  "referencePack": {
+    "version": 1,
+    "engagement": {
+      "id": "cedar",
+      "supplier": "CedarCloud",
+      "service": "Payment event processing",
+      "risk": "Critical",
+      "stage": "Decision",
+      "owner": "A. Morgan",
+      "due": "20 Nov 2026",
+      "plan": "Enhanced v3",
+      "client": "Northstar Payments"
+    },
+    "policy": "CTP Core v1",
+    "overlay": "Enhanced v3",
+    "decision": {
+      "outcome": "Approve with conditions",
+      "rationale": "Proceed subject to service-scoped recovery exercise evidence.",
+      "condition": {
+        "owner": "A. Morgan",
+        "due": "2026-11-20",
+        "evidence": "Service-scoped recovery exercise"
+      },
+      "actor": "A. Morgan",
+      "at": "2026-10-31T15:22:00Z"
+    },
+    "requirements": [
+      {
+        "id": "R-07",
+        "family": "Resilience",
+        "name": "Service recovery exercise",
+        "conclusion": "Partially supported",
+        "source": "BCP v2 · p8 + Test v1 · pp2–4",
+        "expectation": "Recovery exercise scoped to service",
+        "next": "Review test scope",
+        "passage": "Recovery target for hosted payment services: 24 hours.",
+        "proves": "A documented target",
+        "doesNotProve": "A completed exercise covering this service"
+      },
+      {
+        "id": "INC-03",
+        "family": "Incident response",
+        "name": "Incident notification",
+        "conclusion": "Supported",
+        "source": "IR Plan v1 · page 3",
+        "expectation": "Incident notification roles and timeframes",
+        "next": "None",
+        "passage": "The incident manager notifies the customer security contact within the contractual notification period.",
+        "proves": "Documented incident notification responsibility",
+        "doesNotProve": "Actual operational effectiveness"
+      },
+      {
+        "id": "DATA-02",
+        "family": "Data protection",
+        "name": "Data retention policy",
+        "conclusion": "Supported",
+        "source": "Data handling v2 · page 9",
+        "expectation": "Retention and deletion evidence",
+        "next": "None",
+        "passage": "Customer payment event records are retained for the contracted period and removed upon an authorised deletion request.",
+        "proves": "Defined retention and deletion terms",
+        "doesNotProve": "A completed deletion test"
+      },
+      {
+        "id": "IAM-04",
+        "family": "Identity and access",
+        "name": "Privileged access reviews",
+        "conclusion": "Unknown",
+        "source": "No service-scoped proof",
+        "expectation": "Privileged access review",
+        "next": "Clarify",
+        "passage": "No current service-scoped access review has been supplied.",
+        "proves": "No conclusion can be established",
+        "doesNotProve": "Effective privileged access reviews"
+      }
+    ],
+    "qa": "Passed with condition",
+    "qaNote": "Checked exact service and document versions. Conditional approval may proceed only with an owned, time-bound service exercise condition.",
+    "judgement": "Policy sets a recovery target; full service exercise coverage remains partial.",
+    "conclusion": "Partially supported",
+    "documents": [
+      {
+        "name": "CedarCloud_BCP_v2.pdf",
+        "status": "Received",
+        "version": "v2",
+        "page": "8 of 12",
+        "date": "30 Oct 2026",
+        "requirement": "R-07"
+      },
+      {
+        "name": "Recovery_Test_2026.pdf",
+        "status": "Needs review",
+        "version": "v1",
+        "page": "2 of 4",
+        "date": "30 Oct 2026",
+        "requirement": "R-07"
+      },
+      {
+        "name": "Incident_Response_v1.pdf",
+        "status": "Verified",
+        "version": "v1",
+        "page": "3 of 6",
+        "date": "28 Oct 2026",
+        "requirement": "INC-03"
+      },
+      {
+        "name": "Data_Handling_v2.pdf",
+        "status": "Verified",
+        "version": "v2",
+        "page": "9 of 10",
+        "date": "28 Oct 2026",
+        "requirement": "DATA-02"
+      },
+      {
+        "name": "Access_Review_Q3.pdf",
+        "status": "Received",
+        "version": "v1",
+        "page": "1 of 3",
+        "date": "28 Oct 2026",
+        "requirement": "IAM-04"
+      }
+    ]
+  },
+  "referenceReceipt": {
+    "reference": "CC-2026-104-R01",
+    "at": "2026-10-30T14:22:00Z",
+    "fileName": "Recovery_Test_2026.pdf",
+    "answer": "Payment event processing service exercise report supplied for review.",
+    "scope": "Covers this service"
+  }
+}

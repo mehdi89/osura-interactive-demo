@@ -72,8 +72,9 @@ import {
   saveRequirementReview,
 } from "./state.mjs";
 import "./styles.css";
+import DataEditor from "./DataEditor.jsx";
+import { createModelValidator, projectWorkspace } from "./data-model.mjs";
 
-const STORAGE = "osura-interactive-demo-v1";
 const Icon = ({ name, size = 16, ...props }) => {
   const Component = Icons[name] || Icons.Circle;
   return <Component size={size} strokeWidth={1.65} {...props} />;
@@ -160,18 +161,16 @@ const Label = ({ title, children, hint }) => (
   </label>
 );
 
-function App({ data: baseData, catalog }) {
+function Demo({ initialModel, presentation, examples, schema, catalog, validate }) {
+  const [model, setModel] = useState(initialModel);
+  const data = React.useMemo(() => projectWorkspace(model, presentation, examples), [model]);
+  return <App data={data} catalog={catalog} model={model} schema={schema} validate={validate}
+    onDataChange={setModel} />;
+}
+
+function App({ data: baseData, catalog, model, schema, validate, onDataChange }) {
   let data = baseData;
-  const [state, setState] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE));
-      return saved?.schemaVersion === data.schemaVersion
-        ? saved
-        : createState(data);
-    } catch {
-      return createState(data);
-    }
-  });
+  const [state, setState] = useState(() => createState(data));
   const currentCondition = state.decision?.condition;
   data = {
     ...baseData,
@@ -295,15 +294,6 @@ function App({ data: baseData, catalog }) {
     window.addEventListener("hashchange", handler);
     return () => window.removeEventListener("hashchange", handler);
   }, []);
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE, JSON.stringify(state));
-    } catch {
-      setToast(
-        "Browser storage is full. Changes will last only for this session.",
-      );
-    }
-  }, [state]);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 4500);
@@ -523,7 +513,7 @@ function App({ data: baseData, catalog }) {
       </div>
       <div className="demo-toolbar">
         <span className="demo-dot" />
-        <b>Interactive demo</b>
+        <b title="All changes reset on refresh">Demo · until refresh</b>
         <select
           aria-label="Demo perspective"
           value={role}
@@ -545,21 +535,23 @@ function App({ data: baseData, catalog }) {
           {screen.id}
           <span className="toolbar-extra"> · All 35 screens</span>
         </button>
+        <button onClick={() => setDrawer("data")}><Icon name="Folder" size={14} /> Demo data</button>
         <button aria-label="Reset demo" onClick={() => setDrawer("reset")}>
           <Icon name="RotateCcw" size={14} />
         </button>
       </div>
       {drawer && (
-        <Dialog title={dialogTitle(drawer)} onClose={() => setDrawer(null)}>
+        <Dialog title={drawer === "data" ? "Demo data · session editor" : dialogTitle(drawer)} wide={drawer === "data"} onClose={() => setDrawer(null)}>
+          {drawer === "data" ? <DataEditor model={model} schema={schema} validate={validate} onChange={onDataChange} /> : (
           <Drawer
             kind={drawer}
             {...ctx}
             onReset={() => {
-              setState(createState(data));
+              setState(createState(baseData));
               navigate("C01");
-              notify("Demo reset to the JSON dataset.");
+              notify("Walkthrough reset. Fixture edits remain until refresh.");
             }}
-          />
+          />)}
         </Dialog>
       )}
       {toast && (
@@ -1668,7 +1660,7 @@ function Intake(c) {
         },
       ],
     });
-    notify("Request submitted. Your receipt is saved in this browser.");
+    notify("Request submitted. Your receipt is saved until refresh.");
     navigate("C09");
   };
   const questions = [
@@ -2030,7 +2022,7 @@ function Intake(c) {
             </Card>
             <div className="form-actions">
               <Button onClick={() => navigate("C04")}>Back</Button>
-              <Button onClick={() => notify("Draft saved in this browser.")}>
+              <Button onClick={() => notify("Draft saved until refresh.")}>
                 Save draft
               </Button>
               <Button primary type="submit" icon="ArrowRight">
@@ -2246,8 +2238,7 @@ function Assessment(c) {
       {state.intakeSubmitted && customer && (
         <Note>
           Request {state.intakeReceipt} received for {state.intake.supplier} ·{" "}
-          {state.intake.use || state.intake.purpose}. Draft data is saved in
-          this browser. The CedarCloud reference case below is a separate
+          {state.intake.use || state.intake.purpose}. Draft data lasts until refresh. The CedarCloud reference case below is a separate
           prepared walkthrough.
         </Note>
       )}
@@ -3333,7 +3324,7 @@ function Pack(c) {
               ))}
             </div>
             <Note>
-              This record is frozen from the browser’s saved review state.
+              This record is frozen from the current session’s review state.
               Subsequent condition closure leaves the original pack unchanged.
             </Note>
             <div className="form-actions">
@@ -4832,7 +4823,7 @@ function SupplierPortal(c) {
             <Button
               onClick={() =>
                 notify(
-                  "Draft saved in this browser. Your response has not been submitted.",
+                  "Draft saved until refresh. Your response has not been submitted.",
                 )
               }
             >
@@ -4878,7 +4869,7 @@ function SupplierPortal(c) {
   );
 }
 
-function Dialog({ title, children, onClose }) {
+function Dialog({ title, children, onClose, wide = false }) {
   const ref = React.useRef(null);
   useEffect(() => {
     const old = document.activeElement;
@@ -4890,7 +4881,7 @@ function Dialog({ title, children, onClose }) {
   return (
     <dialog
       ref={ref}
-      className="dialog"
+      className={`dialog ${wide ? "data-dialog" : ""}`}
       onCancel={onClose}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -4995,7 +4986,7 @@ function Drawer(c) {
       <>
         <p>
           Restore the JSON dataset and clear this demo’s saved decisions,
-          uploads, drafts and activity in this browser.
+          workflow drafts and activity in this tab. Fixture edits remain until refresh.
         </p>
         <div className="form-actions">
           <Button onClick={() => setDrawer(null)}>Cancel</Button>
@@ -5009,7 +5000,7 @@ function Drawer(c) {
     return (
       <>
         <Note>
-          Interactive UI preview · synthetic data · browser-local storage · no
+          Interactive UI preview · synthetic data · session memory (resets on refresh) · no
           live AI, email, authentication or production integrations.
         </Note>
         <h3>Switch perspective</h3>
@@ -5027,7 +5018,7 @@ function Drawer(c) {
         <Fields
           items={[
             ["Data files", "/public/data/workspace.json + screens.json"],
-            ["Persistence", "This browser only"],
+            ["Persistence", "This tab until refresh"],
             ["Policy values", "Prepared reference fixture · no risk engine"],
           ]}
         />
@@ -5358,7 +5349,7 @@ function Drawer(c) {
         </>
       )}
       <Note>
-        Saved in this browser’s synthetic demo state. No message is sent
+        Saved in this tab until refresh. No message is sent
         externally.
       </Note>
       <div className="form-actions">
@@ -5383,18 +5374,19 @@ function downloadJSON(name, value) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 Promise.all(
-  ["/data/workspace.json", "/data/screens.json"].map((url) =>
+  ["/data/workspace.json", "/data/presentation.json", "/data/examples.json", "/schemas/workspace.schema.json", "/data/screens.json"].map((url) =>
     fetch(url).then((r) => {
       if (!r.ok) throw new Error(`Unable to load ${url}`);
       return r.json();
     }),
   ),
 )
-  .then(([data, catalog]) => {
-    if (!Array.isArray(data.engagements) || !catalog.screens?.length)
-      throw new Error("Invalid demo dataset. Check the JSON files.");
+  .then(([initialModel, presentation, examples, schema, catalog]) => {
+    const validate = createModelValidator(schema, presentation);
+    validate(initialModel);
+    if (!catalog.screens?.length) throw new Error("Invalid screen catalog");
     createRoot(document.getElementById("root")).render(
-      <App data={data} catalog={catalog} />,
+      <Demo {...{ initialModel, presentation, examples, schema, catalog, validate }} />,
     );
   })
   .catch((error) => {
