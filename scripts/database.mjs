@@ -27,11 +27,15 @@ export function generateDatabase(schema, data) {
     }
     for (const fields of definition["x-unique"]) columns.push(`  UNIQUE (${fields.map(q).join(", ")})`);
     if (table === "engagements") columns.push('  CHECK ("analystId" IS NULL OR "qaReviewerId" IS NULL OR "analystId" <> "qaReviewerId")');
+    if (table === "users") {
+      columns.push('  CHECK (("role" = \'customer\') = ("workspaceId" IS NOT NULL))');
+      columns.push('  CHECK (NOT "canQA" OR "role" = \'analyst\')');
+    }
     if (table === "documentVersions") columns.push('  CHECK ("page" <= "pageCount")');
     if (table === "evidenceCitations") columns.push('  CHECK ("pageStart" <= "pageEnd")');
     lines.push(`CREATE TABLE ${q(table)} (\n${columns.join(",\n")}\n);`);
   }
-  lines.push(...relations, "COMMIT;", "");
+  lines.push(...relations, 'CREATE UNIQUE INDEX "users_email_case_insensitive" ON "users" (lower("email"));', "COMMIT;", "");
   const seed = ["-- Generated synthetic data. Apply schema.sql first to a fresh database.", "BEGIN;"];
   for (const table of Object.keys(schema.$defs)) {
     for (const row of data[table]) seed.push(`INSERT INTO ${q(table)} (${Object.keys(row).map(q).join(", ")}) VALUES (${Object.values(row).map(literal).join(", ")});`);

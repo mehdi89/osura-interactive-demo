@@ -23,7 +23,9 @@
     "biaQuestions",
     "biaAnswers",
     "supplierRequests",
-    "requestItems"
+    "requestItems",
+    "users",
+    "customerAssignments"
   ],
   "properties": {
     "modelVersion": {
@@ -129,6 +131,18 @@
       "type": "array",
       "items": {
         "$ref": "#/$defs/requestItems"
+      }
+    },
+    "users": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/users"
+      }
+    },
+    "customerAssignments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/customerAssignments"
       }
     }
   },
@@ -952,6 +966,91 @@
         [
           "requestId",
           "position"
+        ]
+      ]
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "actorId",
+        "email",
+        "role",
+        "workspaceId",
+        "active",
+        "canQA"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "actorId": {
+          "type": "string",
+          "x-references": "actors"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "customer",
+            "analyst",
+            "superadmin"
+          ]
+        },
+        "workspaceId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "workspaces"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "canQA": {
+          "type": "boolean"
+        }
+      },
+      "x-unique": [
+        [
+          "email"
+        ],
+        [
+          "actorId"
+        ]
+      ]
+    },
+    "customerAssignments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "userId",
+        "workspaceId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "userId": {
+          "type": "string",
+          "x-references": "users"
+        },
+        "workspaceId": {
+          "type": "string",
+          "x-references": "workspaces"
+        }
+      },
+      "x-unique": [
+        [
+          "userId",
+          "workspaceId"
         ]
       ]
     }

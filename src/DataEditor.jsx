@@ -5,7 +5,7 @@ const label = row => row.name || row.fileName || row.issue || row.label || row.i
 const words = value => value.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, c => c.toUpperCase());
 
 export default function DataEditor({ model, schema, validate, onChange }) {
-  const tables = Object.keys(schema.$defs);
+  const tables = Object.keys(schema.$defs).filter(name => !["users", "customerAssignments"].includes(name));
   const [table, setTable] = useState("engagements");
   const [draft, setDraft] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -36,7 +36,7 @@ export default function DataEditor({ model, schema, validate, onChange }) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
   return <div className="data-editor">
-    <p className="note">Synthetic fixture records · changes stay in this tab until refresh. Linked records must exist before saving; referenced records cannot be deleted. Current workflow actions can override these base values. Reset the walkthrough to clear workflow overrides.</p>
+    <p className="note">Synthetic fixture records · changes stay in this tab until refresh. Manage analysts and assignments in Team & access. Linked records must exist before saving; referenced records cannot be deleted. Current workflow actions can override these base values. Reset the walkthrough to clear workflow overrides.</p>
     <div className="data-editor-tools">
       <label className="field"><span>Collection</span><select value={table} onChange={event => {
         setTable(event.target.value); setDraft(null); setError(""); setMessage(""); setDeleting(false);

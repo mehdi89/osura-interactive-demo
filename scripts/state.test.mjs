@@ -9,9 +9,12 @@ import {
   saveRequirementReview,
 } from "../src/state.mjs";
 
+import { sessionUser } from "../src/access.mjs";
 import { projectWorkspace } from "../src/data-model.mjs";
 const readJSON = async name => JSON.parse(await readFile(new URL(`../public/data/${name}.json`, import.meta.url)));
-const data = projectWorkspace(await readJSON("workspace"), await readJSON("presentation"), await readJSON("examples"));
+const model = await readJSON("workspace");
+const data = { ...projectWorkspace(model, await readJSON("presentation"), await readJSON("examples")), access: sessionUser(model,"customer-morgan"), activeEngagementId: "cedar" };
+const analystData = { ...data, access: sessionUser(model,"analyst-01") };
 const catalog = JSON.parse(
   await readFile(new URL("../public/data/screens.json", import.meta.url)),
 );
@@ -172,8 +175,8 @@ test("search and risk filters select matching service-level records", () => {
 
 test("reviewing another requirement cannot clear the recovery evidence gate", () => {
   const state = { ...createState(data), conclusion: "Needs review" };
-  const next = saveRequirementReview(state, data, "INC-03", {
-    judgement: "Notification roles documented",
+  const next = saveRequirementReview(state, analystData, "INC-03", {
+    recommendation: "Approve with conditions", judgement: "Notification roles documented",
     conclusion: "Supported",
     reason: "",
   });
@@ -185,15 +188,15 @@ test("reviewing another requirement cannot clear the recovery evidence gate", ()
   );
   assert.throws(
     () =>
-      saveRequirementReview(state, data, "R-07", {
-        judgement: "Read source",
+      saveRequirementReview(state, analystData, "R-07", {
+        recommendation: "Approve with conditions", judgement: "Read source",
         conclusion: "Needs review",
         reason: "",
       }),
     /reviewed evidence/,
   );
-  const reviewed = saveRequirementReview(state, data, "R-07", {
-    judgement: "Exact service test supports coverage",
+  const reviewed = saveRequirementReview(state, analystData, "R-07", {
+    recommendation: "Approve with conditions", judgement: "Exact service test supports coverage",
     conclusion: "Supported",
     reason: "New scoped test supplied",
   });

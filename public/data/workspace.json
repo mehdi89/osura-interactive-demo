@@ -42,6 +42,10 @@
     {
       "id": "qa-reviewer-02",
       "name": "QA reviewer 02"
+    },
+    {
+      "id": "osura-admin",
+      "name": "Sam Taylor"
     }
   ],
   "policyVersions": [
@@ -969,6 +973,61 @@
       "requirementId": "IAM-04",
       "label": "Privileged access review record",
       "position": 2
+    }
+  ],
+  "users": [
+    {
+      "id": "customer-morgan",
+      "actorId": "a-morgan",
+      "email": "morgan@northstar.example",
+      "role": "customer",
+      "workspaceId": "northstar",
+      "active": true,
+      "canQA": false
+    },
+    {
+      "id": "analyst-01",
+      "actorId": "osura-analyst-01",
+      "email": "analyst01@osura.example",
+      "role": "analyst",
+      "workspaceId": null,
+      "active": true,
+      "canQA": false
+    },
+    {
+      "id": "analyst-02",
+      "actorId": "qa-reviewer-02",
+      "email": "analyst02@osura.example",
+      "role": "analyst",
+      "workspaceId": null,
+      "active": true,
+      "canQA": true
+    },
+    {
+      "id": "superadmin",
+      "actorId": "osura-admin",
+      "email": "admin@osura.example",
+      "role": "superadmin",
+      "workspaceId": null,
+      "active": true,
+      "canQA": false
+    }
+  ],
+  "customerAssignments": [
+    {
+      "id": "assignment-01",
+      "userId": "analyst-01",
+      "workspaceId": "northstar"
+    },
+    {
+      "id": "assignment-02",
+      "userId": "analyst-01",
+      "workspaceId": "ridgeway"
+    },
+    {
+      "id": "assignment-03",
+      "userId": "analyst-02",
+      "workspaceId": "northstar"
     }
   ]
 }

@@ -1,6 +1,6 @@
 # Demo data model
 
-The demo now separates record data from its schema. `public/data/workspace.json` has 124 synthetic records in 17 collections. `public/schemas/workspace.schema.json` describes them using JSON Schema Draft 2020-12. `src/data-model.mjs` validates records and joins them into the existing screen format. The migration was compared with the original complete JSON projection: all original values and row ordering match.
+The demo now separates record data from its schema. `public/data/workspace.json` has 132 synthetic records in 19 collections. `public/schemas/workspace.schema.json` describes them using JSON Schema Draft 2020-12. `src/data-model.mjs` validates records and joins them into the existing screen format. The migration was compared with the original complete JSON projection: all original values and row ordering match.
 
 ## Relationships
 
@@ -29,7 +29,9 @@ erDiagram
 | Collection | Meaning and important fields |
 | --- | --- |
 | workspaces | Customer organizations. Northstar and Ridgeway stay distinct. |
-| actors | Synthetic people/reviewer display identities. These are not authenticated users or role grants. |
+| actors | Synthetic named identities, separate from user-role/access records. |
+| users | Actor, email, customer/analyst/superadmin role, active status and independent QA permission. Customer users have one workspace; internal users have no single workspace. These simulate users, not real authentication. |
+| customerAssignments | Explicit analyst-to-customer links, unique per analyst/customer. Superadmin manages these in Team & access. |
 | policyVersions | Explicit `core`, `plan` and customer `overlay` version kinds. The two Enhanced v3 labels are separate plan/overlay records. These are fixture version pins, not the approved methodology content. |
 | suppliers | Supplier identity and optional known domain/country; no supplier-wide risk. Unknown metadata is `null`. `intakeEnabled` controls inclusion in the demo suggestion list. |
 | services | Supplier-owned service scopes. Optional `suggestionOrder` identifies the prepared intake suggestions. |
@@ -74,7 +76,7 @@ The build validates the data and checks that generated SQL exactly matches its s
 
 ## Session editing
 
-Open **Demo data** in the bottom toolbar. Pick a collection, choose a row to edit, or select **Add record**. Reference fields offer existing records; delete requires confirmation. Create referenced parents first and delete dependants first. Save errors explain invalid values or missing dependencies. **Download data JSON** exports the current normalized base dataset, without changing files on disk.
+Choose **Superadmin** in the demo-user selector, then open **Demo data** in the bottom toolbar. Users and customer assignments are managed through the dedicated Team & access page. Pick a collection, choose a row to edit, or select **Add record**. Reference fields offer existing records; delete requires confirmation. Create referenced parents first and delete dependants first. Save errors explain invalid values or missing dependencies. **Download data JSON** exports the current normalized base dataset, without changing files on disk.
 
 Records and existing workflow changes live in React memory. Navigation and perspective switches preserve them; refresh restores the source fixtures. No localStorage or sessionStorage is used for demo state. Older browser-saved data is ignored, not deleted. **Reset demo** clears workflow progress/overrides but retains edits to the base records until refresh. Downloading is the only way to keep edited fixture records beyond the current page session.
 
@@ -82,6 +84,6 @@ Records and existing workflow changes live in React memory. Navigation and persp
 
 `presentation.json` holds scenario/display settings, seed workflow state and static illustrative panels such as historical communications, monitoring cards and policy previews. Those panels remain reference illustrations; they are not synchronized database queries. Core registers, requirements, documents, findings and intake suggestions come from the normalized records. `examples.json` deliberately retains frozen historical display snapshots rather than joining mutable current records into them.
 
-Existing intake submissions, uploads, QA actions, decisions, conditions and receipts continue in the existing workflow state machine (`src/state.mjs` and `src/main.jsx`). They persist for this page session, and signed packs retain their separate JSON download. They are not yet round-tripped into the normalized fixture collections or included in the base-data export. A production model must introduce assessment revisions, signed analyst/QA history, customer decisions/conditions, immutable pack storage, responses, audit events, authentication/memberships and tenant authorization. These require backend behavior, not merely additional JSON fields.
+Existing intake submissions, uploads, QA actions, decisions, conditions and receipts continue in the existing workflow state machine (`src/state.mjs` and `src/main.jsx`). They persist for this page session, and signed packs retain their separate JSON download. They are not yet round-tripped into the normalized fixture collections or included in the base-data export. A production model must introduce assessment revisions, signed analyst/QA history, customer decisions/conditions, immutable pack storage, responses, durable audit storage, real authentication/memberships and server-enforced tenant authorization. Basic user/assignment records and session audit attribution now exist; see roles-and-accountability.md. These require backend behavior, not merely additional JSON fields.
 
 This work changes the data foundation and session tools. It does not implement the pending business/QA/UI proposals, calculate CTP risk, send email, authenticate users or store uploaded file contents. Treat all records and version labels as synthetic demo fixtures.

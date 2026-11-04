@@ -1,13 +1,18 @@
+import { requireAction, actionEntry } from "./access.mjs";
+
 export function createState(data) {
   return {
     ...structuredClone(data.initialState),
     intake: structuredClone(data.intake),
     schemaVersion: data.schemaVersion,
+    assessmentRevision: 1,
     requestReference: data.request.reference,
+    qaReview: { actorId: data.workspace.qaReviewerId, actor: data.workspace.qaReviewer, role: "analyst", prepared: true, at: "2026-10-31T14:00:00Z", outcome: data.initialState.qa, rationale: data.initialState.qaNote },
   };
 }
 
 export function recordDecision(state, data, outcome, rationale, condition) {
+  const user = requireAction(data, "decision");
   if (state.selected !== "cedar")
     throw new Error(
       "The full decision walkthrough is scoped to the CedarCloud reference case.",
@@ -46,8 +51,12 @@ export function recordDecision(state, data, outcome, rationale, condition) {
   const decision = {
     outcome,
     rationale,
+    assessmentVersion: data.assessmentVersion || "cedar-review-v1",
     condition: outcome === "Approve with conditions" ? condition : null,
-    actor: data.workspace.decisionOwner,
+    actor: user.name,
+    actorId: user.actorId,
+    userId: user.id,
+    role: user.role,
     at: new Date().toISOString(),
   };
   if (outcome === "Return for clarification")
@@ -56,12 +65,15 @@ export function recordDecision(state, data, outcome, rationale, condition) {
       qa: "Rework requested",
       decision: null,
       clarification: decision,
+      events: [...state.events, actionEntry(data, "Customer clarification requested", rationale, { outcome })],
     };
   return {
     ...state,
     decision,
+    events: [...state.events, actionEntry(data, "Customer decision recorded", rationale, { outcome, condition: decision.condition })],
     signedPack: {
       version: 1,
+      assessmentVersion: decision.assessmentVersion,
       engagement: structuredClone(engagement),
       policy: data.workspace.policy,
       overlay: data.workspace.overlay,
@@ -69,6 +81,8 @@ export function recordDecision(state, data, outcome, rationale, condition) {
       requirements: structuredClone(data.requirements),
       qa: state.qa,
       qaNote: state.qaNote,
+      qaReview: structuredClone(state.qaReview),
+      reviews: structuredClone(state.reviews || {}),
       judgement: state.judgement,
       conclusion: state.conclusion,
       documents: structuredClone(data.documents),
@@ -128,6 +142,8 @@ export function filterEngagements(rows, search = "", filter = "All") {
 }
 
 export function saveRequirementReview(state, data, id, review) {
+  const user = requireAction(data, "recommendation");
+  if (state.selected !== "cedar" || data.activeEngagementId !== "cedar") throw new Error("Evidence review is scoped to the CedarCloud walkthrough.");
   const requirement = data.requirements.find((r) => r.id === id);
   if (!requirement) throw new Error("Unknown requirement.");
   if (!review.judgement.trim())
@@ -142,6 +158,8 @@ export function saveRequirementReview(state, data, id, review) {
     ].includes(review.conclusion)
   )
     throw new Error("Select a reviewed evidence conclusion.");
+  if (!["Approve", "Approve with conditions", "Reject", "Return for clarification"].includes(review.recommendation))
+    throw new Error("Select a suggested customer outcome.");
   const previous = state.pendingReviews?.[id]
     ? "Needs review"
     : id === "R-07"
@@ -152,7 +170,7 @@ export function saveRequirementReview(state, data, id, review) {
   return {
     ...state,
     pendingReviews: { ...state.pendingReviews, [id]: false },
-    reviews: { ...state.reviews, [id]: { ...review } },
+    reviews: { ...state.reviews, [id]: { ...review, actorId: user.actorId, actor: user.name, userId: user.id, at: new Date().toISOString() } },
     ...(id === "R-07"
       ? {
           judgement: review.judgement,
@@ -160,16 +178,37 @@ export function saveRequirementReview(state, data, id, review) {
           judgementReason: review.reason,
         }
       : {}),
-    ...(review.conclusion !== previous ||
-    (id === "R-07" && state.supplierReceipt)
-      ? { qa: "Rework requested" }
-      : {}),
-    events: [
-      ...state.events,
-      {
-        message: `Analyst judgement recorded for ${id}`,
-        at: new Date().toISOString(),
-      },
-    ],
+    qa: "Rework requested",
+    events: [...state.events, actionEntry(data, "Analyst recommendation recorded", review.judgement, {
+      requirementId: id, previousConclusion: previous, conclusion: review.conclusion, changeReason: review.reason, recommendation: review.recommendation,
+    })],
   };
+}
+
+
+export function recordQA(state, data, outcome, note) {
+  const user = requireAction(data, "qa");
+  if (state.selected !== "cedar" || data.activeEngagementId !== "cedar") throw new Error("QA is scoped to the CedarCloud walkthrough.");
+  const leadActorId = data.engagements.find(row => row.id === data.activeEngagementId)?.analystId;
+  const reviewers = Object.values(state.reviews || {}).map(row => row.actorId);
+  if (user.actorId === leadActorId || reviewers.includes(user.actorId))
+    throw new Error("You cannot perform QA on your own analysis. Choose a different assigned reviewer.");
+  if (!note.trim()) throw new Error("Record the QA challenge and rationale.");
+  if (!["Passed", "Passed with condition", "Rework requested", "More evidence required"].includes(outcome)) throw new Error("Select a valid QA outcome.");
+  if (outcome.startsWith("Passed") && (state.conclusion === "Needs review" || Object.values(state.pendingReviews || {}).some(Boolean)))
+    throw new Error("Review the new evidence before passing QA.");
+  const entry = actionEntry(data, "Independent QA recorded", note, { outcome });
+  return { ...state, qa: outcome, qaNote: note, qaReview: { ...entry, prepared: false }, events: [...state.events, entry] };
+}
+
+// A filtered view must not replace records belonging to another assigned customer.
+export function mergeWorkflowPatch(state, patch) {
+  const next = { ...state, ...patch };
+  for (const key of ["events", "scheduledReviews", "extraFindings"]) {
+    if (!patch[key]) continue;
+    const rows = new Map((state[key] || []).map(row => [row.id, row]));
+    for (const row of patch[key]) if (key !== "events" || !rows.has(row.id)) rows.set(row.id, row);
+    next[key] = [...rows.values()];
+  }
+  return next;
 }

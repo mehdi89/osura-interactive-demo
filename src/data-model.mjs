@@ -30,6 +30,15 @@ export function createModelValidator(schema, presentation) {
         }
       }
     }
+    if (!data.users.some(row => row.role === "superadmin" && row.active)) throw new Error("Keep at least one active superadmin");
+    const emails = data.users.map(row => row.email.toLowerCase());
+    if (new Set(emails).size !== emails.length) throw new Error("User emails must be unique");
+    for (const user of data.users) {
+      if ((user.role === "customer") !== (user.workspaceId !== null)) throw new Error("Only customer users have a single workspaceId");
+      if (user.canQA && user.role !== "analyst") throw new Error("QA permission belongs to analysts only");
+    }
+    for (const assignment of data.customerAssignments)
+      if (lookup.users.get(assignment.userId).role !== "analyst") throw new Error("Assign customers to analyst users only");
     for (const row of data.engagements) {
       for (const [field, kind] of [["corePolicyVersionId", "core"], ["planVersionId", "plan"], ["overlayVersionId", "overlay"]]) {
         if (row[field] !== null && lookup.policyVersions.get(row[field]).kind !== kind)
@@ -99,7 +108,7 @@ export function projectWorkspace(model, presentation, examples) {
   const name = (table, id) => get(table, id)?.name || "Unassigned";
   const engagementRow = (row) => {
     const service = get("services", row.serviceId);
-    return { id: row.id, supplier: name("suppliers", service.supplierId), service: service.name,
+    return { id: row.id, workspaceId: row.workspaceId, analystId: row.analystId, qaReviewerId: row.qaReviewerId, decisionOwnerId: row.decisionOwnerId, supplier: name("suppliers", service.supplierId), service: service.name,
       risk: row.risk, stage: row.stage, owner: name("actors", row.ownerId), due: displayDate(row.due),
       plan: name("policyVersions", row.planVersionId), client: name("workspaces", row.workspaceId) };
   };
@@ -121,16 +130,16 @@ export function projectWorkspace(model, presentation, examples) {
   });
   return { ...copy, ...structuredClone(examples),
     workspace: { name: name("workspaces", s.workspaceId), initials: "NP", date: displayDate(s.displayDate, true),
-      analyst: name("actors", walkthrough.analystId), qaReviewer: name("actors", walkthrough.qaReviewerId),
+      analystId: walkthrough.analystId, qaReviewerId: walkthrough.qaReviewerId, analyst: name("actors", walkthrough.analystId), qaReviewer: name("actors", walkthrough.qaReviewerId),
       decisionOwner: name("actors", walkthrough.decisionOwnerId), policy: name("policyVersions", walkthrough.corePolicyVersionId),
       overlay: name("policyVersions", walkthrough.overlayVersionId) },
-    engagements: model.engagements.filter(row => row.workspaceId === s.workspaceId).map(engagementRow), directory, requirements,
+    allEngagements: model.engagements.map(engagementRow), engagements: model.engagements.filter(row => row.workspaceId === s.workspaceId).map(engagementRow), directory, requirements,
     suppliers: model.suppliers.filter(row => row.intakeEnabled).map(row => ({ name: row.name, domain: row.domain || "", country: row.country || "",
       uses: model.services.filter(service => service.supplierId === row.id && service.suggestionOrder !== null).sort((a,b) => a.suggestionOrder-b.suggestionOrder).map(service => service.name) })),
     documents: model.documentVersions.filter(row => row.engagementId === walkthrough.id).map(row => ({ name: row.fileName, status: row.status, version: `v${row.version}`,
       page: `${row.page} of ${row.pageCount}`, date: displayDate(row.receivedOn), requirement: row.requirementId })),
     findings: model.findings.map(row => { const engagement = engagementRow(get("engagements", row.engagementId));
-      return { id: row.id, supplier: engagement.supplier, service: s.findingServiceLabels[row.id] || engagement.service, issue: row.issue,
+      return { id: row.id, engagementId: row.engagementId, workspaceId: get("engagements", row.engagementId).workspaceId, client: engagement.client, supplier: engagement.supplier, service: s.findingServiceLabels[row.id] || engagement.service, issue: row.issue,
         control: row.requirementId, severity: row.severity, owner: name("actors", row.ownerId), state: row.state, due: displayDate(row.due), evidence: row.evidence }; }),
     triage: model.triageAnswers.filter(row => row.engagementId === walkthrough.id).map(row => ({ id: row.questionId, label: get("triageQuestions", row.questionId).label, value: row.value ? "Yes" : "No" })),
     bia: Object.fromEntries(["Confidentiality", "Integrity", "Availability"].map(dimension => [dimension,

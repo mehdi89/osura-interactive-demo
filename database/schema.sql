@@ -142,6 +142,25 @@ CREATE TABLE "requestItems" (
   "position" integer NOT NULL CHECK ("position" >= 1),
   UNIQUE ("requestId", "position")
 );
+CREATE TABLE "users" (
+  "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
+  "actorId" text NOT NULL,
+  "email" text NOT NULL,
+  "role" text NOT NULL CHECK ("role" IN ('customer', 'analyst', 'superadmin')),
+  "workspaceId" text,
+  "active" boolean NOT NULL,
+  "canQA" boolean NOT NULL,
+  UNIQUE ("email"),
+  UNIQUE ("actorId"),
+  CHECK (("role" = 'customer') = ("workspaceId" IS NOT NULL)),
+  CHECK (NOT "canQA" OR "role" = 'analyst')
+);
+CREATE TABLE "customerAssignments" (
+  "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
+  "userId" text NOT NULL,
+  "workspaceId" text NOT NULL,
+  UNIQUE ("userId", "workspaceId")
+);
 ALTER TABLE "services" ADD FOREIGN KEY ("supplierId") REFERENCES "suppliers" ("id") ON DELETE RESTRICT;
 ALTER TABLE "engagements" ADD FOREIGN KEY ("workspaceId") REFERENCES "workspaces" ("id") ON DELETE RESTRICT;
 ALTER TABLE "engagements" ADD FOREIGN KEY ("serviceId") REFERENCES "services" ("id") ON DELETE RESTRICT;
@@ -171,4 +190,9 @@ ALTER TABLE "biaAnswers" ADD FOREIGN KEY ("questionId") REFERENCES "biaQuestions
 ALTER TABLE "supplierRequests" ADD FOREIGN KEY ("engagementId") REFERENCES "engagements" ("id") ON DELETE RESTRICT;
 ALTER TABLE "requestItems" ADD FOREIGN KEY ("requestId") REFERENCES "supplierRequests" ("id") ON DELETE RESTRICT;
 ALTER TABLE "requestItems" ADD FOREIGN KEY ("requirementId") REFERENCES "requirements" ("id") ON DELETE RESTRICT;
+ALTER TABLE "users" ADD FOREIGN KEY ("actorId") REFERENCES "actors" ("id") ON DELETE RESTRICT;
+ALTER TABLE "users" ADD FOREIGN KEY ("workspaceId") REFERENCES "workspaces" ("id") ON DELETE RESTRICT;
+ALTER TABLE "customerAssignments" ADD FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE RESTRICT;
+ALTER TABLE "customerAssignments" ADD FOREIGN KEY ("workspaceId") REFERENCES "workspaces" ("id") ON DELETE RESTRICT;
+CREATE UNIQUE INDEX "users_email_case_insensitive" ON "users" (lower("email"));
 COMMIT;

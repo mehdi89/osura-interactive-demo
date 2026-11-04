@@ -73,5 +73,5 @@ test("generated SQL stays in sync and quotes fixture values safely", async () =>
   const model = copy(); model.actors[0].name = "O'Brien'); DROP TABLE actors; --";
   const sql = generateDatabase(schema, model)["seed.sql"];
   assert.ok(sql.includes("O''Brien''); DROP TABLE actors; --"));
-  assert.equal((output["schema.sql"].match(/CREATE TABLE/g) || []).length, 17);
+  assert.equal((output["schema.sql"].match(/CREATE TABLE/g) || []).length, 19);
 });

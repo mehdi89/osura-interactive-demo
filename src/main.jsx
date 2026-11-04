@@ -70,9 +70,13 @@ import {
   submitSupplier,
   filterEngagements,
   saveRequirementReview,
+  recordQA,
+  mergeWorkflowPatch,
 } from "./state.mjs";
 import "./styles.css";
 import DataEditor from "./DataEditor.jsx";
+import RoleAdmin, { AuditTrail } from "./RoleAdmin.jsx";
+import { sessionUser, scopeWorkspace, actionEntry } from "./access.mjs";
 import { createModelValidator, projectWorkspace } from "./data-model.mjs";
 
 const Icon = ({ name, size = 16, ...props }) => {
@@ -163,18 +167,23 @@ const Label = ({ title, children, hint }) => (
 
 function Demo({ initialModel, presentation, examples, schema, catalog, validate }) {
   const [model, setModel] = useState(initialModel);
+  const [identity, setIdentity] = useState("customer-morgan");
+  const [auditLog, setAuditLog] = useState([]);
+  const onAudit = entries => setAuditLog(old => [...old, ...structuredClone([entries].flat()).filter(row => !old.some(item => item.id === row.id))]);
+  const user = identity === "supplier-contact" ? { id: identity, actorId: identity, name: "CedarCloud contact", role: "supplier", active: true, workspaceIds: ["northstar"] } : sessionUser(model, identity);
   const data = React.useMemo(() => projectWorkspace(model, presentation, examples), [model]);
-  return <App data={data} catalog={catalog} model={model} schema={schema} validate={validate}
-    onDataChange={setModel} />;
+  return <App data={data} {...{ catalog, model, schema, validate, user, identity, auditLog, onAudit }} onSwitch={setIdentity} onDataChange={setModel} />;
 }
 
-function App({ data: baseData, catalog, model, schema, validate, onDataChange }) {
-  let data = baseData;
-  const [state, setState] = useState(() => createState(data));
+function App({ data: baseData, catalog, model, schema, validate, onDataChange, user, identity, onSwitch, auditLog, onAudit }) {
+  const [customerFilter, setCustomerFilter] = useState("all");
+  const scopedData = scopeWorkspace(baseData, user, user?.role === "analyst" ? customerFilter : "all");
+  let data = scopedData;
+  const [state, setState] = useState(() => createState(baseData));
   const currentCondition = state.decision?.condition;
   data = {
-    ...baseData,
-    findings: baseData.findings
+    ...scopedData,
+    findings: scopedData.findings
       .filter((f) => !(state.decision && !currentCondition && f.id === "F-01"))
       .map((f) =>
         f.id === "F-01" && currentCondition
@@ -187,7 +196,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange })
             }
           : f,
       ),
-    monitoring: baseData.monitoring
+    monitoring: scopedData.monitoring
       .filter(
         (row) =>
           !(
@@ -206,10 +215,10 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange })
             }
           : row,
       ),
-    requirements: baseData.requirements.map((r) => {
+    requirements: scopedData.requirements.map((r) => {
       const receipt =
         state.supplierReceipts?.[
-          baseData.request.items[
+          scopedData.request.items[
             r.id === "R-07" ? 0 : r.id === "IAM-04" ? 1 : -1
           ]
         ];
@@ -230,25 +239,25 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange })
       };
     }),
     documents: [
-      ...baseData.documents,
+      ...scopedData.documents,
       ...Object.entries(state.supplierReceipts || {}).map(
         ([item, receipt]) => ({
           name: receipt.fileName,
           status: state.pendingReviews?.[
-            item === baseData.request.items[0] ? "R-07" : "IAM-04"
+            item === scopedData.request.items[0] ? "R-07" : "IAM-04"
           ]
             ? "Needs review"
             : "Reviewed",
           version: receipt.reference,
           page: "Supplier metadata · no extraction",
           date: new Date(receipt.at).toLocaleDateString(),
-          requirement: item === baseData.request.items[0] ? "R-07" : "IAM-04",
+          requirement: item === scopedData.request.items[0] ? "R-07" : "IAM-04",
         }),
       ),
       ...(state.uploads || []),
     ],
     engagements: [
-      ...baseData.engagements,
+      ...scopedData.engagements,
       ...(state.extraEngagements || []),
     ].map((e) => ({
       ...e,
@@ -262,12 +271,18 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange })
   const [drawer, setDrawer] = useState(null);
   const [toast, setToast] = useState("");
   const [mobileNav, setMobileNav] = useState(false);
-  const screen =
-    catalog.screens.find((s) => s.id === screenId) || catalog.screens[0];
+  const screen = screenId === "A01" ? { id: "A01", role: "superadmin", title: "Team & customer access", label: "Administration", subtitle: "Manage analysts, customer assignments and accountability.", nav: "A01" }
+    : catalog.screens.find((s) => s.id === screenId) || catalog.screens[0];
+  const role = user?.role || "customer";
+  const denied = !user?.active || (screen.role !== role && !(role === "analyst" && ["C06","C07","C13"].includes(screen.id)));
+  const allowedNames = new Set(model.workspaces.filter(row => user?.workspaceIds.includes(row.id) && (role !== "analyst" || customerFilter === "all" || row.id === customerFilter)).map(row => row.name));
+  data.engagements = data.engagements.filter(row => allowedNames.has(row.client));
   const engagement =
     data.engagements.find((e) => e.id === state.selected) ||
     data.directory.find((e) => e.id === state.selected) ||
-    data.engagements[0];
+    data.engagements[0] || { id: "none", supplier: "No accessible supplier", service: "", client: "", workspaceId: null };
+  data.activeEngagementId = engagement.id;
+  data.assessmentVersion = `${engagement.id}-review-v${state.assessmentRevision || 1}`;
   const navigate = (id) => {
     location.hash = id;
     setScreenId(id);
@@ -278,13 +293,16 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange })
   const notify = (text) => {
     setToast(text);
   };
-  const update = (patch) => setState((old) => ({ ...old, ...patch }));
-  const event = (message, patch = {}) =>
-    setState((old) => ({
-      ...old,
-      ...patch,
-      events: [...old.events, { message, at: new Date().toISOString() }],
-    }));
+  const update = (patch) => {
+    const added = (patch.events || []).filter(row => !state.events.some(old => old.id === row.id));
+    if (added.length) onAudit(added);
+    setState(old => mergeWorkflowPatch(old, patch));
+  };
+  const event = (message, patch = {}) => {
+    const entry = actionEntry(data, message, message);
+    onAudit(entry);
+    setState(old => mergeWorkflowPatch(old, { ...patch, events: [entry] }));
+  };
   useEffect(() => {
     const handler = () => {
       setScreenId(location.hash.slice(1) || "C01");
@@ -319,7 +337,12 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange })
   const ctx = {
     data,
     catalog,
-    state,
+    state: { ...state, selected: engagement.id,
+      events: state.events.filter(row => data.engagements.some(item=>item.workspaceId === row.workspaceId)),
+      scheduledReviews: (state.scheduledReviews || []).filter(row=>data.engagements.some(item=>item.workspaceId === row.workspaceId)),
+      extraFindings: (state.extraFindings || []).filter(row=>data.engagements.some(item=>item.workspaceId === row.workspaceId)),
+    },
+    user,
     update,
     event,
     navigate,
@@ -337,7 +360,6 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange })
           : engagement.supplier,
       )
       .replaceAll("{service}", engagement.service);
-  const role = screen.role;
   const isSupplier = role === "supplier";
   const caseScreens = [
     "C06",
@@ -357,8 +379,8 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange })
     "O14",
   ];
   const secondaryCase =
-    state.selected !== "cedar" && caseScreens.includes(screen.id);
-  const action = secondaryCase ? (
+    engagement.id !== "cedar" && caseScreens.includes(screen.id);
+  const action = secondaryCase && data.engagements.some(row=>row.id === "cedar") ? (
     <Button
       primary
       onClick={() => {
@@ -368,34 +390,28 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange })
     >
       Open CedarCloud walkthrough
     </Button>
-  ) : (
+  ) : secondaryCase || (role === "analyst" && screen.id === "C06") ? null : (
     primaryAction(screen.id, ctx)
   );
   return (
     <>
       {!isSupplier && (
         <aside className={`sidebar ${mobileNav ? "expanded" : ""}`}>
-          <a href="#C01" className="brand">
+          <a href={`#${role === "superadmin" ? "A01" : role === "analyst" ? "O01" : "C01"}`} className="brand">
             <span className="logo">O</span>
             <b>Osura</b>
             <small>ASSURANCE</small>
           </a>
-          <button className="workspace" onClick={() => setDrawer("workspace")}>
-            <small>
-              {role === "customer" ? "CUSTOMER WORKSPACE" : "OSURA OPERATIONS"}
-            </small>
-            <b>
-              {role === "customer"
-                ? data.workspace.name
-                : "All authorised clients"}
-            </b>
-            <Icon name="ChevronDown" size={13} />
-          </button>
+          <div className="workspace static-workspace">
+            <small>{role === "customer" ? "CUSTOMER" : role === "superadmin" ? "OSURA ADMINISTRATION" : "OSURA TEAM"}</small>
+            <b>{role === "customer" ? data.workspace.name : user?.name || "Inactive account"}</b>
+            {role === "analyst" && <small>{user.workspaceIds.length} assigned customer{user.workspaceIds.length === 1 ? "" : "s"}</small>}
+          </div>
           <div className="nav-label">
             {role === "customer" ? "YOUR WORKSPACE" : "DELIVERY WORKSPACE"}
           </div>
           <nav aria-label="Main navigation">
-            {catalog.navigation[role].map(([id, label, icon]) => (
+            {(role === "superadmin" ? [["A01", "Team & access", "ShieldCheck"]] : catalog.navigation[role] || []).map(([id, label, icon]) => (
               <a
                 key={id}
                 href={`#${id}`}
@@ -412,25 +428,13 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange })
               <Icon name="Search" />
               Global search <kbd>⌘ K</kbd>
             </button>
+            <button onClick={() => setDrawer("audit")}><Icon name="Clock" /> Activity & accountability</button>
             <button onClick={() => setDrawer("settings")}>
               <Icon name="SlidersHorizontal" />
               Settings
             </button>
           </div>
-          <button className="profile" onClick={() => setDrawer("workspace")}>
-            <span className="avatar">{role === "customer" ? "NP" : "OS"}</span>
-            <span>
-              <b>
-                {role === "customer"
-                  ? data.workspace.name
-                  : "All authorised clients"}
-              </b>
-              <small>
-                {role === "customer" ? "Customer access" : "Analyst workspace"}
-              </small>
-            </span>
-            <Icon name="Ellipsis" />
-          </button>
+          <div className="profile"><span className="avatar">{role === "customer" ? "NP" : "OS"}</span><span><b>{user?.name || "Inactive account"}</b><small>{role === "superadmin" ? "Superadmin" : role === "analyst" ? `Analyst${user.canQA ? " · Independent QA" : ""}` : "Customer Decision Owner"}</small></span></div>
         </aside>
       )}
       <div className={isSupplier ? "supplier-app" : "app"}>
@@ -452,13 +456,15 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange })
               <div className="breadcrumb">
                 {role === "customer"
                   ? data.workspace.name
-                  : "All authorised clients"}
+                  : role === "superadmin" ? "Team administration" : "Assigned customers"}
                 <span>/</span>
                 {screen.label}
               </div>
             </>
           )}
           <div className="topbar-end">
+            {role === "analyst" && <label className="customer-filter">Customer <select id="customer-filter" aria-label="Customer filter" value={customerFilter} onChange={e=>{setCustomerFilter(e.target.value);setDrawer(null);}}><option value="all">All assigned customers</option>{model.workspaces.filter(row=>user.workspaceIds.includes(row.id)).map(row=><option key={row.id} value={row.id}>{row.name}</option>)}</select></label>}
+
             {isSupplier ? (
               <span>
                 <Icon name="LockKeyhole" size={12} />
@@ -501,9 +507,14 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange })
                   : text(screen.subtitle)}
               </p>
             </div>
-            {action}
+            {!denied && role !== "superadmin" && engagement.id !== "none" && action}
           </div>
-          <Page {...ctx} />
+          {denied ? <Card title="Access unavailable"><p>This page is outside this demo user’s role or the account is inactive.</p><Button onClick={()=>navigate(role === "superadmin" ? "A01" : role === "analyst" ? "O01" : role === "supplier" ? "S01" : "C01")}>Return to my view</Button></Card>
+            : role === "superadmin" ? <RoleAdmin model={model} user={user} validate={validate} auditLog={auditLog} onSave={(next,entry)=>{onDataChange(next);onAudit(entry);}}/>
+            : engagement.id === "none" && role !== "supplier" ? <Card title="No customer data to show"><p>No customers are assigned, or the current filter has no engagements. Ask your superadmin to update access.</p></Card>
+            : role === "analyst" && !data.engagements.some(row=>row.id === "cedar") && ["O10","O13"].includes(screen.id) ? <Card title="Customer-specific reference"><p>This prepared programme belongs to Northstar Payments. Choose an assigned customer with a prepared programme.</p></Card>
+            : <Page {...ctx} />}
+
           <footer>
             {isSupplier
               ? "Secure access is invitation-only. No internal risk findings or customer decisions are displayed."
@@ -514,41 +525,36 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange })
       <div className="demo-toolbar">
         <span className="demo-dot" />
         <b title="All changes reset on refresh">Demo · until refresh</b>
-        <select
-          aria-label="Demo perspective"
-          value={role}
-          onChange={(e) => {
-            update({ selected: "cedar" });
-            navigate(
-              { customer: "C01", analyst: "O01", supplier: "S01" }[
-                e.target.value
-              ],
-            );
-          }}
-        >
-          <option value="customer">Customer workspace</option>
-          <option value="analyst">Osura operations</option>
-          <option value="supplier">Supplier portal</option>
+        <select aria-label="Demo user" value={identity} onChange={e => {
+          const nextId = e.target.value;
+          const nextRole = nextId === "supplier-contact" ? "supplier" : sessionUser(model, nextId)?.role;
+          onSwitch(nextId); setCustomerFilter("all"); update({ selected: "cedar" });
+          navigate({ customer: "C01", analyst: "O01", superadmin: "A01", supplier: "S01" }[nextRole] || "C01");
+        }}>
+          {model.users.map(row=><option key={row.id} value={row.id} disabled={!row.active}>{row.role === "superadmin" ? "Superadmin" : row.role === "analyst" ? "Analyst" : "Customer"} · {sessionUser(model,row.id).name}{!row.active ? " (inactive)" : ""}</option>)}
+          <option value="supplier-contact">Supplier · CedarCloud contact</option>
         </select>
         <button onClick={() => setDrawer("screens")}>
           <Icon name="PanelsTopLeft" size={13} />
           {screen.id}
-          <span className="toolbar-extra"> · All 35 screens</span>
+          <span className="toolbar-extra"> · My screens</span>
         </button>
-        <button onClick={() => setDrawer("data")}><Icon name="Folder" size={14} /> Demo data</button>
+        {role === "superadmin" && <button onClick={() => setDrawer("data")}><Icon name="Folder" size={14} /> Demo data</button>}
         <button aria-label="Reset demo" onClick={() => setDrawer("reset")}>
           <Icon name="RotateCcw" size={14} />
         </button>
       </div>
       {drawer && (
-        <Dialog title={drawer === "data" ? "Demo data · session editor" : dialogTitle(drawer)} wide={drawer === "data"} onClose={() => setDrawer(null)}>
-          {drawer === "data" ? <DataEditor model={model} schema={schema} validate={validate} onChange={onDataChange} /> : (
+        <Dialog title={drawer === "data" ? "Demo data · session editor" : drawer === "audit" ? "Activity & accountability" : dialogTitle(drawer)} wide={drawer === "data"} onClose={() => setDrawer(null)}>
+          {drawer === "data" && role === "superadmin" ? <DataEditor model={model} schema={schema} validate={validate} onChange={next=>{onDataChange(next);onAudit(actionEntry(data,"Demo base records edited","Updated synthetic records through the superadmin data editor.",{workspaceId:null,customer:"Team administration",role:"superadmin",engagementId:null}));}} /> : drawer === "audit" ? <AuditTrail entries={auditLog} user={user}/> : (
           <Drawer
             kind={drawer}
             {...ctx}
             onReset={() => {
-              setState(createState(baseData));
-              navigate("C01");
+              const nextRevision = (state.assessmentRevision || 1) + 1;
+              onAudit(actionEntry(data,"Demo walkthrough reset","Reset the synthetic walkthrough; prior actions remain in session history.",{nextAssessmentVersion:`cedar-review-v${nextRevision}`}));
+              setState({ ...createState(baseData), assessmentRevision: nextRevision });
+              navigate({customer:"C01",analyst:"O01",superadmin:"A01",supplier:"S01"}[role]);
               notify("Walkthrough reset. Fixture edits remain until refresh.");
             }}
           />)}
@@ -658,7 +664,7 @@ function primaryAction(id, c) {
     O15: ["Create review", () => setDrawer("review")],
     O10: ["Create policy draft", () => setDrawer("policy")],
     O13: ["Preview effect", () => setDrawer("policy-preview")],
-    O11: ["Change client", () => setDrawer("workspace")],
+    O11: ["Filter customers", () => document.getElementById("customer-filter")?.focus()],
   };
   if (!map[id]) return null;
   const [label, target] = map[id];
@@ -703,9 +709,10 @@ function primaryAction(id, c) {
   );
 }
 
-function Scope({ engagement, data }) {
+function Scope({ engagement, data, user }) {
   return (
     <div className="scope">
+      {user?.role === "analyst" && <span>Customer <b>{engagement.client}</b></span>}
       <span>
         Supplier identity <b>{engagement.supplier}</b>
       </span>
@@ -801,7 +808,7 @@ function EngagementTable({
           <thead>
             <tr>
               <th>Supplier / {register ? "services" : "engagement"}</th>
-              {mode === "directory" && <th>Client</th>}
+              {mode !== "customer" && <th>Customer</th>}
               {register && <th>Services</th>}
               <th>Inherent risk</th>
               <th>Current stage</th>
@@ -819,7 +826,7 @@ function EngagementTable({
                 <td>
                   <Entity name={row.supplier} service={row.service} />
                 </td>
-                {mode === "directory" && <td>{row.client}</td>}
+                {mode !== "customer" && <td>{row.client}</td>}
                 {register && <td>{row.serviceCount}</td>}
                 <td>
                   <Badge>{row.risk}</Badge>
@@ -1149,7 +1156,7 @@ function Registers(c) {
       ? tab === "Engagements"
         ? [
             ...data.engagements,
-            ...data.directory.filter((e) => e.client !== data.workspace.name),
+            ...data.directory.filter((e) => !data.engagements.some(row => row.id === e.id)),
           ]
         : data.directory
       : screen.id === "C14"
@@ -1469,7 +1476,7 @@ function DirectoryDetails(c) {
           <tbody>
             {[
               ...data.engagements,
-              ...data.directory.filter((e) => e.client !== data.workspace.name),
+              ...data.directory.filter((e) => !data.engagements.some(row => row.id === e.id)),
             ].map((row) => (
               <tr key={row.id}>
                 <td>{row.service}</td>
@@ -1654,6 +1661,7 @@ function Intake(c) {
           due: "Pending review",
           plan: "To be confirmed",
           client: data.workspace.name,
+          workspaceId: c.user?.workspaceId || "northstar",
           receipt,
           answers: intake.answers,
           attachments: intake.attachments,
@@ -2096,6 +2104,7 @@ function SecondaryCase(c) {
         >
           <Fields
             items={[
+              ["Customer", engagement.client],
               ["Supplier", engagement.supplier],
               ["Service", engagement.service],
               ["Stage", engagement.stage],
@@ -2135,19 +2144,10 @@ function SecondaryCase(c) {
               ? "Awaiting analyst triage"
               : `${engagement.stage} review`}
           </h3>
-          <p>
-            Open the prepared CedarCloud case to explore evidence, supplier
-            follow-up, QA, customer decisions and ongoing assurance.
-          </p>
-          <Button
-            primary
-            onClick={() => {
-              update({ selected: "cedar" });
-              navigate(screen.role === "analyst" ? "O02" : "C09");
-            }}
-          >
-            Open CedarCloud walkthrough
-          </Button>
+          {c.data.engagements.some(row=>row.id === "cedar") ? <>
+            <p>Open the prepared CedarCloud case to explore evidence, supplier follow-up, QA and customer decisions.</p>
+            <Button primary onClick={()=>{update({selected:"cedar"});navigate(c.user?.role === "analyst" ? "O02" : "C09");}}>Open CedarCloud walkthrough</Button>
+          </> : <p>No full evidence walkthrough is prepared in the current customer selection. This portfolio record remains separate from other customers’ evidence.</p>}
           <div className="divider" />
           <Link
             onClick={() => navigate(screen.role === "analyst" ? "O01" : "C15")}
@@ -2471,7 +2471,7 @@ function Findings(c) {
                     className={f?.id === row.id ? "selected-row" : ""}
                     onClick={() => setSelected(i)}
                   >
-                    {!customer && <td>{row.supplier}</td>}
+                    {!customer && <td>{row.client || data.workspace.name} / {row.supplier}</td>}
                     <td>
                       <Link onClick={() => setSelected(i)}>{row.issue}</Link>
                       {customer && (
@@ -2596,6 +2596,7 @@ function EvidenceReview(c) {
   const [conclusion, setConclusion] = useState(currentConclusion);
   const [reason, setReason] = useState("");
   const [showProposal, setShowProposal] = useState(false);
+  const [recommendation, setRecommendation] = useState(savedReview?.recommendation || "Approve with conditions");
   const [error, setError] = useState("");
   useEffect(() => {
     setJudgement(
@@ -2606,6 +2607,7 @@ function EvidenceReview(c) {
     setConclusion(currentConclusion);
     setReason("");
     setShowProposal(false);
+    setRecommendation(state.reviews?.[requirementId]?.recommendation || "Approve with conditions");
     setError("");
   }, [requirementId]);
   const save = () => {
@@ -2615,6 +2617,7 @@ function EvidenceReview(c) {
           judgement,
           conclusion,
           reason,
+          recommendation,
         }),
       );
       notify("Independent judgement saved.");
@@ -2626,6 +2629,7 @@ function EvidenceReview(c) {
   return (
     <>
       <Scope {...c} />
+      <Note>{savedReview ? `Last recommendation: ${savedReview.actor} · ${new Date(savedReview.at).toLocaleString()}` : "Prepared conclusion · no analyst action recorded in this session."}</Note>
       <Tabs
         tabs={
           customer
@@ -2816,6 +2820,12 @@ function EvidenceReview(c) {
                     {error}
                   </p>
                 )}
+                <Label title="Suggested customer outcome">
+                  <select aria-label="Suggested customer outcome" value={recommendation} onChange={e=>setRecommendation(e.target.value)}>
+                    {["Approve","Approve with conditions","Reject","Return for clarification"].map(value=><option key={value}>{value}</option>)}
+                  </select>
+                  <small>A recommendation only; the customer records the final decision.</small>
+                </Label>
                 <Button primary small icon="Check" onClick={save}>
                   Save my independent judgement
                 </Button>
@@ -2910,6 +2920,13 @@ function Decision(c) {
       setError(err.message);
     }
   };
+  if (c.user?.role !== "customer") return <>
+    <Scope {...c}/><Card title="Customer decision · read only">
+      <Fields items={[["Customer",engagement.client],["Suggested outcome",state.reviews?.["R-07"]?.recommendation || "Prepared: Approve with conditions"],["Recommended by",state.reviews?.["R-07"]?.actor || "Prepared fixture"],["QA outcome",state.qa],["QA reviewer",state.qaReview?.actor || "Not recorded"],["Customer decision",state.decision?.outcome || "Not recorded"],["Decision by",state.decision?.actor || "Customer Decision Owner"]]}/>
+      <Note>Only the designated customer Decision Owner can record the final outcome. Analyst and superadmin roles cannot sign for the customer.</Note>
+      <Button onClick={()=>setDrawer("audit")}>View review history</Button>
+    </Card>
+  </>;
   return (
     <>
       <div className="supplier-banner">
@@ -2940,13 +2957,10 @@ function Decision(c) {
             <Badge>{engagement.plan}</Badge>
             <Badge>{state.qa}</Badge>
           </div>
-          <h2 className="memo-title">Approve with conditions</h2>
-          <small>— analyst recommendation</small>
+          <h2 className="memo-title">{state.reviews?.["R-07"]?.recommendation || "Approve with conditions"}</h2>
+          <small>{state.reviews?.["R-07"] ? `Recommended by ${state.reviews["R-07"].actor} · ${new Date(state.reviews["R-07"].at).toLocaleString()}` : "Prepared analyst recommendation · no session action recorded"}</small>
           <p>
-            {engagement.supplier} is material to payment operations. The
-            submitted policy supports a recovery objective, but the exercise
-            evidence does not establish full service coverage. The remaining
-            exposure must be governed by a time-bound condition.
+            {state.reviews?.["R-07"]?.judgement || `${engagement.supplier} is material to payment operations. The prepared recommendation is conditional because the exercise evidence does not establish full service coverage.`}
           </p>
           <div className="table-wrap">
             <table>
@@ -2981,9 +2995,9 @@ function Decision(c) {
               </tbody>
             </table>
           </div>
-          <Link onClick={() => navigate("C13")}>
-            Inspect complete evidence and QA challenge →
-          </Link>
+          <Fields items={[["QA reviewer",state.qaReview?.actor || "Not recorded"],["QA recorded",state.qaReview?.prepared ? "Prepared fixture" : state.qaReview?.at ? new Date(state.qaReview.at).toLocaleString() : "Not recorded"],["QA rationale",state.qaNote]]}/>
+          <Link onClick={() => c.setDrawer("audit")}>Inspect review history →</Link>
+          <Link onClick={() => navigate("C13")}>Inspect complete evidence →</Link>
         </Card>
         <Card
           title={
@@ -3297,9 +3311,9 @@ function Pack(c) {
               ))}
               <h3>Independent QA</h3>
               <p>
-                {pack.qa} · {data.workspace.qaReviewer}
+                {pack.qa} · {pack.qaReview?.actor || data.workspace.qaReviewer}
               </p>
-              <p>{pack.qaNote}</p>
+              <p>{pack.qaNote}</p><p>{pack.qaReview && !pack.qaReview.prepared ? "Recorded independent QA" : "Prepared fixture QA"} · {pack.qaReview?.at ? new Date(pack.qaReview.at).toLocaleString() : "Reference date"}</p>
               <Note>
                 Frozen synthetic preview · no production signature or live
                 assurance claim.
@@ -3355,11 +3369,11 @@ function Monitoring(c) {
   const [filter, setFilter] = useState("All");
   const entries = [
     ...c.data.monitoring.map((row) => [
-      row.supplier,
+      analyst ? `${row.client} / ${row.supplier}` : row.supplier,
       row.activity,
       row.date,
       row.owner,
-      row.supplier === c.data.engagements[0].supplier && state.conditionClosed
+      row.activity === "Recovery condition" && state.conditionClosed
         ? "Closed"
         : row.status,
       row.route,
@@ -3559,10 +3573,10 @@ function Operations(c) {
     <>
       <Stats
         items={[
-          [6, "Human decisions", "Review work, not micro-steps"],
-          [3, "Waiting on suppliers", "Packet delivery / response"],
-          [1, "SLA at risk", "Resolve the oldest blocker"],
-          [0, "Failed jobs", "No unacknowledged worker failures"],
+          [new Set(data.engagements.map(row=>row.workspaceId)).size, "Customers in view", "Assigned access only"],
+          [data.engagements.length, "Service engagements", "All selected customers"],
+          [data.engagements.filter(row=>!["Active","Rejected"].includes(row.stage)).length, "Open reviews", "Scoped work list"],
+          [data.engagements.filter(row=>row.stage === "Decision").length, "Customer decisions", "Customer retains authority"],
         ]}
       />
       <div id="queue">
@@ -3598,7 +3612,7 @@ function Operations(c) {
                   <tr key={r.id}>
                     <td>
                       <Entity
-                        name={`Northstar / ${r.supplier}`}
+                        name={`${r.client} / ${r.supplier}`}
                         service={r.service}
                       />
                     </td>
@@ -4114,7 +4128,8 @@ function Quality(c) {
       setError("Record the QA challenge and rationale.");
       return;
     }
-    event(`Independent QA: ${outcome}`, { qa: outcome, qaNote: note });
+    try { c.update(recordQA(state, data, outcome, note)); }
+    catch (error) { setError(error.message); return; }
     notify(
       outcome.startsWith("Passed")
         ? "QA outcome recorded. Customer decision is available."
@@ -4125,6 +4140,7 @@ function Quality(c) {
   return (
     <>
       <Scope {...c} />
+      <Note>{state.qaReview?.prepared ? "Prepared fixture QA" : "Latest QA"}: {state.qaReview?.actor || "Not recorded"} · {state.qaReview?.at ? new Date(state.qaReview.at).toLocaleString() : "No timestamp"}. Acting as {c.user?.name}; independent QA permission is required.</Note>
       <div className="grid equal">
         <Card title="Challenge brief">
           <div className="list-row">
@@ -4165,7 +4181,8 @@ function Quality(c) {
             <Fields
               items={[
                 ["Lead analyst", data.workspace.analyst],
-                ["Independent QA reviewer", data.workspace.qaReviewer],
+                ["Acting QA reviewer", c.user?.name || "Not selected"],
+                ["QA permission", c.user?.canQA ? "Enabled" : "Not granted"],
                 ["Customer decision-maker", "Northstar sponsor"],
                 ["Release rule", "Different reviewer required"],
               ]}
@@ -4576,44 +4593,15 @@ function Programme(c) {
 }
 
 function ClientHealth(c) {
-  return (
-    <>
-      <div className="grid wide-left">
-        <div>
-          <Card title="Programme health">
-            <Stats
-              items={[
-                [9, "Engagements"],
-                [5, "In active review"],
-                [3, "External dependencies"],
-                [1, "Customer decision"],
-              ]}
-            />
-          </Card>
-          <Card title="Risk distribution">
-            <Ring data={c.data} />
-          </Card>
-        </div>
-        <Card title="Client record">
-          <Fields
-            items={[
-              ["Client", c.data.workspace.name],
-              ["CTP version", "v1 locked"],
-              ["Customer policy", c.data.workspace.overlay],
-              ["Service owner", c.data.workspace.analyst],
-              ["Last decision", "17 Aug · HubSpot CRM"],
-              ["Frozen packs", "4 immutable records (reference fixtures)"],
-            ]}
-          />
-          <Note>
-            Cross-client records require meaningful workspace boundaries. This
-            preview contains synthetic sample data only.
-          </Note>
-        </Card>
-      </div>
-      <EngagementTable {...c} mode="analyst" title="Portfolio work" />
-    </>
-  );
+  const customers = [...new Set(c.data.engagements.map(row=>row.client))];
+  return <>
+    <div className="grid equal">{customers.map(customer=>{
+      const rows=c.data.engagements.filter(row=>row.client===customer);
+      return <Card key={customer} title={customer}><Fields items={[["Service engagements",rows.length],["Open reviews",rows.filter(row=>!["Active","Rejected"].includes(row.stage)).length],["Awaiting customer decision",rows.filter(row=>row.stage==="Decision").length]]}/></Card>;
+    })}</div>
+    <Note>Combined data for assigned customers. Use the Customer filter to narrow this view.</Note>
+    <EngagementTable {...c} mode="analyst" title="Customer portfolio work" />
+  </>;
 }
 
 function SupplierPortal(c) {
@@ -4905,7 +4893,7 @@ function dialogTitle(kind) {
       screens: "Explore the demo",
       search: "Global search",
       settings: "Demo settings",
-      workspace: "Workspace & perspective",
+      workspace: "Current access",
       notifications: "Your notifications",
       reset: "Reset interactive demo",
       source: "Exact source passage",
@@ -4945,7 +4933,7 @@ function Drawer(c) {
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        {["customer", "analyst", "supplier"].map((role) => (
+        {[c.user?.role].filter(role => ["customer", "analyst", "supplier"].includes(role)).map((role) => (
           <div className="screen-group" key={role}>
             <h3>
               {role === "customer"
@@ -4985,8 +4973,7 @@ function Drawer(c) {
     return (
       <>
         <p>
-          Restore the JSON dataset and clear this demo’s saved decisions,
-          workflow drafts and activity in this tab. Fixture edits remain until refresh.
+          Clear the current walkthrough’s decisions and drafts. Team assignments, fixture edits and accountability history remain until refresh.
         </p>
         <div className="form-actions">
           <Button onClick={() => setDrawer(null)}>Cancel</Button>
@@ -5003,21 +4990,10 @@ function Drawer(c) {
           Interactive UI preview · synthetic data · session memory (resets on refresh) · no
           live AI, email, authentication or production integrations.
         </Note>
-        <h3>Switch perspective</h3>
-        <div className="workspace-choices">
-          {[
-            ["Customer workspace", "C01", "Building2"],
-            ["Osura operations", "O01", "ShieldCheck"],
-            ["Supplier portal", "S01", "Upload"],
-          ].map(([label, to, icon]) => (
-            <Button key={to} onClick={() => navigate(to)} icon={icon}>
-              {label}
-            </Button>
-          ))}
-        </div>
+        <h3>Current access</h3><p>{c.user?.name} · {c.user?.role}. Demo identities can be selected only in the bottom toolbar.</p>
         <Fields
           items={[
-            ["Data files", "/public/data/workspace.json + screens.json"],
+            ["Data files", "/data/workspace.json · schema · presentation · examples"],
             ["Persistence", "This tab until refresh"],
             ["Policy values", "Prepared reference fixture · no risk engine"],
           ]}
@@ -5205,7 +5181,8 @@ function Drawer(c) {
                 ]
               : kind === "memo"
                 ? [
-                    ["Recommendation", "Approve with conditions"],
+                    ["Recommendation", state.reviews?.["R-07"]?.recommendation || "Prepared: Approve with conditions"],
+                    ["Recommended by", state.reviews?.["R-07"]?.actor || "Prepared fixture"],
                     [
                       "Material issue",
                       "Recovery exercise scope remains partial",
@@ -5287,6 +5264,10 @@ function Drawer(c) {
           patch.scheduledReviews = [
             ...(state.scheduledReviews || []),
             {
+              id: `review-${crypto.randomUUID()}`,
+              workspaceId: c.engagement.workspaceId,
+              engagementId: c.engagement.id,
+              client: c.engagement.client,
               supplier: c.engagement.supplier,
               title: value,
               description,
@@ -5299,6 +5280,9 @@ function Drawer(c) {
             ...(state.extraFindings || []),
             {
               id: `F-${Date.now()}`,
+              workspaceId: c.engagement.workspaceId,
+              engagementId: c.engagement.id,
+              client: c.engagement.client,
               supplier: c.engagement.supplier,
               service: c.engagement.service,
               issue: value,

@@ -191,7 +191,8 @@
       "date": "20 Nov 2026",
       "owner": "A. Morgan",
       "status": "Awaiting evidence",
-      "route": "O09"
+      "route": "O09",
+      "workspaceId": "northstar"
     },
     {
       "supplier": "Atlas Identity",
@@ -199,7 +200,8 @@
       "date": "12 Nov 2026",
       "owner": "Osura / Supplier",
       "status": "Waiting external",
-      "route": "O05"
+      "route": "O05",
+      "workspaceId": "northstar"
     },
     {
       "supplier": "Harbor Analytics",
@@ -207,7 +209,8 @@
       "date": "24 May 2027",
       "owner": "A. Morgan",
       "status": "Scheduled",
-      "route": "O12"
+      "route": "O12",
+      "workspaceId": "northstar"
     },
     {
       "supplier": "Clearbridge Data",
@@ -215,7 +218,8 @@
       "date": "05 Nov 2026",
       "owner": "T. Singh",
       "status": "Needs triage",
-      "route": "O12"
+      "route": "O12",
+      "workspaceId": "ridgeway"
     }
   ],
   "directoryIdentity": [
@@ -261,34 +265,40 @@
     [
       "20 Nov · Recovery exercise evidence",
       "CedarCloud · condition due",
-      "Due soon"
+      "Due soon",
+      "northstar"
     ],
     [
       "12 Nov · Supplier response",
       "Atlas Identity · response expected",
-      "Waiting"
+      "Waiting",
+      "northstar"
     ],
     [
       "24 May · Scheduled reassessment",
       "Harbor Analytics · approved service",
-      "Scheduled"
+      "Scheduled",
+      "northstar"
     ]
   ],
   "operationsHandoffs": [
     [
       "Northstar · CedarCloud",
       "Customer decision · waiting for sponsor",
-      "Customer"
+      "Customer",
+      "northstar"
     ],
     [
       "Ridgeway · Kite Legal",
       "Supplier response · delivery confirmed",
-      "Supplier"
+      "Supplier",
+      "northstar"
     ],
     [
       "Northstar · Atlas Identity",
       "Internal exception · scope review",
-      "Analyst"
+      "Analyst",
+      "northstar"
     ]
   ],
   "communications": [
@@ -298,7 +308,8 @@
       "Security team",
       "Draft",
       "30 Oct · 14:22",
-      "2 requested items"
+      "2 requested items",
+      "northstar"
     ],
     [
       "AI-2026-117",
@@ -306,7 +317,8 @@
       "Risk contact",
       "Awaiting supplier",
       "28 Oct · sent",
-      "1 requested item"
+      "1 requested item",
+      "northstar"
     ],
     [
       "GH-2026-092",
@@ -314,7 +326,8 @@
       "Assurance",
       "Queued (local)",
       "30 Oct · queued",
-      "1 document"
+      "1 document",
+      "northstar"
     ],
     [
       "CL-2026-035",
@@ -322,7 +335,8 @@
       "Security team",
       "Failed (fixture)",
       "28 Oct · delivery error",
-      "1 clarification"
+      "1 clarification",
+      "ridgeway"
     ]
   ],
   "historicalReports": [
@@ -333,7 +347,8 @@
       "date": "17 Aug 2026",
       "owner": "J. Patel",
       "file": "Historical reference · preview",
-      "route": "C07"
+      "route": "C07",
+      "workspaceId": "northstar"
     },
     {
       "supplier": "Harbor Analytics",
@@ -342,7 +357,8 @@
       "date": "17 Aug 2026",
       "owner": "A. Morgan",
       "file": "Historical reference · preview",
-      "route": "C07"
+      "route": "C07",
+      "workspaceId": "northstar"
     },
     {
       "supplier": "Papertrail",
@@ -351,7 +367,8 @@
       "date": "17 Aug 2026",
       "owner": "E. Wright",
       "file": "Historical reference · preview",
-      "route": "C07"
+      "route": "C07",
+      "workspaceId": "northstar"
     }
   ],
   "assessmentActivity": [
@@ -418,12 +435,14 @@
     [
       "Customer decision ready",
       "CedarCloud · payment event processing",
-      "Action"
+      "Action",
+      "northstar"
     ],
     [
       "Supplier response due",
       "Atlas Identity · 12 Nov",
-      "Waiting"
+      "Waiting",
+      "northstar"
     ]
   ],
   "defaults": {
