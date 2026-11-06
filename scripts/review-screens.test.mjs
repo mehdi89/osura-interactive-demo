@@ -237,15 +237,27 @@ test("portfolio previews cannot create findings using CedarCloud requirements", 
 });
 
 
-test("customer workspace selector offers both customers and Ridgeway renders only its own portfolio", async () => {
+test("customers have no sidebar switcher and Ridgeway renders only its own portfolio", async () => {
   const base = projectWorkspace(model, await readJSON("presentation"), await readJSON("examples"));
   const user = sessionUser(model, "customer-singh");
   const html = renderApp("C01", { data: base, user, identity: user.id });
-  assert.match(html, /aria-label="Customer workspace"/);
+  assert.doesNotMatch(html, /aria-label="Customer workspace"|class="workspace /);
   assert.match(html, /value="customer-morgan"/);
   assert.match(html, /value="customer-singh" selected=""/);
   assert.match(html, /Ridgeway Finance/);
   assert.match(html, /Clearbridge Data/);
   assert.match(html, /Kite Legal/);
   assert.doesNotMatch(html, /CedarCloud needs your decision|CedarCloud_BCP|Northstar Payments \/ Customer overview/);
+});
+
+test("analysts retain the top-bar customer filter and role profiles without sidebar cards", async () => {
+  const base = projectWorkspace(model, await readJSON("presentation"), await readJSON("examples"));
+  for (const id of ["analyst-01", "analyst-02", "superadmin"]) {
+    const user = sessionUser(model, id);
+    const html = renderApp(user.role === "superadmin" ? "A01" : "O01", { data: base, user, identity: id });
+    assert.doesNotMatch(html, /class="workspace |aria-label="Customer workspace"/);
+    assert.match(html, /class="profile"/);
+    if (user.role === "analyst") assert.match(html, /aria-label="Customer filter"/);
+    else assert.doesNotMatch(html, /aria-label="Customer filter"/);
+  }
 });

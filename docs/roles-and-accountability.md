@@ -4,13 +4,13 @@ This release implements the approved roles and original concept layouts in the s
 
 | Role | View and powers |
 | --- | --- |
-| Customer | One company per demo identity. The sidebar customer selector switches between Northstar Payments (A. Morgan) and Ridgeway Finance (T. Singh). The designated Decision Owner can record a supported final outcome. |
-| Analyst | Combined records for all assigned customers; a Customer filter narrows the view. Can record evidence conclusions and suggested customer outcomes. |
+| Customer | One company per demo identity: Northstar Payments (A. Morgan) or Ridgeway Finance (T. Singh). The individual customer workspace has no customer switcher. The designated Decision Owner can record a supported final outcome. |
+| Analyst | Combined records for all assigned customers; the topbar Customer filter narrows the view. Can record evidence conclusions and suggested customer outcomes. |
 | Superadmin | Add/update/deactivate analysts, grant independent QA permission, assign/remove customers, inspect access history and use the synthetic-data editor. Superadmin alone cannot recommend, QA or sign for a customer. |
 
 Independent QA is a permission on an analyst, not another administrative role. It requires access to the customer and a different person from the lead analyst and anyone who recorded analysis in the current review. Saving a new recommendation invalidates the previous QA release state even when the conclusion stays unchanged. Assigned analysts can inspect a customer decision read only; the shared decision mutation also checks the designated customer actor.
 
-The sidebar customer selector changes the active customer demo identity; it does not grant one customer user access to another company. The **Demo user** selector in the bottom presentation bar also switches roles. The supplier invitation walkthrough remains separate. These controls simulate identity switching and are not real authentication.
+Switch customer demo identities and roles only through the **Demo user** selector in the bottom presentation bar. This presenter control does not grant one customer user access to another company. Customer, Analyst and Superadmin sidebar workspace cards are removed; analysts use the topbar Customer filter for their assigned customers. The supplier invitation walkthrough remains separate. Demo identity switching is not real authentication.
 
 ## Try the flow
 

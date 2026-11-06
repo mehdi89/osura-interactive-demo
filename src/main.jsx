@@ -88,7 +88,6 @@ import DataEditor from "./DataEditor.jsx";
 import RoleAdmin, { AuditTrail } from "./RoleAdmin.jsx";
 import WorkspaceSearch from "./WorkspaceSearch.jsx";
 import { customerView, patchCustomerView } from "./customer-session.mjs";
-import "./customer-switcher.css";
 import { sessionUser, scopeWorkspace, actionEntry } from "./access.mjs";
 import { createModelValidator, projectWorkspace } from "./data-model.mjs";
 
@@ -342,7 +341,6 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   const screen = { ...baseScreen, ...(visualTitles[baseScreen.id] ? { title: visualTitles[baseScreen.id][0], subtitle: visualTitles[baseScreen.id][1] } : {}), ...(baseScreen.id === "C06" ? { label: workflowStatus(state).label } : {}) };
   if (screen.id === "O06" && !state.supplierReceipt) screen.title = "Supplier response preview · no session response";
   const role = user?.role || "customer";
-  const customerUsers = model.users.filter(row => row.role === "customer" && row.active);
   const denied = !user?.active || (screen.role !== role && !(role === "analyst" && ["C06","C07","C13"].includes(screen.id)));
   const allowedNames = new Set(model.workspaces.filter(row => user?.workspaceIds.includes(row.id) && (role !== "analyst" || customerFilter === "all" || row.id === customerFilter)).map(row => row.name));
   data.engagements = data.engagements.filter(row => allowedNames.has(row.client));
@@ -526,11 +524,6 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
             <b>Osura</b>
             <small>ASSURANCE</small>
           </a>
-          {role === "customer" ? <label className="workspace customer-switcher"><small>CUSTOMER</small><select aria-label="Customer workspace" value={identity} onChange={e => switchIdentity(e.target.value)}>{customerUsers.map(row => <option key={row.id} value={row.id}>{sessionUser(model, row.id).workspaceName}</option>)}</select></label> : <div className="workspace static-workspace">
-            <small>{role === "superadmin" ? "OSURA ADMINISTRATION" : "OSURA TEAM"}</small>
-            <b>{user?.name || "Inactive account"}</b>
-            {role === "analyst" && <small>{user.workspaceIds.length} assigned customer{user.workspaceIds.length === 1 ? "" : "s"}</small>}
-          </div>}
           <div className="nav-label">
             {role === "customer" ? "YOUR WORKSPACE" : "DELIVERY WORKSPACE"}
           </div>
@@ -3377,7 +3370,7 @@ function Drawer(c) {
           Interactive UI preview · synthetic data · session memory (resets on refresh) · no
           live AI, email, authentication or production integrations.
         </Note>
-        <h3>Current access</h3><p>{c.user?.name} · {c.user?.role}. Switch customers in the sidebar, or choose another demo role in the toolbar.</p>
+        <h3>Current access</h3><p>{c.user?.name} · {c.user?.role}. Customers see their own company. Analysts filter assigned customers in the top bar. The demo toolbar selects a different simulated identity.</p>
         <Fields
           items={[
             ["Data files", "/data/workspace.json · schema · presentation · examples"],

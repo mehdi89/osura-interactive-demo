@@ -38,3 +38,7 @@ Interaction checks already completed in Ego: actual intake button hit-test and c
 - The original demo still runs its unchanged healthy `osura-interactive-demo:72b26d3` image.
 
 Additional live verification completed all remaining QA-role routes at the same eight widths (96 additional cases, bringing the total to 544). Print emulation restores an unbounded, visible-overflow workspace, hides the presenter dock and retains the prepared-reference label. Final activity verification confirms the new Ridgeway request is attributed to T. Singh, Ridgeway Finance and its actual submitted service, rather than Clearbridge's existing engagement.
+
+## Owner follow-up: sidebar simplification
+
+The owner's later instruction on 2026-11-06 supersedes the sidebar-selector portion of UI-05 and the workspace-card verification above. Remove the Customer, Analyst and Superadmin sidebar workspace cards. Individual customers see only their own company; analysts retain the topbar Customer filter for assigned customers. The bottom **Demo user** selector remains the only control for switching customer demo identities and roles. Customer session isolation, drafts, receipts and filters remain unchanged. The earlier verification records describe the preceding release.
