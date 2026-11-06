@@ -1,5 +1,7 @@
 # Client handover review · live v2 demo · 6 November 2026
 
+**7 November follow-up:** The owner approved fixes after this review. The two P1 blockers and the reviewed copy/interaction issues are resolved in deployed snapshot `1c503816d7b7`; see [the fix list and live verification](client-handover-fixes-2026-11-07.md). The verdict and observations below describe the earlier `e0450282f4de` snapshot.
+
 Reviewer: Claude (independent review sub-agent). Scope: review and suggestions only. No source edits, commits, pushes or deployments.
 
 - Target: https://osura-v2.dev.fems.education/. Loaded assets `index-CK4hZvZo.js` and `index-Dw2nH0R3.css` match the stated deployed snapshot `e0450282f4de`.
