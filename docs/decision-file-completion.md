@@ -37,7 +37,7 @@ The old list deferring guided tours, real in-memory record search, mobile cards,
 
 The regression suite exercises the actual state functions and rendered screens. Coverage includes unchanged-save QA rejection; all-author independence; same-name source collisions; post-decision closure proof and displayed file/version/reviewer; blank customer intent; current-vs-prepared packs; signed workspace snapshots; exact Atlas selection; current support counts; four readiness gates and linked blockers; source support/gap meaning; outcome receipts; and finding forms with blank material attributes, scoped requirement options and no portfolio-to-Cedar creation path.
 
-The current `npm test` run passes all 60 checks. Run `npm test` and `npm run build` for subsequent revisions. The finding-form checks are in `scripts/review-screens.test.mjs`; other regressions cover state, access, model/schema, evidence projection and search.
+The current `npm test` run passes all 66 checks. Run `npm test` and `npm run build` for subsequent revisions. The finding-form checks are in `scripts/review-screens.test.mjs`; other regressions cover state, access, model/schema, evidence projection and search.
 
 On 6 November 2026 the larger revision was checked in the shared browser at desktop and 390px widths. All 35 original routes rendered under their intended demo identities with no horizontal page overflow at 390px. Rendered overview, evidence and decision layouts were visually inspected against the concept references. Live interaction checks covered service-scoped search and return navigation; mixed HubSpot approved/unapproved scopes; deliberate conditional decision review, confirmation and receipt; unsaved-draft protection including search Keep editing retaining the original supplier and Discard applying the selected destination; a fully reviewed finding; supplier cannot-provide submission, required revision reason and retained R01/R02 history; failed delivery retry history; mobile navigation focus/scroll restoration; and all nine guided handoffs without automatic customer signing. These are representative visual and workflow checks, not an assertion of pixel identity for every proposal image. Deployment acceptance is recorded below.
 
@@ -54,3 +54,9 @@ The demo remains synthetic and session-only. It does not add production authenti
 - The separate original demo remains healthy on `osura-interactive-demo:72b26d3`; its public JavaScript is still `index-C_93SKYu.js`.
 
 Only the v2 demo service was deployed. The optional calendar remains omitted; synthetic data, in-memory persistence, metadata-only uploads and simulated delivery limits remain explicit.
+
+## Role-layout repair and customer-switching follow-up
+
+The latest code snapshot is `929cf44f5b50`. The earlier concept deployment exposed desktop and tablet layout defects that mobile overflow checks did not catch. The owner requested a review-first repair of every demo role. The [role review and fix list](ui-role-review-2026-11-06.md) records seven reproduced issues, their remedies, interaction checks, viewport coverage and successful v2 deployment verification.
+
+Northstar Payments and Ridgeway Finance now have separate customer identities selectable in the sidebar. Each customer retains separate intake drafts, receipts and list filters; Ridgeway uses T. Singh and its own Clearbridge/Kite portfolio. The full signed-decision walkthrough remains CedarCloud. Customer selection is simulated demo identity switching, not production tenant authentication.
