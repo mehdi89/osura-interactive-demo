@@ -99,35 +99,39 @@ export function submitSupplier(
   state,
   item = "Recovery exercise evidence",
   primaryItem = "Recovery exercise evidence",
+  { revision = false } = {},
 ) {
-  if (state.supplierReceipts?.[item]) return state;
+  const previous = state.supplierReceipts?.[item];
+  if (previous && !revision) return state;
+  if (revision && !previous) throw new Error("Submit the original response before creating a revision.");
   const draft = state.supplierDraft;
-  if (!draft.fileName || !draft.answer.trim() || !draft.scope)
-    throw new Error(
-      "Attach evidence, describe the service scope and select supporting details.",
-    );
+  const responseType = draft.responseType || "evidence";
+  if (!["evidence", "alternative", "cannot-provide"].includes(responseType)) throw new Error("Choose a valid response type.");
+  if (!draft.answer.trim()) throw new Error("Describe the service coverage, alternative or reason evidence is unavailable.");
+  if (!draft.scope) throw new Error("Tell us whether the response covers the contracted service.");
+  if (responseType === "evidence" && !draft.fileName?.trim()) throw new Error("Attach evidence before submitting this item.");
+  const normalize = value => (value || "").trim().replace(/\s+/g, " ");
+  if (previous && normalize(previous.fileName) === normalize(draft.fileName) && normalize(previous.answer) === normalize(draft.answer) && previous.scope === draft.scope && (previous.responseType || "evidence") === responseType) return state;
+  if (revision && !draft.changeReason?.trim()) throw new Error("Explain what changed before submitting a revised response.");
+  const history = { ...(state.supplierReceiptHistory || {}) };
+  const priorVersions = history[item] || (previous ? [previous] : []);
+  const allReceipts = Object.values(history).flat();
+  for (const receipt of Object.values(state.supplierReceipts || {})) if (!allReceipts.some(row => row.reference === receipt.reference)) allReceipts.push(receipt);
   const receipt = {
-    reference: `${state.requestReference || "CC-2026-104"}-R${String(Object.keys(state.supplierReceipts || {}).length + 1).padStart(2, "0")}`,
-    at: new Date().toISOString(),
-    item,
     ...draft,
-    answer: draft.answer.trim(),
+    reference: `${state.requestReference || "CC-2026-104"}-R${String(allReceipts.length + 1).padStart(2, "0")}`,
+    at: new Date().toISOString(), item,
+    answer: draft.answer.trim(), fileName: (draft.fileName || "").trim(), responseType,
+    version: priorVersions.length + 1,
+    ...(revision ? { supersedes: previous.reference, changeReason: draft.changeReason.trim() } : {}),
   };
   return {
     ...state,
     supplierReceipts: { ...state.supplierReceipts, [item]: receipt },
-    pendingReviews: {
-      ...state.pendingReviews,
-      [item === primaryItem ? "R-07" : "IAM-04"]: true,
-    },
+    supplierReceiptHistory: { ...history, [item]: [...priorVersions, receipt] },
+    pendingReviews: { ...state.pendingReviews, [item === primaryItem ? "R-07" : "IAM-04"]: true },
     qa: "Evidence re-review required",
-    ...(item === primaryItem
-      ? {
-          supplierReceipt: receipt,
-          conclusion: "Needs review",
-          qa: "Evidence re-review required",
-        }
-      : {}),
+    ...(item === primaryItem ? { supplierReceipt: receipt, conclusion: "Needs review" } : {}),
     requestStatus: "Response received",
   };
 }

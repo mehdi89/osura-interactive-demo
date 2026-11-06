@@ -2,9 +2,10 @@
 
 Standalone React/Vite supplier-assurance prototype deployed on Vercel. All data is synthetic; changes live in memory until refresh. Public seed JSON and the demo-user selector are not real authentication or tenant security.
 
-Current stage: the owner approved the full final call sheet from `Osura Decision Call.html` on 6 November 2026. This branch implements its 16 areas; see `docs/approved-v2-changes.md` for scope and deliberate deferrals. Customer, Analyst and Superadmin roles retain assigned-customer access and named review history. The v2 demo is deployed separately at `osura-v2.dev.fems.education`; the original demo remains unchanged.
+Current stage: the owner explicitly approved the original CONCEPT-01–CONCEPT-16 layouts and interactions from `Osura Decision Call.html`, in addition to the D01–D16 correctness fixes. Earlier final-call-sheet deferrals no longer exclude the guided example, scoped record search, mobile service cards, executive decision layout, expandable service directory or versioned supplier corrections. See `docs/approved-v2-changes.md` and `docs/decision-file-completion.md` for the implementation crosswalk and verification status. Customer, Analyst and Superadmin roles retain assigned-customer access and named review history. The current visual revision targets the separate `osura-v2.dev.fems.education` demo; source changes do not update that manual Coolify deployment automatically. The original demo remains a separate snapshot.
 
-- `src/main.jsx`, `styles.css`: screens, routing and UI.
+- `src/main.jsx`: screens, routing, review/decision surfaces and guided example. `styles.css`, `visual-system.css`, `customer-layouts.css`, `case-layouts.css`, `operations-layouts.css`: base styling, semantic components and concept layouts.
+- `src/WorkspaceSearch.jsx`, `search.mjs`: scoped in-memory supplier/service/page search. Supplier response revisions remain immutable session records, not real uploads or delivery.
 - `src/access.mjs`, `RoleAdmin.jsx`: simulated role checks, customer assignments, superadmin controls and activity history.
 - `src/state.mjs`: recommendation, independent QA and customer-decision rules. QA requires a different analyst with explicit permission; the customer Decision Owner signs the final outcome.
 - `public/data/workspace.json`: normalized records; `public/schemas/workspace.schema.json`: schema. `presentation.json` and `examples.json` contain labelled reference fixtures; `screens.json` defines the original 35 routes. Superadmin adds A01.

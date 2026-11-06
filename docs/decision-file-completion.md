@@ -1,43 +1,44 @@
-# Decision-file completion record
+# Original decision-file implementation crosswalk
 
-Source: `/Users/mehdi/Downloads/Osura Decision Call (1).html`. Its SHA-256 is `ad98674d98838af586c01757e1eb8106204e312724457cff5fce7da4d19b0359`, identical to the previously supplied `Osura Decision Call.html`.
+The owner approved the original **CONCEPT-01–CONCEPT-16 layouts and interactions**, together with the D01–D16 correctness requirements, on 6 November 2026. The earlier final call sheet described a smaller implementation; its deferrals no longer exclude UI work explicitly requested in this approval.
 
-The agreed implementation scope is `DATA.final.areas`, the five final client decisions and the final call sheet’s corrections. Those final decisions override earlier mockup proposals in the same file. This is not a claim that every earlier concept image or deferred feature has been implemented.
+Source: `/Users/mehdi/Downloads/Osura Decision Call (1).html`, SHA-256 `ad98674d98838af586c01757e1eb8106204e312724457cff5fce7da4d19b0359`, identical to `Osura Decision Call.html`. The parent workspace retains the original concept JSON and PNG references in `ui-improvement-review/`.
 
-## Completion crosswalk
+## Original-concept crosswalk
 
-| Area | Completed behavior | Evidence |
+This table records the current source implementation. It does not certify pixel-identical reproduction or a deployed release.
+
+| Concept | Implemented surface and interaction | Code and styles |
 | --- | --- | --- |
-| D01 | Engagement and finding navigation stays with the clicked service; identity-review events use the inspected supplier scope. | Rendered Atlas selection regression; Ego Atlas navigation and HubSpot audit attribution. |
-| D02 | QA rework needs changed analysis, an explicit challenge response or a changed evidence basis; no-op saves fail. QA remains visible in the matrix and current counts follow reviewed records. | State transition/no-op/evidence-basis tests; Ego unchanged-save rejection, valid response, QA matrix and live summary counts. |
-| D03 | Blank customer intent, separate analyst advice, one scoped confirmation. | Rendered decision tests and Ego conditional signing flow. |
-| D04 | Rejection handling, frozen packs and printable/exported example labels; unsigned obligations stay proposed. | Pack/frozen-workspace tests and unsigned Findings/Monitoring integration tests. |
-| D05 | Approved purpose sentence, responsibility split, accurate next-owner actions and separate prepared example. | Overview and readiness regressions; source crosscheck. |
-| D06 | Submitted request has its own receipt, triage next owner, facts and refresh limitation; example is secondary. | Ego request submission with four Unknown facts and own receipt. |
-| D07 | Errors clear on edits, missing questions are named/focused, Unknown remains unresolved and direct review cannot bypass required facts. | Ego direct-C05 validation, corrected answers and preserved Unknown summary. |
-| D08 | Session drafts and refresh warning; coherent source versions and closure provenance. | Four source-projection tests, rendered source test; Ego same-name collision and exact closure file/version/reviewer. |
-| D09 | Submitted supplier items are read-only with their own receipt and exact remaining-item navigation. | Supplier idempotence tests; Ego submitted-item read-only check; prior own-receipt reproduction. |
-| D10 | Required text rejects whitespace; selections expose state; Cedar service association is protected. | Shared form source checks and model/access validation regressions. |
-| D11 | Screen finder has an accurate label and query-specific empty state. | Source crosscheck; screen finder behavior retained. |
-| D12 | Services filter before grouping and unsupported directory filters are absent. | Mixed-service filter regression and previous Ego Approved HubSpot service check. |
-| D13 | Phone pages contain overflow; tables scroll internally and menu close returns focus. | Ego 390px checks including C01/C14/C15 and expanded QA matrix; earlier menu-focus check. |
-| D14 | Finding form explicitly captures requirement, severity and owner; retry and empty queue show truthful session states. | Source crosscheck of controls/save path and prior UI review. |
-| D15 | Only reviewed post-decision evidence enables closure; displayed proof matches that gate; scheduling/condition links and dates are truthful. | Closure selector/old-proof tests and Ego exact closure provenance. |
-| D16 | Governed CTP inherent risk stays separate from evidence, QA and outcome; readable supporting labels and fixture disclosure. | Source crosscheck, current evidence-count regressions and computed text-color checks. |
+| 01 · Purpose and next action | Purpose-led overview, responsibility strip, scoped next-action hero, quieter programme metrics, separate own-request and guided-example entries. The guide explains handoffs without performing workflow actions. | `Overview`, `App` guided example; `customer-layouts.css`, `visual-system.css` |
+| 02 · Focused intake | Four named steps, pinned request-summary rail, explicit answer choices and help, focused missing-field feedback, Back/Continue actions and visible session-draft status. Unknown remains unresolved. | `Intake`; `operations-layouts.css` |
+| 03 · Honest receipt | Submitted request details and reference, awaiting-triage next owner, downloaded receipt, submitted facts and attachments, and a separate prepared-example action. Supplier receipts distinguish response delivery from evidence verification. | `SecondaryCase`, `Intake`, `SupplierPortal`; `operations-layouts.css` |
+| 04 · Truthful readiness | Prominent status banner, four gate cards, exact outstanding requirement links, next owner and actions derived from the current review, substantive-revision QA barrier and no false customer-ready ticks. | `Assessment`, `Quality`, `Decision`, `workflowStatus`; `case-layouts.css` |
+| 05 · Source and assessment | Large source pane with current file/version/page context, support/gap cards, pinned service and requirement picker, independent assessment and conclusion definition, saved/draft state, proposal comparison after saving, Save and next. | `EvidenceReview`, `projectRequirementEvidence`; `case-layouts.css` |
+| 06 · Deliberate decision | Concise recommendation and proposed obligation beside unselected customer choices; blank rationale; explicit adoption of advice; conditional owner/date/proof fields; Review my decision and scoped confirmation; recorded receipt and next obligation. | `Decision`, `Pack`; `case-layouts.css` |
+| 07 · Supplier progress | Scoped request and item-progress rail, file metadata, service-description/scope validation, review-before-submit, exact remaining-item action and item-specific receipt/history. | `SupplierPortal`; `operations-layouts.css` |
+| 08 · Feedback and safeguards | Persistent draft/saved feedback, specific errors, contextual empty-state recovery, session refresh warning, Keep editing/Discard navigation safeguard and same-screen requirement-switch safeguard. | `App`, `EvidenceReview`, `Quality`, `Closure`, `Intake`; `visual-system.css`, `case-layouts.css`, `operations-layouts.css` |
+| 09 · Search and scope | Grouped supplier, service-review and page results; query highlighting, customer-scope hint, exact record selection and useful empty state. Register views retain their filters, and detail destinations retain supplier/service identity. | `WorkspaceSearch.jsx`, `search.mjs`, `Registers`, `SupplierRecord`, `FollowUp`; `visual-system.css`, `customer-layouts.css` |
+| 10 · Mobile workspace | Readable service cards, responsive review/decision panes, visible close and focus handling for navigation, touch-sized controls and presenter tools kept separate from primary tasks. | `App`, `EngagementTable`, `Registers`, `DirectoryDetails`; all layout styles |
+| 11 · Clear obligations | Due-next hero, overdue/due/upcoming/closed/proposed views, owner/date/proof and exact next action; outcome-aware rejected/clarification continuations and prepared-pack entry. Schedule opens a scheduling form. | `Monitoring`, `Findings`, `Pack`, `Closure`; `operations-layouts.css`, `case-layouts.css` |
+| 12 · Semantic components | Larger body/table/helper text, explicit semantic badge families with icons and labels, clear action hierarchy, native checked/pressed state, keyboard focus and contextual conclusion/help text. | Shared `Badge`, `Tabs`, `Label` and task controls; `visual-system.css`, `case-layouts.css` |
+| 13 · Accountable finding | Pinned customer/supplier/service, no material defaults, applicable requirement and severity, accountable owner/due date, issue, exact source, rationale and closure proof; review before recording. Portfolio previews without scoped requirements cannot create findings. | `FindingForm`, `Findings`; `visual-system.css`, `operations-layouts.css` |
+| 14 · Retry and empty work | Selected outbox thread, retained failed-attempt history, one persistent simulated retry state, no delivery claim, and filtered work queues with clear filters/recovery actions. | `Communications`, `Operations`; `operations-layouts.css` |
+| 15 · Mixed-service directory | Expandable supplier entities, matching and other service scopes kept distinct, supplier/service/identity views with scope-consistent query/customer/status filters, counts and empty states. An approved service remains discoverable beside another service under review. | `Registers`, `DirectoryDetails`, `filterSupplierServices`; `customer-layouts.css` |
+| 16 · Supplier revisions | Read-only original receipt, explicit revised-response entry, required change reason, new receipt/version with retained inspectable history, idempotent unchanged submissions and affected-control re-review. Alternative/unavailable responses remain claims requiring review. | `SupplierPortal`, `Response`, `submitSupplier` revision handling; `operations-layouts.css` |
 
-## Deliberately deferred by the final call sheet
+## D01–D16 correctness coverage
 
-- Guided tour.
-- Real supplier and service search.
-- Real calendar.
-- Phone service cards and new mobile navigation.
-- Supplier corrections with version history.
-- Supplier cannot-provide path and scoped questions.
-- Expandable supplier rows and intake comparison.
-- Executive decision brief redesign.
-- Full condition evidence lifecycle.
-- Warning before losing data-editor edits.
+The larger layouts retain the existing fixes: scoped navigation (D01), derived readiness and substantive independent QA (D02), explicit customer authority (D03), outcome-aware frozen/example records (D04), purpose and responsibility (D05), own-request receipts (D06), resolved validation errors and Unknown facts (D07), coherent version provenance and session drafts (D08), honest supplier receipts/revisions (D09), validation and selected semantics (D10), actual scoped search (D11), service-first filters (D12), contained mobile tasks (D13), explicit finding/retry state (D14), post-decision closure proof and honest schedule actions (D15), and governed risk/evidence/QA/outcome language (D16).
 
-## Verification limits
+The old list deferring guided tours, real in-memory record search, mobile cards, supplier correction history, expandable supplier rows and the executive decision layout is superseded. The optional calendar is omitted as allowed by CONCEPT-11; no Calendar action pretends to implement one.
 
-49 automated checks and production build passed. Ego Browser exercised the reproduced defects and adjacent meeting flows. No production authentication, durable storage, real email, PDF extraction or CTP scoring engine was added. Screenshot capture was unavailable during the preceding Ego review; this record is behavioral/layout acceptance, not pixel-identical mockup sign-off.
+## Automated evidence and live-check status
+
+The regression suite exercises the actual state functions and rendered screens. Coverage includes unchanged-save QA rejection; all-author independence; same-name source collisions; post-decision closure proof and displayed file/version/reviewer; blank customer intent; current-vs-prepared packs; signed workspace snapshots; exact Atlas selection; current support counts; four readiness gates and linked blockers; source support/gap meaning; outcome receipts; and finding forms with blank material attributes, scoped requirement options and no portfolio-to-Cedar creation path.
+
+The current `npm test` run passes all 60 checks. Run `npm test` and `npm run build` for subsequent revisions. The finding-form checks are in `scripts/review-screens.test.mjs`; other regressions cover state, access, model/schema, evidence projection and search.
+
+On 6 November 2026 the larger revision was checked in the shared browser at desktop and 390px widths. All 35 original routes rendered under their intended demo identities with no horizontal page overflow at 390px. Rendered overview, evidence and decision layouts were visually inspected against the concept references. Live interaction checks covered service-scoped search and return navigation; mixed HubSpot approved/unapproved scopes; deliberate conditional decision review, confirmation and receipt; unsaved-draft protection; a fully reviewed finding; supplier cannot-provide submission, required revision reason and retained R01/R02 history; and failed delivery retry history. These are representative visual and workflow checks, not an assertion of pixel identity for every proposal image. Deployment acceptance is recorded separately after publishing.
+
+The demo remains synthetic and session-only. It does not add production authentication, durable/shared records, real messages, document-content storage/extraction, live AI, a CTP scoring engine or a complete production evidence lifecycle. Those limits are detailed in [the approval scope](approved-v2-changes.md).

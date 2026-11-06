@@ -124,7 +124,7 @@ test("return for clarification creates no signed decision and requests rework", 
 
 test("supplier submission validates fields, persists an honest receipt and is idempotent", () => {
   const initial = createState(data);
-  assert.throws(() => submitSupplier(initial), /Attach evidence/);
+  assert.throws(() => submitSupplier(initial), /Describe the service/);
   const next = submitSupplier({
     ...initial,
     supplierDraft: {
@@ -348,4 +348,35 @@ test("closure selects the newest reviewed evidence version even when filenames m
   assert.equal(closureEvidence({ ...latestReviewed, pendingReviews: { "R-07": true } }), null);
   assert.equal(closureEvidence({ ...latestReviewed, signedPack: { ...state.signedPack, decision: { ...state.signedPack.decision, at: "2026-11-05T06:00:00Z" } } }), null);
   assert.equal(closeCondition(state, analystData, "Reviewed exact newer upload").signedPack, state.signedPack);
+});
+
+
+test("supplier revisions preserve original receipts, require a change reason and are idempotent", () => {
+  const originalDraft = { fileName: "proof.pdf", answer: "Payment event processing exercise", scope: "Covers this service" };
+  const first = submitSupplier({ ...createState(data), supplierDraft: originalDraft });
+  const original = structuredClone(first.supplierReceipt);
+  assert.equal(submitSupplier(first, data.request.items[0], data.request.items[0], { revision: true }), first);
+  const changed = { ...first, supplierDraft: { ...originalDraft, fileName: "updated.pdf" } };
+  assert.throws(() => submitSupplier(changed, data.request.items[0], data.request.items[0], { revision: true }), /what changed/);
+  const revised = submitSupplier({ ...changed, supplierDraft: { ...changed.supplierDraft, changeReason: "Corrected the exercised service scope" } }, data.request.items[0], data.request.items[0], { revision: true });
+  assert.deepEqual(first.supplierReceipt, original);
+  assert.deepEqual(revised.supplierReceiptHistory[data.request.items[0]][0], original);
+  assert.equal(revised.supplierReceipt.reference, "CC-2026-104-R02");
+  assert.equal(revised.supplierReceipt.supersedes, original.reference);
+  assert.equal(revised.supplierReceipt.version, 2);
+  assert.equal(revised.pendingReviews["R-07"], true);
+  assert.equal(revised.conclusion, "Needs review");
+  const secondItem = submitSupplier({ ...revised, supplierDraft: originalDraft }, data.request.items[1], data.request.items[0]);
+  assert.equal(secondItem.supplierReceipts[data.request.items[1]].reference, "CC-2026-104-R03");
+  assert.equal(secondItem.supplierReceipt.reference, "CC-2026-104-R02");
+});
+
+test("cannot-provide and alternative supplier responses stay pending independent review", () => {
+  for (const responseType of ["alternative", "cannot-provide"]) {
+    const next = submitSupplier({ ...createState(data), supplierDraft: { responseType, fileName: "", answer: "The scoped exercise report is unavailable; a dated test log can be discussed", scope: "Not sure" } });
+    assert.equal(next.supplierReceipt.responseType, responseType);
+    assert.equal(next.conclusion, "Needs review");
+    assert.equal(next.pendingReviews["R-07"], true);
+    assert.equal(next.qa, "Evidence re-review required");
+  }
 });

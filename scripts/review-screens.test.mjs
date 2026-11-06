@@ -12,12 +12,12 @@ import { createState, recordDecision } from "../src/state.mjs";
 // Render the actual screen functions without starting the browser-only app bootstrap.
 const source = await readFile(new URL("../src/main.jsx", import.meta.url), "utf8");
 const bundled = await build({
-  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { App, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
+  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { App, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
   bundle: true, platform: "node", format: "cjs", packages: "external", loader: { ".css": "empty" }, write: false,
 });
 const module = { exports: {} };
 new Function("require", "module", "exports", bundled.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports);
-const { App, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings } = module.exports;
+const { App, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm } = module.exports;
 const readJSON = async name => JSON.parse(await readFile(new URL(`../public/data/${name}.json`, import.meta.url)));
 const model = await readJSON("workspace");
 const user = sessionUser(model, "customer-morgan");
@@ -25,11 +25,12 @@ const data = scopeWorkspace(projectWorkspace(model, await readJSON("presentation
 const context = (patch = {}) => ({ data, user, state: createState(data), engagement: data.engagements.find(row => row.id === "cedar"), screen: { role: "customer" }, update() {}, navigate() {}, notify() {}, setDrawer() {}, ...patch });
 const render = (Component, props) => renderToStaticMarkup(React.createElement(Component, props));
 
-test("customer outcome starts blank with one Record action and read-only proposed obligation", () => {
+test("customer outcome starts blank with one deliberate review action and read-only proposed obligation", () => {
   const html = render(Decision, context());
-  assert.equal((html.match(/>Record decision</g) || []).length, 1);
+  assert.equal((html.match(/>Review my decision →</g) || []).length, 1);
+  assert.equal((html.match(/>Record customer decision</g) || []).length, 0);
   assert.equal((html.match(/checked=""/g) || []).length, 0);
-  assert.match(html, /<textarea required=""><\/textarea>/);
+  assert.match(html, /<textarea required=""[^>]*><\/textarea>/);
   assert.match(html, /Proposed required evidence/);
   assert.match(html, /read-only advice/);
 });
@@ -39,7 +40,7 @@ test("decision readiness and disabled action reflect unresolved evidence", () =>
   c.state.pendingReviews = { "IAM-04": true };
   const html = render(Decision, c);
   assert.match(html, /Evidence re-review required/);
-  assert.match(html, /<button[^>]*disabled=""[^>]*>[\s\S]*?Record decision/);
+  assert.match(html, /<button[^>]*disabled=""[^>]*>[\s\S]*?Review my decision/);
   assert.doesNotMatch(html, /Ready for customer decision/);
 });
 
@@ -120,11 +121,12 @@ function renderApp(screenId, props = {}) {
 test("unsigned conditions remain proposals in findings and monitoring", () => {
   const findings = renderApp("C12");
   assert.match(findings, /Proposed condition/);
-  assert.match(findings, /<strong>0<\/strong><b>Customer approval conditions<\/b>/);
+  assert.match(findings, /<strong>0<\/strong><span>Customer-approved conditions<\/span>/);
   assert.doesNotMatch(findings, /<dt>Treatment<\/dt><dd>Customer approval condition<\/dd>/);
   const monitoring = renderApp("C08");
-  assert.match(monitoring, /<strong>0<\/strong><b>Open condition<\/b>/);
-  assert.match(monitoring, /No signed customer condition/);
+  assert.match(monitoring, /<strong>1<\/strong><span>Prepared proposals<\/span>/);
+  assert.match(monitoring, /No customer outcome recorded/);
+  assert.match(monitoring, /Prepared proposals are not customer obligations/);
 });
 
 test("a selected Atlas finding never defaults to the CedarCloud condition", () => {
@@ -133,8 +135,9 @@ test("a selected Atlas finding never defaults to the CedarCloud condition", () =
   c.state = { ...c.state, selected: finding.engagementId, selectedFinding: finding.id };
   c.engagement = c.data.engagements.find(row => row.id === finding.engagementId);
   const html = render(Findings, c);
-  assert.match(html, /<dt>Supplier<\/dt><dd>Atlas Identity<\/dd>/);
-  assert.doesNotMatch(html, /<dt>Supplier<\/dt><dd>CedarCloud<\/dd>/);
+  const selectedScope = html.slice(html.indexOf('class="op-selected-scope"'), html.indexOf('<h3 class="op-panel-subheading"'));
+  assert.match(selectedScope, /<h3>Atlas Identity<\/h3>/);
+  assert.doesNotMatch(selectedScope, /CedarCloud/);
 });
 
 test("risk matrix includes the live QA stage and its critical review", () => {
@@ -165,4 +168,70 @@ test("closure shows the exact eligible upload instead of an older supplier recei
   assert.match(html, /UPLOAD-NEW/);
   assert.match(html, /Evidence used for closure/);
   assert.doesNotMatch(html, /old-supplier.pdf/);
+});
+
+
+test("readiness layout names each gate and links the exact outstanding requirement", () => {
+  const c = context();
+  c.state.pendingReviews = { "R-07": true };
+  c.state.conclusion = "Needs review";
+  const html = render(Assessment, c);
+  assert.match(html, /class="case-gates"/);
+  assert.equal((html.match(/class="case-gate /g) || []).length, 4);
+  assert.match(html, /Customer decision is paused/);
+  assert.match(html, /R-07 · /);
+  assert.match(html, /What unblocks the decision/);
+});
+
+test("analyst evidence layout exposes support, gap, conclusion meaning and saved status", () => {
+  const c = context({ screen: { role: "analyst" }, user: sessionUser(model, "analyst-01") });
+  c.state.reviews = { "R-07": { judgement: "Reviewed against the scoped requirement.", conclusion: "Partially supported", recommendation: "Approve with conditions", actor: "Analyst 01", at: "2026-11-06T12:00:00Z" } };
+  const html = render(EvidenceReview, c);
+  assert.match(html, /evidence-task-grid/);
+  assert.match(html, /What this source supports/);
+  assert.match(html, /What it does not establish/);
+  assert.match(html, /supports only part of this requirement/);
+  assert.match(html, /Assessment saved/);
+  assert.match(html, /Save and review the next requirement/);
+});
+
+test("recorded conditional outcome presents its owner, date and required next obligation", () => {
+  const c = context();
+  c.state = recordDecision(c.state, c.data, "Approve with conditions", "Proceed with owned follow-up.", { owner: "A. Morgan", due: "2026-11-20", evidence: "New scoped recovery exercise" });
+  const html = render(Pack, c);
+  assert.match(html, /Decision recorded. Your next obligation is clear/);
+  assert.match(html, /New scoped recovery exercise/);
+  assert.match(html, /20 Nov 2026/);
+  assert.match(html, /View the recovery condition/);
+});
+
+
+test("finding form starts without material defaults and requires an explicit review action", () => {
+  const c = context({ user: sessionUser(model, "analyst-01") });
+  const html = render(FindingForm, c);
+  assert.equal((html.match(/<option value="" selected="">/g) || []).length, 3);
+  assert.match(html, /Accountable owner \(required\)[\s\S]*?<input required=""[^>]*value=""/);
+  assert.match(html, /Due date \(required\)[\s\S]*?<input type="date" required="" value=""/);
+  assert.match(html, />Review finding<\/button>/);
+  assert.doesNotMatch(html, />Record finding<\/button>/);
+});
+
+test("finding form pins supplier service scope and offers only applicable requirements", () => {
+  const c = context({ user: sessionUser(model, "analyst-01") });
+  c.data = { ...c.data, requirements: c.data.requirements.filter(row => row.id === "R-07") };
+  const html = render(FindingForm, c);
+  assert.match(html, /PINNED SERVICE SCOPE/);
+  assert.match(html, /<h3>CedarCloud · Payment event processing<\/h3>/);
+  assert.match(html, /Northstar Payments/);
+  assert.match(html, /<option value="R-07">/);
+  assert.doesNotMatch(html, /<option value="IAM-04">/);
+});
+
+test("portfolio previews cannot create findings using CedarCloud requirements", () => {
+  const c = context({ user: sessionUser(model, "analyst-01") });
+  c.engagement = c.data.engagements.find(row => row.supplier === "Atlas Identity");
+  const html = render(FindingForm, c);
+  assert.match(html, /Atlas Identity/);
+  assert.match(html, /no applicable requirement records available for finding creation/);
+  assert.doesNotMatch(html, /<form|Review finding|Record finding/);
 });
