@@ -235,3 +235,17 @@ test("portfolio previews cannot create findings using CedarCloud requirements", 
   assert.match(html, /no applicable requirement records available for finding creation/);
   assert.doesNotMatch(html, /<form|Review finding|Record finding/);
 });
+
+
+test("customer workspace selector offers both customers and Ridgeway renders only its own portfolio", async () => {
+  const base = projectWorkspace(model, await readJSON("presentation"), await readJSON("examples"));
+  const user = sessionUser(model, "customer-singh");
+  const html = renderApp("C01", { data: base, user, identity: user.id });
+  assert.match(html, /aria-label="Customer workspace"/);
+  assert.match(html, /value="customer-morgan"/);
+  assert.match(html, /value="customer-singh" selected=""/);
+  assert.match(html, /Ridgeway Finance/);
+  assert.match(html, /Clearbridge Data/);
+  assert.match(html, /Kite Legal/);
+  assert.doesNotMatch(html, /CedarCloud needs your decision|CedarCloud_BCP|Northstar Payments \/ Customer overview/);
+});

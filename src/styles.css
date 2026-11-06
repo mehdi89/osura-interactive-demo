@@ -703,6 +703,11 @@ main {
   line-height: 1.6;
 }
 .table-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  contain: inline-size;
   overflow-x: auto;
 }
 table {
@@ -1740,45 +1745,6 @@ main:has(.assessment-path-rail) > .card {
 }
 main:has(.assessment-path-rail) > footer {
   clear: both;
-}
-@media (min-width: 901px) {
-  main:has(.analyst-assessment) {
-    display: grid;
-    grid-template-columns: 142px minmax(0, 1.65fr) minmax(0, 1fr);
-    gap: 16px;
-    align-items: start;
-    align-content: start;
-  }
-  main:has(.analyst-assessment) > .page-heading,
-  main:has(.analyst-assessment) > .supplier-banner,
-  main:has(.analyst-assessment) > .tabs,
-  main:has(.analyst-assessment) > footer {
-    grid-column: 1/-1;
-    margin-bottom: 0;
-  }
-  main:has(.analyst-assessment) > .assessment-path-rail {
-    grid-column: 1;
-    grid-row: 4 / span 3;
-    float: none;
-    margin: 0;
-    width: auto;
-    min-height: 480px;
-  }
-  .grid.analyst-assessment {
-    display: contents;
-  }
-  .analyst-assessment > .card:first-child {
-    grid-column: 2;
-    grid-row: 4;
-  }
-  .analyst-assessment > .card:nth-child(2) {
-    grid-column: 3;
-    grid-row: 4 / span 3;
-  }
-  main:has(.analyst-assessment) > .card {
-    grid-column: 2;
-    margin: 0;
-  }
 }
 @media (min-width: 1600px) {
   main {

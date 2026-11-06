@@ -6,8 +6,11 @@ h2 { font-size: 18px; line-height: 1.35; }
 h3 { font-size: 16px; line-height: 1.4; }
 p { font-size: 14px; line-height: 1.7; color: #57677c; }
 small, .helper, .field > small, .cell-sub { font-size: 12px; line-height: 1.65; color: #596a80; }
-.sidebar { width: 220px; background: #fff; }
+.sidebar { width: 220px; background: #fff; overflow-y: auto; overflow-x: hidden; }
+.sidebar > * { flex-shrink: 0; }
 .app { margin-left: 220px; }
+.app, .supplier-app { height: calc(100dvh - 84px); min-height: 0; overflow-y: auto; }
+.app main, .supplier-app main { min-height: calc(100dvh - 150px); }
 .brand { height: 66px; padding: 0 18px; }
 .brand small { display: none; }
 .brand b { font-size: 23px; }
@@ -38,7 +41,10 @@ main { padding: 28px 30px 100px; }
 .button.small { min-height: 36px; font-size: 12px; padding: 9px 12px; }
 .link { font-size: 13px; font-weight: 600; line-height: 1.6; text-underline-offset: 3px; }
 .button:focus-visible, .link:focus-visible, summary:focus-visible, .tabs button:focus-visible { outline: 3px solid #ac97ed; outline-offset: 3px; }
-input, select, textarea { font-size: 14px; padding: 12px; min-height: 44px; border-color: #cbd5e3; border-radius: 6px; }
+input:not([type="radio"]):not([type="checkbox"]):not([type="file"]), select, textarea { font-size: 14px; padding: 12px; min-height: 44px; border-color: #cbd5e3; border-radius: 6px; }
+input[type="radio"], input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; padding: 0; margin: 0; flex-shrink: 0; accent-color: var(--purple); }
+.role-check { min-height: 44px; align-items: center; }
+.role-check input { margin-top: 0; }
 textarea { min-height: 136px; line-height: 1.65; }
 .field { margin: 16px 0; gap: 8px; }
 .field > span { font-size: 13px; font-weight: 650; }
@@ -59,7 +65,7 @@ td { padding: 15px 10px; }
 .fields dt, .fields dd { font-size: 13px; line-height: 1.65; }
 .fields > div { padding: 12px 0; }
 .fields dd { text-align: right; }
-.tabs { gap: 8px; margin: 20px 0; overflow-x: auto; }
+.tabs { gap: 8px; margin: 20px 0; min-width: 0; max-width: 100%; overflow-x: auto; }
 .tabs button { min-height: 44px; padding: 11px 16px; font-size: 13px; white-space: nowrap; }
 .choices button, .segmented button, .filter-chips button { font-size: 13px; min-height: 40px; padding: 9px 12px; }
 .stat strong { font-size: 30px; }
@@ -155,4 +161,8 @@ footer { font-size: 12px; line-height: 1.7; color: #596a80; margin-top: 28px; }
   .demo-tools-backdrop { display: block; position: fixed; inset: 0; z-index: 1001; background: #1d2d4838; }
   .workspace-search-trigger { padding: 10px; }
 }
-@media print { .guided-tour, .demo-tools-backdrop, .nav-backdrop, .workspace-search-trigger { display: none !important; } }
+@media print {
+  .guided-tour, .demo-tools-backdrop, .nav-backdrop, .workspace-search-trigger { display: none !important; }
+  .app, .supplier-app { height: auto; min-height: 0; overflow: visible; margin: 0; max-width: none; }
+  .app main, .supplier-app main { min-height: 0; max-width: none; padding: 0; }
+}

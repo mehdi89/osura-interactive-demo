@@ -117,6 +117,14 @@ export function projectWorkspace(model, presentation, examples) {
   };
   const walkthrough = get("engagements", s.walkthroughEngagementId);
   const request = get("supplierRequests", s.requestId);
+  const workspaceProfiles = Object.fromEntries(model.workspaces.map(workspace => {
+    const engagement = model.engagements.find(row => row.workspaceId === workspace.id);
+    return [workspace.id, { id: workspace.id, name: workspace.name, initials: workspace.name.split(/\s+/).map(word => word[0]).slice(0, 2).join(""), date: displayDate(s.displayDate, true),
+      analystId: engagement?.analystId || null, qaReviewerId: engagement?.qaReviewerId || null,
+      analyst: name("actors", engagement?.analystId), qaReviewer: name("actors", engagement?.qaReviewerId), decisionOwner: name("actors", engagement?.decisionOwnerId),
+      policy: engagement ? name("policyVersions", engagement.corePolicyVersionId) : "Not configured",
+      overlay: engagement?.overlayVersionId ? name("policyVersions", engagement.overlayVersionId) : "Not configured" }];
+  }));
   const requirements = model.requirementReviews.filter(row => row.engagementId === walkthrough.id).map(row => {
     const requirement = get("requirements", row.requirementId);
     return { id: requirement.id, family: requirement.family, name: requirement.name,
@@ -132,10 +140,7 @@ export function projectWorkspace(model, presentation, examples) {
     return scopes.length > 1 ? { ...result, service: `${scopes.length} engagement scopes`, risk: "Varies" } : result;
   });
   return { ...copy, ...structuredClone(examples),
-    workspace: { name: name("workspaces", s.workspaceId), initials: "NP", date: displayDate(s.displayDate, true),
-      analystId: walkthrough.analystId, qaReviewerId: walkthrough.qaReviewerId, analyst: name("actors", walkthrough.analystId), qaReviewer: name("actors", walkthrough.qaReviewerId),
-      decisionOwner: name("actors", walkthrough.decisionOwnerId), policy: name("policyVersions", walkthrough.corePolicyVersionId),
-      overlay: name("policyVersions", walkthrough.overlayVersionId) },
+    workspace: workspaceProfiles[s.workspaceId], workspaceProfiles,
     allEngagements: model.engagements.map(engagementRow), engagements: model.engagements.filter(row => row.workspaceId === s.workspaceId).map(engagementRow), directory, requirements,
     suppliers: model.suppliers.filter(row => row.intakeEnabled).map(row => ({ name: row.name, domain: row.domain || "", country: row.country || "",
       uses: model.services.filter(service => service.supplierId === row.id && service.suggestionOrder !== null).sort((a,b) => a.suggestionOrder-b.suggestionOrder).map(service => service.name) })),

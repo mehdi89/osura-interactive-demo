@@ -1,6 +1,8 @@
 # Demo data model
 
-The demo now separates record data from its schema. `public/data/workspace.json` has 132 synthetic records in 19 collections. `public/schemas/workspace.schema.json` describes them using JSON Schema Draft 2020-12. `src/data-model.mjs` validates records and joins them into the existing screen format. The migration was compared with the original complete JSON projection: all original values and row ordering match.
+The demo now separates record data from its schema. `public/data/workspace.json` has 133 synthetic records in 19 collections. `public/schemas/workspace.schema.json` describes them using JSON Schema Draft 2020-12. `src/data-model.mjs` validates records and joins them into the existing screen format. The migration was compared with the original complete JSON projection: all original values and row ordering match.
+
+Two customer identities are seeded: `customer-morgan` for Northstar Payments and `customer-singh` for Ridgeway Finance. Each remains restricted to one workspace. Ridgeway's Clearbridge Data and Kite Legal records use T. Singh as their customer Decision Owner and remain portfolio previews. Derived `workspaceProfiles` keep customer names, initials, decision owners and pinned policy metadata separate; an absent overlay or case reviewer stays unconfigured rather than inheriting Northstar's prepared walkthrough values.
 
 ## Relationships
 

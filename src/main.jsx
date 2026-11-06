@@ -87,6 +87,8 @@ import "./operations-layouts.css";
 import DataEditor from "./DataEditor.jsx";
 import RoleAdmin, { AuditTrail } from "./RoleAdmin.jsx";
 import WorkspaceSearch from "./WorkspaceSearch.jsx";
+import { customerView, patchCustomerView } from "./customer-session.mjs";
+import "./customer-switcher.css";
 import { sessionUser, scopeWorkspace, actionEntry } from "./access.mjs";
 import { createModelValidator, projectWorkspace } from "./data-model.mjs";
 
@@ -242,6 +244,8 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   const [state, setState] = useState(() => createState(baseData));
   const stateRef = React.useRef(state);
   stateRef.current = state;
+  const viewState = customerView(state, scopedData, user);
+  const cedarVisible = scopedData.engagements.some(row => row.id === "cedar");
   const currentCondition = state.decision?.condition;
   data = {
     ...scopedData,
@@ -280,7 +284,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
     requirements: scopedData.requirements.map(r => projectRequirementEvidence(r, state, scopedData)),
     documents: [
       ...scopedData.documents,
-      ...Object.entries(state.supplierReceipts || {}).flatMap(
+      ...Object.entries(cedarVisible ? state.supplierReceipts || {} : {}).flatMap(
         ([item, latest]) => (state.supplierReceiptHistory?.[item] || [latest]).map(receipt => ({
           name: receipt.fileName || (receipt.responseType === "cannot-provide" ? "Supplier cannot-provide explanation" : "Supplier alternative evidence explanation"),
           status: state.pendingReviews?.[
@@ -294,7 +298,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
           requirement: item === scopedData.request.items[0] ? "R-07" : "IAM-04",
         })),
       ),
-      ...(state.uploads || []).map(doc => ({ ...doc, status: !state.pendingReviews?.[doc.requirement] && state.reviews?.[doc.requirement]?.evidenceVersions?.includes(doc.version) ? "Reviewed" : "Needs review" })),
+      ...(cedarVisible ? state.uploads || [] : []).map(doc => ({ ...doc, status: !state.pendingReviews?.[doc.requirement] && state.reviews?.[doc.requirement]?.evidenceVersions?.includes(doc.version) ? "Reviewed" : "Needs review" })),
     ],
     engagements: [
       ...scopedData.engagements,
@@ -338,6 +342,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   const screen = { ...baseScreen, ...(visualTitles[baseScreen.id] ? { title: visualTitles[baseScreen.id][0], subtitle: visualTitles[baseScreen.id][1] } : {}), ...(baseScreen.id === "C06" ? { label: workflowStatus(state).label } : {}) };
   if (screen.id === "O06" && !state.supplierReceipt) screen.title = "Supplier response preview · no session response";
   const role = user?.role || "customer";
+  const customerUsers = model.users.filter(row => row.role === "customer" && row.active);
   const denied = !user?.active || (screen.role !== role && !(role === "analyst" && ["C06","C07","C13"].includes(screen.id)));
   const allowedNames = new Set(model.workspaces.filter(row => user?.workspaceIds.includes(row.id) && (role !== "analyst" || customerFilter === "all" || row.id === customerFilter)).map(row => row.name));
   data.engagements = data.engagements.filter(row => allowedNames.has(row.client));
@@ -359,11 +364,13 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
     setMobileNav(false);
     setDemoTools(false);
     window.scrollTo(0, 0);
+    document.querySelector(".app, .supplier-app")?.scrollTo(0, 0);
   };
   const notify = (text) => {
     setToast(text);
   };
   const update = (patch) => {
+    patch = patchCustomerView(stateRef.current, patch, user);
     const added = (patch.events || []).filter(row => !stateRef.current.events.some(old => old.id === row.id));
     if (added.length) onAudit(added);
     stateRef.current = mergeWorkflowPatch(stateRef.current, patch);
@@ -388,9 +395,12 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   };
   const navigate = id => requestNavigation(() => commitNavigation(id));
   const switchIdentity = nextId => requestNavigation(() => {
-    const nextRole = nextId === "supplier-contact" ? "supplier" : sessionUser(model, nextId)?.role;
-    onSwitch(nextId); setCustomerFilter("all"); update({ selected: "cedar" });
+    const nextUser = sessionUser(model, nextId);
+    const nextRole = nextId === "supplier-contact" ? "supplier" : nextUser?.role;
+    const selected = nextRole === "customer" ? baseData.allEngagements.find(row => row.workspaceId === nextUser.workspaceId)?.id : "cedar";
+    onSwitch(nextId); setCustomerFilter("all"); setTourStep(null);
     commitNavigation({ customer: "C01", analyst: "O01", superadmin: "A01", supplier: "S01" }[nextRole] || "C01");
+    update({ selected, returnTo: null });
   });
   const tour = [
     { role: "customer-morgan", screen: "C01", actor: "Customer", title: "Understand who owns the decision", body: "Osura reviews evidence, independent QA challenges the work, and your organisation makes the final decision." },
@@ -425,6 +435,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
       setScreenId(target);
       setDrawer(null);
       window.scrollTo(0, 0);
+    document.querySelector(".app, .supplier-app")?.scrollTo(0, 0);
     };
     window.addEventListener("hashchange", handler);
     return () => window.removeEventListener("hashchange", handler);
@@ -435,7 +446,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
     return () => clearTimeout(timer);
   }, [toast]);
   useEffect(() => {
-    document.title = `${screen.id === "S02" && state.supplierItem === data.request.items[1] ? "Upload access review evidence" : screen.title.replace("{supplier}", screen.id === "C03" ? state.intake.supplier : engagement.supplier)} · Osura`;
+    document.title = `${screen.id === "S02" && state.supplierItem === data.request.items[1] ? "Upload access review evidence" : screen.title.replace("{supplier}", screen.id === "C03" ? viewState.intake.supplier : engagement.supplier)} · Osura`;
   }, [screen, engagement]);
   useEffect(() => {
     const handler = (e) => {
@@ -460,7 +471,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   const ctx = {
     data,
     catalog,
-    state: { ...state, selected: engagement.id,
+      state: { ...viewState, selected: engagement.id,
       events: state.events.filter(row => data.engagements.some(item=>item.workspaceId === row.workspaceId)),
       scheduledReviews: (state.scheduledReviews || []).filter(row=>data.engagements.some(item=>item.workspaceId === row.workspaceId)),
       extraFindings: (state.extraFindings || []).filter(row=>data.engagements.some(item=>item.workspaceId === row.workspaceId)),
@@ -480,7 +491,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
       .replaceAll(
         "{supplier}",
         ["C03"].includes(screen.id)
-          ? state.intake.supplier
+          ? viewState.intake.supplier
           : engagement.supplier,
       )
       .replaceAll("{service}", engagement.service);
@@ -515,11 +526,11 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
             <b>Osura</b>
             <small>ASSURANCE</small>
           </a>
-          <div className="workspace static-workspace">
-            <small>{role === "customer" ? "CUSTOMER" : role === "superadmin" ? "OSURA ADMINISTRATION" : "OSURA TEAM"}</small>
-            <b>{role === "customer" ? data.workspace.name : user?.name || "Inactive account"}</b>
+          {role === "customer" ? <label className="workspace customer-switcher"><small>CUSTOMER</small><select aria-label="Customer workspace" value={identity} onChange={e => switchIdentity(e.target.value)}>{customerUsers.map(row => <option key={row.id} value={row.id}>{sessionUser(model, row.id).workspaceName}</option>)}</select></label> : <div className="workspace static-workspace">
+            <small>{role === "superadmin" ? "OSURA ADMINISTRATION" : "OSURA TEAM"}</small>
+            <b>{user?.name || "Inactive account"}</b>
             {role === "analyst" && <small>{user.workspaceIds.length} assigned customer{user.workspaceIds.length === 1 ? "" : "s"}</small>}
-          </div>
+          </div>}
           <div className="nav-label">
             {role === "customer" ? "YOUR WORKSPACE" : "DELIVERY WORKSPACE"}
           </div>
@@ -547,7 +558,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
               Settings
             </button>
           </div>
-          <div className="profile"><span className="avatar">{role === "customer" ? "NP" : "OS"}</span><span><b>{user?.name || "Inactive account"}</b><small>{role === "superadmin" ? "Superadmin" : role === "analyst" ? `Analyst${user.canQA ? " · Independent QA" : ""}` : "Customer Decision Owner"}</small></span></div>
+          <div className="profile"><span className="avatar">{role === "customer" ? data.workspace.initials : "OS"}</span><span><b>{user?.name || "Inactive account"}</b><small>{role === "superadmin" ? "Superadmin" : role === "analyst" ? `Analyst${user.canQA ? " · Independent QA" : ""}` : "Customer Decision Owner"}</small></span></div>
         </aside>
       )}
       {mobileNav && <button className="nav-backdrop" aria-label="Close navigation backdrop" onClick={closeMobileNav} />}
@@ -597,7 +608,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
                   <Icon name="Bell" />
                 </button>
                 <span className="avatar">
-                  {role === "customer" ? "NP" : "OS"}
+                  {role === "customer" ? data.workspace.initials : "OS"}
                 </span>
               </>
             )}
@@ -620,13 +631,14 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
                 {screen.id === "S02" &&
                 state.supplierItem === "Privileged access review record"
                   ? "Provide access review evidence"
-                  : screen.id === "S03" ? state.supplierReceipts?.[state.supplierItem || data.request.items[0]] ? "Your response was received" : "Prepared receipt example"
+                  : screen.id === "S03" ? state.supplierReceipts?.[state.supplierItem || data.request.items[0]] ? "Your response was received" : "No response submitted for this item"
                   : screen.id === "C08" && engagement.id === "cedar" ? state.decision?.outcome === "Reject" ? "Rejected service · review history" : state.decision ? "Keep supplier assurance current" : "Assurance preview · no customer decision" : text(screen.title)}
               </h1>
               <p>
                 {screen.id === "S02" &&
                 state.supplierItem === "Privileged access review record"
                   ? "Provide a recent privileged access review for the contracted service."
+                  : screen.id === "S03" && !state.supplierReceipts?.[state.supplierItem || data.request.items[0]] ? "Submit the requested item to receive its own receipt. No response has been submitted for this item yet."
                   : text(screen.subtitle)}
               </p>
             </div>
@@ -1134,7 +1146,7 @@ function Overview(c) {
         <Card title="Choose how to explore" className="explore-choices">
           <div className="explore-choice">
             <span className="explore-icon"><Icon name="Eye" size={22}/></span>
-            <div><h3>See the complete story</h3><p>Explore a prepared example from evidence review to an owned customer decision. Your current work stays in this session.</p><Button icon="ArrowRight" disabled={!cedar} onClick={() => c.startTour()}>Explore the prepared example</Button></div>
+            <div><h3>See the complete story</h3><p>Explore a prepared example from evidence review to an owned customer decision. Your current work stays in this session.</p><Button icon="ArrowRight" disabled={!cedar} onClick={() => c.startTour()}>Explore the prepared example</Button>{!cedar && <small className="cell-sub">Select Northstar Payments for the full guided example.</small>}</div>
           </div>
           <div className="explore-choice">
             <span className="explore-icon"><Icon name="Building2" size={22}/></span>
@@ -1456,29 +1468,17 @@ function Intake(c) {
     }
     const id = `request-${Date.now()}`;
     const receipt = `REQ-${Date.now()}`;
-    c.event("Customer intake submitted", {
-      intakeSubmitted: true,
-      intakeReceipt: receipt,
-      selected: id,
-      extraEngagements: [
-        ...(state.extraEngagements || []),
-        {
-          id,
-          supplier: intake.supplier.trim(),
-          service: intake.use === "Another service" ? intake.purpose.trim() : intake.use || intake.purpose.trim(),
-          risk: "Pending triage",
-          stage: "Intake",
-          owner: data.workspace.analyst,
-          due: "Pending review",
-          plan: "To be confirmed",
-          client: data.workspace.name,
-          workspaceId: c.user?.workspaceId || "northstar",
-          receipt,
-          answers: { ...intake.answers },
-          attachments: structuredClone(intake.attachments),
-        },
-      ],
-    });
+    const requestedService = intake.use === "Another service" ? intake.purpose.trim() : intake.use || intake.purpose.trim();
+    const request = {
+      id, supplier: intake.supplier.trim(), service: requestedService,
+      risk: "Pending triage", stage: "Intake", owner: data.workspace.analyst,
+      due: "Pending review", plan: "To be confirmed", client: data.workspace.name,
+      workspaceId: c.user.workspaceId, receipt,
+      answers: { ...intake.answers }, attachments: structuredClone(intake.attachments),
+    };
+    const entry = actionEntry({ ...data, engagements: [...data.engagements, request], activeEngagementId: id, assessmentVersion: `${id}-intake` }, "Customer intake submitted", "Submitted business facts for analyst triage.");
+    update({ intakeSubmitted: true, intakeReceipt: receipt, selected: id,
+      extraEngagements: [...(state.extraEngagements || []), request], events: [...state.events, entry] });
     notify("Request submitted. Your receipt is saved until refresh.");
     navigate("C09");
   };
@@ -3360,7 +3360,7 @@ function Drawer(c) {
     return (
       <>
         <p>
-          Clear the current walkthrough’s decisions and drafts. Team assignments, fixture edits and accountability history remain until refresh.
+          Clear the demo’s decisions and drafts across all customers. Team assignments, fixture edits and accountability history remain until refresh.
         </p>
         <div className="form-actions">
           <Button onClick={() => setDrawer(null)}>Cancel</Button>
@@ -3377,7 +3377,7 @@ function Drawer(c) {
           Interactive UI preview · synthetic data · session memory (resets on refresh) · no
           live AI, email, authentication or production integrations.
         </Note>
-        <h3>Current access</h3><p>{c.user?.name} · {c.user?.role}. Demo identities can be selected only in the bottom toolbar.</p>
+        <h3>Current access</h3><p>{c.user?.name} · {c.user?.role}. Switch customers in the sidebar, or choose another demo role in the toolbar.</p>
         <Fields
           items={[
             ["Data files", "/data/workspace.json · schema · presentation · examples"],

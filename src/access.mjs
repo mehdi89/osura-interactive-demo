@@ -39,6 +39,7 @@ export function scopeWorkspace(base, user, customerFilter = "all") {
   const ids = new Set(rows.map(row => row.id));
   const suppliers = new Set(rows.map(row => row.supplier));
   const cedarVisible = ids.has("cedar");
+  const workspace = base.workspaceProfiles?.[user?.role === "customer" ? user.workspaceId : customerFilter] || base.workspace;
   const inWorkspace = id => workspaceIds.includes(id) && (customerFilter === "all" || id === customerFilter);
   const customerName = id => base.allEngagements.find(row=>row.workspaceId === id)?.client || id;
   const groups = new Map();
@@ -48,7 +49,16 @@ export function scopeWorkspace(base, user, customerFilter = "all") {
     if (!current) groups.set(key, { ...row, serviceCount: 1, risks: [row.risk] });
     else { current.serviceCount++; current.service = `${current.serviceCount} engagement scopes`; current.risk = "Varies"; current.risks.push(row.risk); }
   }
-  return { ...base, workspace: { ...base.workspace, name: user?.role === "customer" ? user.workspaceName || base.workspace.name : base.workspace.name }, access: user, activeEngagementId: "cedar", engagements: rows,
+  return { ...base, workspace, workspaceProfiles: Object.fromEntries(Object.entries(base.workspaceProfiles || {}).filter(([id]) => inWorkspace(id))),
+    access: user, activeEngagementId: cedarVisible ? "cedar" : rows[0]?.id || null, allEngagements: rows, engagements: rows,
+    ...(!cedarVisible ? {
+      request: { reference: null, recipient: "", due: null, message: "", items: [] }, referencePack: null, referenceReceipt: null,
+      initialState: { ...base.initialState, selected: rows[0]?.id || null, judgement: "", conclusion: "", requestStatus: "", qa: "", qaNote: "" },
+      intake: { supplier: "", domain: "", use: "", product: "", purpose: "", answers: {}, attachments: [] },
+      defaults: { ...base.defaults, conditionOwner: workspace.decisionOwner, conditionDue: "", conditionEvidence: "", rationale: "", supplierTeam: "" },
+      sourceHistory: [], relationshipHistory: [], policyConsequences: [], programmeTabs: {}, triage: [], bia: {},
+    } : {}),
+    operationsAttention: Object.fromEntries(Object.entries(base.operationsAttention).filter(([id]) => ids.has(id))),
     directory: [...groups.values()], findings: base.findings.filter(row => ids.has(row.engagementId)),
     documents: cedarVisible ? base.documents : [], requirements: cedarVisible ? base.requirements : [],
     suppliers: base.suppliers.filter(row => suppliers.has(row.name)),

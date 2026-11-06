@@ -1,16 +1,16 @@
 # Roles, assignments and accountability
 
-This release implements the approved simplification in the standalone interactive demo. Other recommendations in the separate UI review board remain pending.
+This release implements the approved roles and original concept layouts in the standalone interactive demo.
 
 | Role | View and powers |
 | --- | --- |
-| Customer | One company, with a static company label. The designated Decision Owner can record the final outcome. |
+| Customer | One company per demo identity. The sidebar customer selector switches between Northstar Payments (A. Morgan) and Ridgeway Finance (T. Singh). The designated Decision Owner can record a supported final outcome. |
 | Analyst | Combined records for all assigned customers; a Customer filter narrows the view. Can record evidence conclusions and suggested customer outcomes. |
 | Superadmin | Add/update/deactivate analysts, grant independent QA permission, assign/remove customers, inspect access history and use the synthetic-data editor. Superadmin alone cannot recommend, QA or sign for a customer. |
 
 Independent QA is a permission on an analyst, not another administrative role. It requires access to the customer and a different person from the lead analyst and anyone who recorded analysis in the current review. Saving a new recommendation invalidates the previous QA release state even when the conclusion stays unchanged. Assigned analysts can inspect a customer decision read only; the shared decision mutation also checks the designated customer actor.
 
-No product workspace switcher remains. The named **Demo user** selector in the bottom presentation bar is the only impersonation control. The existing supplier invitation walkthrough remains separate.
+The sidebar customer selector changes the active customer demo identity; it does not grant one customer user access to another company. The **Demo user** selector in the bottom presentation bar also switches roles. The supplier invitation walkthrough remains separate. These controls simulate identity switching and are not real authentication.
 
 ## Try the flow
 
@@ -35,6 +35,7 @@ History is append-only through the session UI. Resetting the walkthrough retains
 - `src/RoleAdmin.jsx`: superadmin team/access forms and scoped activity viewer/export.
 - `src/state.mjs`: recommendation, QA and customer-decision guards and attribution.
 - `src/main.jsx`: static company/team labels, demo identities, customer filter, read-only decision view and route-role guards.
+- `src/data-model.mjs`: derives customer-specific workspace metadata; Ridgeway has no configured overlay, assigned case reviewer or prepared QA release. Scoped Ridgeway views exclude CedarCloud's example packs, source histories and supplier request.
 - `public/data/workspace.json`: synthetic users and customer assignments join the existing relational seed model. Schema and generated PostgreSQL reference include both tables.
 
 ## Prototype boundary

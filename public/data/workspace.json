@@ -391,7 +391,7 @@
       "overlayVersionId": null,
       "analystId": null,
       "qaReviewerId": null,
-      "decisionOwnerId": null
+      "decisionOwnerId": "t-singh"
     },
     {
       "id": "kite",
@@ -407,7 +407,7 @@
       "overlayVersionId": null,
       "analystId": null,
       "qaReviewerId": null,
-      "decisionOwnerId": null
+      "decisionOwnerId": "t-singh"
     }
   ],
   "requirements": [
@@ -982,6 +982,15 @@
       "email": "morgan@northstar.example",
       "role": "customer",
       "workspaceId": "northstar",
+      "active": true,
+      "canQA": false
+    },
+    {
+      "id": "customer-singh",
+      "actorId": "t-singh",
+      "email": "singh@ridgeway.example",
+      "role": "customer",
+      "workspaceId": "ridgeway",
       "active": true,
       "canQA": false
     },

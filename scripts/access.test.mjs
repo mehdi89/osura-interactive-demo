@@ -26,6 +26,7 @@ test("customers see one company; analysts combine all and only assigned customer
 });
 
 test("superadmin creates, changes and deactivates analysts; access follows assignments immediately", () => {
+  const originalUsers = structuredClone(model.users);
   const result = saveAnalyst(model,admin,{name:"New Analyst",email:"new@osura.example",active:true,canQA:false,workspaceIds:["ridgeway"]},validate);
   let user = sessionUser(result.model,result.userId);
   assert.equal(scopeWorkspace(base,user).engagements.length,2);
@@ -33,7 +34,34 @@ test("superadmin creates, changes and deactivates analysts; access follows assig
   user = sessionUser(updated.model,user.id);assert.equal(scopeWorkspace(base,user).engagements.length,9);assert.equal(user.canQA,true);
   const deactivated = saveAnalyst(updated.model,admin,{id:user.id,name:user.name,email:user.email,active:false,canQA:true,workspaceIds:["northstar"]},validate);
   assert.equal(scopeWorkspace(base,sessionUser(deactivated.model,user.id)).engagements.length,0);
-  assert.equal(model.users.length,4);
+  assert.deepEqual(model.users, originalUsers);
+});
+
+test("the second customer has its own identity, metadata and portfolio without Cedar reference records", () => {
+  const user = sessionUser(model, "customer-singh");
+  assert.deepEqual(user.workspaceIds, ["ridgeway"]);
+  assert.equal(user.name, "T. Singh");
+  const ridgeway = context(user.id);
+  assert.deepEqual(ridgeway.engagements.map(row => row.id), ["clearbridge", "kite"]);
+  assert.deepEqual(ridgeway.allEngagements, ridgeway.engagements);
+  assert.equal(ridgeway.workspace.id, "ridgeway");
+  assert.equal(ridgeway.workspace.name, "Ridgeway Finance");
+  assert.equal(ridgeway.workspace.initials, "RF");
+  assert.equal(ridgeway.workspace.decisionOwner, "T. Singh");
+  assert.equal(ridgeway.workspace.overlay, "Not configured");
+  assert.equal(ridgeway.workspace.qaReviewerId, null);
+  assert.equal(ridgeway.activeEngagementId, "clearbridge");
+  assert.equal(ridgeway.referencePack, null);
+  assert.equal(ridgeway.referenceReceipt, null);
+  assert.deepEqual(ridgeway.request, { reference: null, recipient: "", due: null, message: "", items: [] });
+  assert.deepEqual(ridgeway.requirements, []);
+  assert.deepEqual(ridgeway.documents, []);
+  assert.equal(ridgeway.intake.supplier, "");
+  assert.equal(ridgeway.initialState.qa, "");
+  assert.doesNotMatch(JSON.stringify(ridgeway), /CedarCloud|Northstar Payments|A\. Morgan|QA reviewer 02/);
+  assert.throws(() => recordDecision(createState(base), ridgeway, "Approve", "Proceed", null), /scoped/);
+  assert.deepEqual(visibleAudit([{ id: "n", workspaceId: "northstar", role: "customer" }, { id: "r", workspaceId: "ridgeway", role: "customer" }], user).map(row => row.id), ["r"]);
+  assert.equal(context("customer-morgan").workspace.name, "Northstar Payments");
 });
 
 test("assignment administration rejects non-admins, duplicates and invalid references", () => {
