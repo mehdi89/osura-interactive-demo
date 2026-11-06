@@ -18,6 +18,7 @@ This follows [Claude's review of snapshot e0450282f4de](claude-client-handover-r
 | P3 · Decision validation | Missing outcome, blank rationale and incomplete obligation fields receive specific feedback and focus. |
 | P3 · Case CTA and duplicate filter | O01 says Open case. O16 uses the topbar Customer filter and no longer has a second customer selector or stored hidden customer subfilter. |
 | P3 · Small labels | Retained intentional 11px eyebrows/badges; body text was not reduced to mask layout defects. |
+| Live-check follow-up · Cached metadata | Existing browser sessions could combine the new JavaScript with older unversioned JSON. Bootstrap requests now bypass the HTTP cache, and the v2 Nginx metadata responses use Cache-Control: no-store. |
 
 ## Verification
 

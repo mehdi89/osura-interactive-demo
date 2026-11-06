@@ -3786,7 +3786,7 @@ function downloadJSON(name, value) {
 }
 Promise.all(
   ["/data/workspace.json", "/data/presentation.json", "/data/examples.json", "/schemas/workspace.schema.json", "/data/screens.json"].map((url) =>
-    fetch(url).then((r) => {
+    fetch(url, { cache: "no-store" }).then((r) => {
       if (!r.ok) throw new Error(`Unable to load ${url}`);
       return r.json();
     }),
