@@ -608,7 +608,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
             <div><span className="micro-label">PREPARED EXAMPLE · STEP {tourStep + 1} OF {tour.length} · {tour[tourStep].actor}</span><h2>{tour[tourStep].title}</h2><p>{tour[tourStep].body}</p><small>The guide changes the demo perspective only. It never submits evidence, passes QA or signs for you.</small></div>
             <div className="tour-actions"><Button small disabled={tourStep === 0} onClick={() => showTourStep(tourStep - 1)}>Previous</Button><Button small primary onClick={() => tourStep === tour.length - 1 ? setTourStep(null) : showTourStep(tourStep + 1)}>{tourStep === tour.length - 1 ? "Finish guide" : "Next handoff"}</Button><button aria-label="Close guided example" onClick={() => setTourStep(null)}><Icon name="X" /></button></div>
           </section>}
-          {state.returnTo && state.returnTo.route !== screen.id && <Link onClick={() => { const back = state.returnTo; update({ selected: back.selected, returnTo: null }); navigate(back.route); }}>← Back to {state.returnTo.label}</Link>}
+          {state.returnTo && catalog.screens.some(row => row.id === state.returnTo.route && row.role === role) && state.returnTo.route !== screen.id && <Link onClick={() => { const back = state.returnTo; update({ selected: back.selected, returnTo: null }); navigate(back.route); }}>← Back to {state.returnTo.label}</Link>}
           <div className="page-heading">
             <div>
               <div className="eyebrow">
