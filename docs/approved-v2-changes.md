@@ -111,3 +111,9 @@ V2 review URL: https://osura-v2.dev.fems.education. The original https://osura.d
 Deploy this branch as a separate Coolify service on the recovered control-plane/dev host `172.30.18.16`, with a locally built `osura-interactive-demo:<commit>` nginx image and no published host port. Static artifacts and the image build recipe are retained under `/data/osura-demo/releases/<commit>/`; Coolify stores the service Compose definition. Deployments are manual; Git pushes do not update this host. No source credentials or environment secrets are required.
 
 Validation: `npm test`, `npm run build`, browser interaction checks and public HTTPS/asset comparison.
+
+## Final verification
+
+The follow-up audit gaps are closed: both assurance links accept ordinary click events; register stages, step indicators, customer-action counts and readiness share `workflowStatus`; QA send-back returns ownership to the analyst; displayed dates use `dd MMM yyyy`; risk captions consistently identify CTP inherent risk. Direct navigation to intake review returns to the first missing field or business question.
+
+All 37 automated checks and the production build pass. Browser checks exercised QA send-back, the resulting register and customer views, blank customer intent, scoped decision confirmation, signed-pack continuation, monitoring navigation and direct intake validation. The earlier 390px containment and supplier-receipt checks remain applicable. No schema or seed records changed.

@@ -287,8 +287,8 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
     ].map((e) => ({
       ...e,
       owner: state.owners?.[e.id] || e.owner,
-      ...(e.id === "cedar" && state.decision
-        ? { stage: state.decision.outcome === "Reject" ? "Rejected" : "Active" }
+      ...(e.id === "cedar"
+        ? { stage: workflowStatus(state).stage }
         : {}),
     })),
   };
@@ -631,7 +631,7 @@ function primaryAction(id, c) {
       "Submit request",
       () => document.getElementById("intake-form").requestSubmit(),
     ],
-    C09: ["Review decision", "C06"],
+    C09: [state.decision ? "Open decision" : workflowStatus(state).ready ? "Review decision" : "View review status", state.decision ? "C07" : "C06"],
     C06: state.decision ? ["Open Decision Pack", "C07"] : null,
     C07: ["Print / Save PDF", () => window.print()],
     C08: ["Report a change", () => setDrawer("change")],
@@ -991,6 +991,7 @@ function Page(c) {
 function Overview(c) {
   const { data, navigate, state, setDrawer } = c;
   const status = workflowStatus(state);
+  const customerActions = data.overviewActions.filter(action => action.engagement === "cedar" ? status.ready : !state.owners?.[action.engagement]);
   return (
     <>
       <Card title="Evidence reviewed. Your team decides.">
@@ -1020,9 +1021,9 @@ function Overview(c) {
             `Across ${data.engagements.filter((e) => ["High", "Critical"].includes(e.risk)).length} engagements`,
           ],
           [
-            state.decision ? 1 : 2,
+            customerActions.length,
             "Actions for your team",
-            "One decision · one owner",
+            `${customerActions.filter(action => action.engagement === "cedar").length} decision ready · ${customerActions.filter(action => action.engagement !== "cedar").length} business follow-up`,
           ],
         ]}
       />
@@ -1031,7 +1032,7 @@ function Overview(c) {
           title="Your actions"
           action={<Link onClick={() => navigate("C15")}>All actions →</Link>}
         >
-          {data.overviewActions.map((action) => (
+          {customerActions.map((action) => (
             <div className="action-row" key={action.engagement}>
               <div>
                 <b>{action.engagement === "cedar" ? status.label : action.title}</b>
@@ -1066,6 +1067,7 @@ function Overview(c) {
               )}
             </div>
           ))}
+          {!customerActions.length && <Note>No customer action is currently required. Review status and next ownership are shown in the prepared example above.</Note>}
         </Card>
         <Card
           title="Engagement exposure"
@@ -1107,10 +1109,7 @@ function Overview(c) {
         <Card
           title="Upcoming assurance"
           action={
-            <Link onClick={item => {
-              const record = data.engagements.find(row => item[1].includes(row.supplier));
-              if (record) { c.update({ selected: record.id }); navigate("C08"); }
-            }}>Monitoring plan →</Link>
+            <Link onClick={() => navigate("C08")}>Monitoring plan →</Link>
           }
         >
           <Timeline
@@ -1293,7 +1292,7 @@ function Registers(c) {
               }}
             />
           </Card>
-          <Card title="Inherent risk across services">
+          <Card title="CTP inherent risk across services">
             <Ring data={data} />
           </Card>
         </div>
@@ -1400,7 +1399,7 @@ function RiskGrid(c) {
   return (
     <div className="risk-grid">
       <div className="risk-grid-row">
-        <span>CTP TIER</span>
+        <span>CTP inherent risk</span>
         {stages.map((s) => (
           <small key={s}>{s}</small>
         ))}
@@ -1493,7 +1492,7 @@ function DirectoryDetails(c) {
               <th>Service</th>
               <th>Supplier</th>
               <th>Client</th>
-              <th>CTP tier</th>
+              <th>CTP inherent risk</th>
               <th>Review state</th>
             </tr>
           </thead>
@@ -1631,12 +1630,19 @@ function Intake(c) {
   const intake = state.intake;
   const step = ["C02", "C03", "C04", "C05"].indexOf(c.screen.id);
   const [query, setQuery] = useState(intake.supplier);
-  const [error, setError] = useState("");
-  const [missingQuestion, setMissingQuestion] = useState(null);
+  const issue = state.intakeIssue?.screen === c.screen.id ? state.intakeIssue : null;
+  const [error, setError] = useState(issue?.message || "");
+  const [missingQuestion, setMissingQuestion] = useState(issue?.question ?? null);
+  useEffect(() => {
+    if (!issue) return;
+    setError(issue.message);
+    setMissingQuestion(issue.question ?? null);
+    requestAnimationFrame(() => document.getElementById(issue.target)?.focus());
+  }, [issue]);
   const edit = (patch) => {
     setError("");
     setMissingQuestion(null);
-    update({ intake: { ...intake, ...patch }, intakeSubmitted: false });
+    update({ intake: { ...intake, ...patch }, intakeSubmitted: false, intakeIssue: null });
   };
   const questions = [
     "Will the supplier process personal or payment data?",
@@ -1673,14 +1679,17 @@ function Intake(c) {
       navigate("C09");
       return;
     }
-    if (
-      !intake.supplier.trim() ||
-      (!intake.use && !intake.purpose.trim()) ||
-      questions.some((_, i) => !["Yes", "No", "Unknown"].includes(intake.answers[i]))
-    ) {
-      setError(
-        "Complete supplier, intended use and all business context questions before submitting.",
-      );
+    const missing = questions.findIndex((_, i) => !["Yes", "No", "Unknown"].includes(intake.answers[i]));
+    const incomplete = !intake.supplier.trim()
+      ? { screen: "C02", target: "intake-supplier", message: "Enter or select the supplier before submitting." }
+      : !intake.use && !intake.purpose.trim()
+        ? { screen: "C03", target: "intake-purpose", message: "Select an intended use or describe your purpose before submitting." }
+        : missing !== -1
+          ? { screen: "C04", target: `intake-question-${missing}`, question: missing, message: `Answer question ${missing + 1}: ${questions[missing]} Unknown is a valid answer.` }
+          : null;
+    if (incomplete) {
+      update({ intakeIssue: incomplete });
+      navigate(incomplete.screen);
       return;
     }
     const id = `request-${Date.now()}`;
@@ -1753,6 +1762,7 @@ function Intake(c) {
                   <div className="search-input">
                     <Icon name="Search" size={15} />
                     <input
+                      id="intake-supplier"
                       value={query}
                       placeholder="Search supplier or website"
                       onChange={(e) => {
@@ -2133,7 +2143,7 @@ function SecondaryCase(c) {
     <>
       <div className="supplier-banner">
         <Entity name={engagement.supplier} service={engagement.service} />
-        <Badge>{engagement.risk}</Badge>
+        <Badge>CTP inherent risk: {engagement.risk}</Badge>
         <Badge>{engagement.stage}</Badge>
       </div>
       <div className="grid wide-left">
@@ -2213,7 +2223,7 @@ function Assessment(c) {
   const [tab, setTab] = useState("Summary");
   const status = workflowStatus(state);
   const pending = state.conclusion === "Needs review" || Object.values(state.pendingReviews || {}).some(Boolean);
-  const activeStep = state.decision ? 5 : pending ? 2 : status.ready ? 4 : 3;
+  const activeStep = status.step;
   const steps = [
     "Intake",
     "CTP & scope",
@@ -2225,7 +2235,7 @@ function Assessment(c) {
     <>
       <div className="supplier-banner">
         <Entity name={engagement.supplier} service={engagement.service} />
-        <Badge>{engagement.risk}</Badge>
+        <Badge>CTP inherent risk: {engagement.risk}</Badge>
         <Badge>
           {status.label}
         </Badge>
@@ -2295,7 +2305,7 @@ function Assessment(c) {
             <Timeline
               items={state.events.map((e) => [
                 e.message,
-                new Date(e.at).toLocaleString(),
+                formatDate(e.at),
                 "Recorded",
               ])}
             />
@@ -2664,7 +2674,7 @@ function EvidenceReview(c) {
     <>
       <Scope {...c} />
       <Note>Review drafts stay in this session until refresh. Source excerpts are synthetic; original PDF viewing is unavailable.</Note>
-      <Note>{savedReview ? `Last recommendation: ${savedReview.actor} · ${new Date(savedReview.at).toLocaleString()}` : "Prepared conclusion · no analyst action recorded in this session."}</Note>
+      <Note>{savedReview ? `Last recommendation: ${savedReview.actor} · ${formatDate(savedReview.at)}` : "Prepared conclusion · no analyst action recorded in this session."}</Note>
       <Tabs
         tabs={
           customer
@@ -2690,7 +2700,7 @@ function EvidenceReview(c) {
                 ? [
                     [
                       state.supplierReceipt.fileName,
-                      `Received ${new Date(state.supplierReceipt.at).toLocaleDateString()}`,
+                      `Received ${formatDate(state.supplierReceipt.at)}`,
                       "Needs review",
                     ],
                   ]
@@ -2982,8 +2992,8 @@ function Decision(c) {
           "QA",
           "Decision",
         ].map((s, i) => (
-          <span key={s} className={i < (status.ready || state.decision ? 4 : 3) ? "done" : i === (status.ready || state.decision ? 4 : 3) ? "current" : ""}>
-            {i < (status.ready || state.decision ? 4 : 3) ? "✓ " : ""}
+          <span key={s} aria-current={i === status.step ? "step" : undefined} className={i < status.step ? "done" : i === status.step ? "current" : ""}>
+            {i < status.step ? "✓ " : ""}
             {s}
           </span>
         ))}
@@ -2996,7 +3006,7 @@ function Decision(c) {
             <Badge>QA: {state.qa}</Badge>
           </div>
           <h2 className="memo-title">{state.reviews?.["R-07"]?.recommendation || "Approve with conditions"}</h2>
-          <small>{state.reviews?.["R-07"] ? `Recommended by ${state.reviews["R-07"].actor} · ${new Date(state.reviews["R-07"].at).toLocaleString()}` : "Prepared analyst recommendation · no session action recorded"}</small>
+          <small>{state.reviews?.["R-07"] ? `Recommended by ${state.reviews["R-07"].actor} · ${formatDate(state.reviews["R-07"].at)}` : "Prepared analyst recommendation · no session action recorded"}</small>
           <p>
             {state.reviews?.["R-07"]?.judgement || `${engagement.supplier} is material to payment operations. The prepared recommendation is conditional because the exercise evidence does not establish full service coverage.`}
           </p>
@@ -3035,7 +3045,7 @@ function Decision(c) {
           </div>
           <Fields items={[["Proposed condition owner", data.defaults.conditionOwner || data.workspace.decisionOwner], ["Proposed due date", formatDate(data.defaults.conditionDue)], ["Proposed required evidence", data.defaults.conditionEvidence]]}/>
           <Note>The analyst recommendation and proposed obligation are read-only advice. Choose your own customer outcome and rationale.</Note>
-          <Fields items={[["QA reviewer",state.qaReview?.actor || "Not recorded"],["QA recorded",state.qaReview?.prepared ? "Prepared fixture" : state.qaReview?.at ? new Date(state.qaReview.at).toLocaleString() : "Not recorded"],["QA rationale",state.qaNote]]}/>
+          <Fields items={[["QA reviewer",state.qaReview?.actor || "Not recorded"],["QA recorded",state.qaReview?.prepared ? "Prepared fixture" : state.qaReview?.at ? formatDate(state.qaReview.at) : "Not recorded"],["QA rationale",state.qaNote]]}/>
           <Link onClick={() => c.setDrawer("audit")}>Inspect review history →</Link>
           <Link onClick={() => navigate("C13")}>Inspect complete evidence →</Link>
         </Card>
@@ -3052,7 +3062,7 @@ function Decision(c) {
               <Fields
                 items={[
                   ["Signed by", state.decision.actor],
-                  ["Recorded", new Date(state.decision.at).toLocaleString()],
+                  ["Recorded", formatDate(state.decision.at)],
                   ["Rationale", state.decision.rationale],
                 ]}
               />
@@ -3319,7 +3329,7 @@ function Pack(c) {
                     "Signed by",
                     `${pack.decision.actor} · customer decision-maker`,
                   ],
-                  ["Recorded", new Date(pack.decision.at).toLocaleString()],
+                  ["Recorded", formatDate(pack.decision.at)],
                   ["CTP inherent risk", pack.engagement.risk],
                   ["Policy / review", `${pack.overlay} · ${pack.policy}`],
                   [
@@ -3354,7 +3364,7 @@ function Pack(c) {
               <p>
                 {pack.qa} · {pack.qaReview?.actor || data.workspace.qaReviewer}
               </p>
-              <p>{pack.qaNote}</p><p>{pack.qaReview && !pack.qaReview.prepared ? "Recorded independent QA" : "Prepared fixture QA"} · {pack.qaReview?.at ? new Date(pack.qaReview.at).toLocaleString() : "Reference date"}</p>
+              <p>{pack.qaNote}</p><p>{pack.qaReview && !pack.qaReview.prepared ? "Recorded independent QA" : "Prepared fixture QA"} · {pack.qaReview?.at ? formatDate(pack.qaReview.at) : "Reference date"}</p>
               <Note>
                 Frozen synthetic preview · no production signature or live
                 assurance claim.
@@ -3392,10 +3402,7 @@ function Pack(c) {
                 Print / Save PDF
               </Button>
             </div>
-            {!preview && ["Approve", "Approve with conditions"].includes(pack.decision.outcome) && <Link onClick={item => {
-              const record = data.engagements.find(row => item[1].includes(row.supplier));
-              if (record) { c.update({ selected: record.id }); navigate("C08"); }
-            }}>Continue to active assurance →</Link>}
+            {!preview && ["Approve", "Approve with conditions"].includes(pack.decision.outcome) && <Link onClick={() => { c.update({ selected: pack.engagement.id }); navigate("C08"); }}>Continue to active assurance →</Link>}
             {!preview && pack.decision.outcome === "Reject" && <Note>This service was rejected and has no active assurance relationship.</Note>}
           </Card>
         </div>
@@ -3648,7 +3655,7 @@ function Operations(c) {
                 <tr>
                   <th>Client / engagement</th>
                   <th>Why human attention is required</th>
-                  <th>CTP tier</th>
+                  <th>CTP inherent risk</th>
                   <th>Owner</th>
                   <th>Due</th>
                   <th>Next action</th>
@@ -3757,7 +3764,7 @@ function Impact(c) {
         <Card title="Routing effect">
           <Fields
             items={[
-              ["Inherent risk", <Badge>{engagement.risk}</Badge>],
+              ["CTP inherent risk", <Badge>{engagement.risk}</Badge>],
               ["Assessment route", engagement.plan],
               ["Control requirements", "Security, privacy and resilience"],
               ["Human gates", "Analyst + independent QA"],
@@ -3926,7 +3933,7 @@ function FollowUp(c) {
           </Label>
           <Fields
             items={[
-              ["Due date", data.request.due],
+              ["Due date", formatDate(data.request.due)],
               ["Requested requirements", 2],
               ["Messages", "1 consolidated request"],
             ]}
@@ -4197,7 +4204,7 @@ function Quality(c) {
     <>
       <Scope {...c} />
       <Note>QA readiness: {status.label}. Next owner: {status.nextOwner}. Drafts stay in this session until refresh.</Note>
-      <Note>{state.qaReview?.prepared ? "Prepared fixture QA" : "Latest QA"}: {state.qaReview?.actor || "Not recorded"} · {state.qaReview?.at ? new Date(state.qaReview.at).toLocaleString() : "No timestamp"}. Acting as {c.user?.name}; independent QA permission is required.</Note>
+      <Note>{state.qaReview?.prepared ? "Prepared fixture QA" : "Latest QA"}: {state.qaReview?.actor || "Not recorded"} · {state.qaReview?.at ? formatDate(state.qaReview.at) : "No timestamp"}. Acting as {c.user?.name}; independent QA permission is required.</Note>
       <div className="grid equal">
         <Card title="Challenge brief">
           <div className="list-row">
@@ -5117,7 +5124,7 @@ function Drawer(c) {
           ...data.notifications.map(row => /decision/i.test(row[0]) ? [workflowStatus(state).label, `CedarCloud · Next owner: ${workflowStatus(state).nextOwner}`, workflowStatus(state).ready ? "Ready" : "Review"] : row),
           ...state.events.map((e) => [
             e.message,
-            new Date(e.at).toLocaleString(),
+            formatDate(e.at),
             "Recorded",
           ]),
         ]}
@@ -5285,7 +5292,7 @@ function Drawer(c) {
         />
         <Note>
           Configuration is a synthetic, published reference. This UI does not
-          alter approved policy or calculate a new CTP tier.
+          alter approved policy or calculate a new CTP inherent risk.
         </Note>
       </>
     );

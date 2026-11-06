@@ -231,15 +231,21 @@ test("QA send-back requires an analyst revision and readiness agrees with the de
   const sentBack = recordQA(createState(data), qaData, "Rework requested", "Explain service scope");
   assert.equal(workflowStatus(sentBack).label, "Analyst revision required");
   assert.equal(workflowStatus(sentBack).nextOwner, "Analyst");
+  assert.deepEqual([workflowStatus(sentBack).stage, workflowStatus(sentBack).step], ["Findings", 2]);
   assert.throws(() => recordQA(sentBack, qaData, "Passed", "Changed my mind"), /must revise/);
   const revised = saveRequirementReview(sentBack, analystData, "R-07", {
     recommendation: "Approve with conditions", judgement: "Exact service scope considered", conclusion: "Partially supported", reason: "",
   });
   assert.equal(workflowStatus(revised).label, "Independent QA required");
+  assert.deepEqual([workflowStatus(revised).stage, workflowStatus(revised).step], ["QA", 3]);
   const passed = recordQA(revised, qaData, "Passed with condition", "Independently checked revision");
   assert.equal(workflowStatus(passed).ready, true);
+  assert.deepEqual([workflowStatus(passed).stage, workflowStatus(passed).step], ["Decision", 4]);
+  const approved = recordDecision(passed, data, "Approve", "Service scope is acceptable", null);
+  assert.deepEqual([workflowStatus(approved).stage, workflowStatus(approved).step], ["Active", 5]);
   const signed = recordDecision(passed, data, "Reject", "Service scope is unacceptable", null);
   assert.equal(workflowStatus(signed).label, "Rejected");
+  assert.deepEqual([workflowStatus(signed).stage, workflowStatus(signed).step], ["Rejected", 5]);
   assert.equal(workflowStatus(signed).ready, false);
 });
 
@@ -248,6 +254,7 @@ test("ordinary evidence uploads invalidate readiness and require their own revie
   const uploaded = addEvidence(initial, analystData, { name: "access.pdf", requirement: "IAM-04" });
   assert.equal(uploaded.pendingReviews["IAM-04"], true);
   assert.equal(workflowStatus(uploaded).label, "Evidence re-review required");
+  assert.deepEqual([workflowStatus(uploaded).stage, workflowStatus(uploaded).step], ["Evidence", 2]);
   assert.throws(() => recordDecision(uploaded, data, "Approve", "Proceed", null), /supplier evidence/);
   assert.throws(() => addEvidence(initial, analystData, { name: "  " }), /file/);
   assert.throws(() => addEvidence(initial, analystData, { name: "file.pdf", requirement: "missing" }), /valid/);

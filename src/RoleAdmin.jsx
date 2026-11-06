@@ -11,7 +11,7 @@ export function AuditTrail({ entries, user }) {
     <div className="card-body"><p>Named actions in this demo session. Prepared fixture reviews are labelled separately. Refresh clears this simulated history.</p>
       {!rows.length && <p className="note">No actions recorded yet in your accessible customers.</p>}
       <div className="audit-list">{rows.map(row => <article key={row.id} className="audit-item">
-        <strong>{row.action}{row.recommendation || row.outcome || row.conclusion ? ` · ${row.recommendation || row.outcome || row.conclusion}` : ""}</strong><p>{row.actor} · {row.role} · {new Date(row.at).toLocaleString()}</p>
+        <strong>{row.action}{row.recommendation || row.outcome || row.conclusion ? ` · ${row.recommendation || row.outcome || row.conclusion}` : ""}</strong><p>{row.actor} · {row.role} · {new Date(row.at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</p>
         <p>{row.customer || "Team administration"}{row.service ? ` / ${row.service}` : ""}</p><p>{row.rationale}</p>
         <details><summary>View actor IDs, evidence and change details</summary><pre>{JSON.stringify(row, null, 2)}</pre></details>
       </article>)}</div>

@@ -12,12 +12,12 @@ import { createState, recordDecision } from "../src/state.mjs";
 // Render the actual screen functions without starting the browser-only app bootstrap.
 const source = await readFile(new URL("../src/main.jsx", import.meta.url), "utf8");
 const bundled = await build({
-  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { Decision, Pack, Closure, EvidenceReview };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
+  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { Decision, Pack, Closure, EvidenceReview, Overview };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
   bundle: true, platform: "node", format: "cjs", packages: "external", loader: { ".css": "empty" }, write: false,
 });
 const module = { exports: {} };
 new Function("require", "module", "exports", bundled.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports);
-const { Decision, Pack, Closure, EvidenceReview } = module.exports;
+const { Decision, Pack, Closure, EvidenceReview, Overview } = module.exports;
 const readJSON = async name => JSON.parse(await readFile(new URL(`../public/data/${name}.json`, import.meta.url)));
 const model = await readJSON("workspace");
 const user = sessionUser(model, "customer-morgan");
@@ -71,4 +71,39 @@ test("source inspection uses the current file and version rather than the origin
   assert.match(html, /NEW-03/);
   assert.match(html, /View source excerpt/);
   assert.doesNotMatch(html, /View original/);
+});
+
+function findElement(element, text) {
+  if (!React.isValidElement(element)) return null;
+  if (element.props.children === text && typeof element.props.onClick === "function") return element;
+  for (const value of [element.props.action, ...React.Children.toArray(element.props.children)]) {
+    const found = findElement(value, text);
+    if (found) return found;
+  }
+  return null;
+}
+
+test("assurance navigation accepts click events and preserves the signed engagement", () => {
+  const c = context();
+  const routes = [];
+  const patches = [];
+  c.navigate = route => routes.push(route);
+  c.update = patch => patches.push(patch);
+  findElement(Overview(c), "Monitoring plan →").props.onClick({ type: "click" });
+  assert.equal(routes.at(-1), "C08");
+  c.state = recordDecision(c.state, c.data, "Approve", "Evidence is acceptable.", null);
+  findElement(Pack(c), "Continue to active assurance →").props.onClick({ type: "click" });
+  assert.equal(routes.at(-1), "C08");
+  assert.equal(patches.at(-1).selected, c.state.signedPack.engagement.id);
+});
+
+test("customer overview and decision steps do not claim customer action during rework", () => {
+  const c = context();
+  c.state = { ...c.state, qa: "Rework requested", qaReworkRevision: 0 };
+  const overview = render(Overview, c);
+  assert.doesNotMatch(overview, />Review decision</);
+  assert.match(overview, /0 decision ready/);
+  assert.match(render(Decision, c), /aria-current="step" class="current">Evidence &amp; follow-up/);
+  c.state = { ...c.state, qaReworkRevision: null, pendingReviews: { "IAM-04": true } };
+  assert.match(render(Decision, c), /aria-current="step" class="current">Evidence &amp; follow-up/);
 });

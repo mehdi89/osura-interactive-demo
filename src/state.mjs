@@ -229,15 +229,17 @@ export function workflowStatus(state) {
   if (state.decision) return {
     label: state.decision.outcome === "Reject" ? "Rejected" : state.decision.outcome === "Approve" ? "Approved" : "Approved with conditions",
     nextOwner: state.conditionClosed ? "Customer" : state.decision.condition?.owner || "Customer",
+    stage: state.decision.outcome === "Reject" ? "Rejected" : "Active",
+    step: 5,
     ready: false,
   };
   if (state.conclusion === "Needs review" || Object.values(state.pendingReviews || {}).some(Boolean))
-    return { label: "Evidence re-review required", nextOwner: "Analyst", ready: false };
+    return { label: "Evidence re-review required", nextOwner: "Analyst", stage: "Evidence", step: 2, ready: false };
   if (state.qaReworkRevision != null && (state.analysisRevision || 0) <= state.qaReworkRevision)
-    return { label: "Analyst revision required", nextOwner: "Analyst", ready: false };
+    return { label: "Analyst revision required", nextOwner: "Analyst", stage: "Findings", step: 2, ready: false };
   if (!state.qa.startsWith("Passed"))
-    return { label: "Independent QA required", nextOwner: "Independent QA reviewer", ready: false };
-  return { label: "Ready for customer decision", nextOwner: "Customer Decision Owner", ready: true };
+    return { label: "Independent QA required", nextOwner: "Independent QA reviewer", stage: "QA", step: 3, ready: false };
+  return { label: "Ready for customer decision", nextOwner: "Customer Decision Owner", stage: "Decision", step: 4, ready: true };
 }
 
 export function addEvidence(state, data, document) {
