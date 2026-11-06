@@ -72,6 +72,11 @@ import {
   saveRequirementReview,
   recordQA,
   mergeWorkflowPatch,
+  workflowStatus,
+  addEvidence,
+  filterSupplierServices,
+  canCloseCondition,
+  closeCondition,
 } from "./state.mjs";
 import "./styles.css";
 import DataEditor from "./DataEditor.jsx";
@@ -140,6 +145,7 @@ const Tabs = ({ tabs, value, onChange }) => (
       <button
         key={tab}
         className={value === tab ? "active" : ""}
+        aria-pressed={value === tab}
         onClick={() => onChange(tab)}
       >
         {tab}
@@ -165,6 +171,12 @@ const Label = ({ title, children, hint }) => (
   </label>
 );
 
+function formatDate(value) {
+  if (!value || value === "—") return value || "—";
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 function Demo({ initialModel, presentation, examples, schema, catalog, validate }) {
   const [model, setModel] = useState(initialModel);
   const [identity, setIdentity] = useState("customer-morgan");
@@ -176,6 +188,7 @@ function Demo({ initialModel, presentation, examples, schema, catalog, validate 
 }
 
 function App({ data: baseData, catalog, model, schema, validate, onDataChange, user, identity, onSwitch, auditLog, onAudit }) {
+  const initialModel = React.useRef(model);
   const [customerFilter, setCustomerFilter] = useState("all");
   const scopedData = scopeWorkspace(baseData, user, user?.role === "analyst" ? customerFilter : "all");
   let data = scopedData;
@@ -222,8 +235,14 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
             r.id === "R-07" ? 0 : r.id === "IAM-04" ? 1 : -1
           ]
         ];
+      const upload = (state.uploads || []).filter(doc => doc.requirement === r.id || !doc.requirement).at(-1);
+      const sourceDocument = upload && (!receipt || upload.receivedAt > receipt.at)
+        ? { name: upload.name, version: upload.version, date: upload.receivedAt, page: "Metadata only · no extraction" }
+        : receipt ? { name: receipt.fileName, version: receipt.reference, date: receipt.at, page: "Supplier response · no extraction" }
+        : scopedData.documents.find(doc => doc.requirement === r.id);
       return {
         ...r,
+        sourceDocument,
         conclusion: state.pendingReviews?.[r.id]
           ? "Needs review"
           : state.reviews?.[r.id]?.conclusion || r.conclusion,
@@ -236,6 +255,12 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
                 "Operational effectiveness without reviewed support",
             }
           : {}),
+        ...(upload && sourceDocument?.name === upload.name ? {
+          source: `${upload.name} · ${upload.version}`,
+          passage: "Only file metadata was supplied. No document contents have been extracted; inspect the original outside this prototype before recording a conclusion.",
+          proves: "File metadata received; no content verified",
+          doesNotProve: "Scope or effectiveness without independent evidence review",
+        } : {}),
       };
     }),
     documents: [
@@ -250,11 +275,11 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
             : "Reviewed",
           version: receipt.reference,
           page: "Supplier metadata · no extraction",
-          date: new Date(receipt.at).toLocaleDateString(),
+          date: receipt.at,
           requirement: item === scopedData.request.items[0] ? "R-07" : "IAM-04",
         }),
       ),
-      ...(state.uploads || []),
+      ...(state.uploads || []).map(doc => ({ ...doc, status: !state.pendingReviews?.[doc.requirement] && state.reviews?.[doc.requirement]?.evidenceVersions?.includes(doc.version) ? "Reviewed" : "Needs review" })),
     ],
     engagements: [
       ...scopedData.engagements,
@@ -271,8 +296,11 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   const [drawer, setDrawer] = useState(null);
   const [toast, setToast] = useState("");
   const [mobileNav, setMobileNav] = useState(false);
-  const screen = screenId === "A01" ? { id: "A01", role: "superadmin", title: "Team & customer access", label: "Administration", subtitle: "Manage analysts, customer assignments and accountability.", nav: "A01" }
+  const menuButton = React.useRef(null);
+  const closeMobileNav = () => { setMobileNav(false); menuButton.current?.focus(); };
+  const baseScreen = screenId === "A01" ? { id: "A01", role: "superadmin", title: "Team & customer access", label: "Administration", subtitle: "Manage analysts, customer assignments and accountability.", nav: "A01" }
     : catalog.screens.find((s) => s.id === screenId) || catalog.screens[0];
+  const screen = baseScreen.id === "C06" ? { ...baseScreen, label: workflowStatus(state).label } : baseScreen;
   const role = user?.role || "customer";
   const denied = !user?.active || (screen.role !== role && !(role === "analyst" && ["C06","C07","C13"].includes(screen.id)));
   const allowedNames = new Set(model.workspaces.filter(row => user?.workspaceIds.includes(row.id) && (role !== "analyst" || customerFilter === "all" || row.id === customerFilter)).map(row => row.name));
@@ -324,7 +352,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
     const handler = (e) => {
       if (e.key === "Escape") {
         setDrawer(null);
-        setMobileNav(false);
+        closeMobileNav();
       }
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
@@ -334,6 +362,12 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+  useEffect(() => {
+    const hasWork = auditLog.length || model !== initialModel.current || state.events.length || state.intakeSubmitted || state.uploads?.length || Object.keys(state.supplierDrafts || {}).length || Object.keys(state.reviewDrafts || {}).length || Object.keys(state.qaDrafts || {}).length || Object.keys(state.decisionDrafts || {}).length || Object.keys(state.closureDrafts || {}).length || JSON.stringify(state.intake) !== JSON.stringify(baseData.intake);
+    const warn = e => { e.preventDefault(); e.returnValue = ""; };
+    if (hasWork) window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [state, model, auditLog]);
   const ctx = {
     data,
     catalog,
@@ -380,23 +414,14 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   ];
   const secondaryCase =
     engagement.id !== "cedar" && caseScreens.includes(screen.id);
-  const action = secondaryCase && data.engagements.some(row=>row.id === "cedar") ? (
-    <Button
-      primary
-      onClick={() => {
-        update({ selected: "cedar" });
-        navigate(screen.role === "analyst" ? "O02" : "C09");
-      }}
-    >
-      Open CedarCloud walkthrough
-    </Button>
-  ) : secondaryCase || (role === "analyst" && screen.id === "C06") ? null : (
+  const action = secondaryCase || (role === "analyst" && screen.id === "C06") ? null : (
     primaryAction(screen.id, ctx)
   );
   return (
     <>
       {!isSupplier && (
         <aside className={`sidebar ${mobileNav ? "expanded" : ""}`}>
+          <button className="mobile-nav-close" aria-label="Close navigation" onClick={closeMobileNav}><Icon name="X" /> Close navigation</button>
           <a href={`#${role === "superadmin" ? "A01" : role === "analyst" ? "O01" : "C01"}`} className="brand">
             <span className="logo">O</span>
             <b>Osura</b>
@@ -426,7 +451,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
           <div className="sidebar-bottom">
             <button onClick={() => setDrawer("search")}>
               <Icon name="Search" />
-              Global search <kbd>⌘ K</kbd>
+              Find a demo screen <kbd>⌘ K</kbd>
             </button>
             <button onClick={() => setDrawer("audit")}><Icon name="Clock" /> Activity & accountability</button>
             <button onClick={() => setDrawer("settings")}>
@@ -447,8 +472,10 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
           ) : (
             <>
               <button
+                ref={menuButton}
                 className="mobile-menu"
                 aria-label="Open navigation"
+                aria-expanded={mobileNav}
                 onClick={() => setMobileNav(!mobileNav)}
               >
                 <Icon name="Menu" />
@@ -498,7 +525,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
                 {screen.id === "S02" &&
                 state.supplierItem === "Privileged access review record"
                   ? "Upload access review evidence"
-                  : text(screen.title)}
+                  : screen.id === "C08" && engagement.id === "cedar" ? state.decision?.outcome === "Reject" ? "Rejected service · review history" : state.decision ? "Active supplier assurance" : "Assurance preview · no customer decision" : text(screen.title)}
               </h1>
               <p>
                 {screen.id === "S02" &&
@@ -518,7 +545,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
           <footer>
             {isSupplier
               ? "Secure access is invitation-only. No internal risk findings or customer decisions are displayed."
-              : "Osura · Product design reference · Synthetic data only"}
+              : "Osura · Guided presentation demo · Synthetic data · Changes last until refresh. Milestone acceptance uses the actual V2 application with stored data."}
           </footer>
         </main>
       </div>
@@ -546,7 +573,11 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
       </div>
       {drawer && (
         <Dialog title={drawer === "data" ? "Demo data · session editor" : drawer === "audit" ? "Activity & accountability" : dialogTitle(drawer)} wide={drawer === "data"} onClose={() => setDrawer(null)}>
-          {drawer === "data" && role === "superadmin" ? <DataEditor model={model} schema={schema} validate={validate} onChange={next=>{onDataChange(next);onAudit(actionEntry(data,"Demo base records edited","Updated synthetic records through the superadmin data editor.",{workspaceId:null,customer:"Team administration",role:"superadmin",engagementId:null}));}} /> : drawer === "audit" ? <AuditTrail entries={auditLog} user={user}/> : (
+          {drawer === "data" && role === "superadmin" ? <DataEditor model={model} schema={schema} validate={validate} onChange={next=>{
+            if (["documentVersions", "requirementReviews", "evidenceCitations"].some(key => JSON.stringify(next[key]) !== JSON.stringify(model[key]))) {
+              update({ pendingReviews: Object.fromEntries(baseData.requirements.map(row => [row.id, true])), conclusion: "Needs review", qa: "Evidence re-review required" });
+            }
+            onDataChange(next);onAudit(actionEntry(data,"Demo base records edited","Updated synthetic records through the superadmin data editor.",{workspaceId:null,customer:"Team administration",role:"superadmin",engagementId:null}));}} /> : drawer === "audit" ? <AuditTrail entries={auditLog} user={user}/> : (
           <Drawer
             kind={drawer}
             {...ctx}
@@ -601,13 +632,7 @@ function primaryAction(id, c) {
       () => document.getElementById("intake-form").requestSubmit(),
     ],
     C09: ["Review decision", "C06"],
-    C06: [
-      "Record decision",
-      () =>
-        state.decision
-          ? navigate("C07")
-          : document.getElementById("decision-form")?.requestSubmit(),
-    ],
+    C06: state.decision ? ["Open Decision Pack", "C07"] : null,
     C07: ["Print / Save PDF", () => window.print()],
     C08: ["Report a change", () => setDrawer("change")],
     O01: [
@@ -810,7 +835,7 @@ function EngagementTable({
               <th>Supplier / {register ? "services" : "engagement"}</th>
               {mode !== "customer" && <th>Customer</th>}
               {register && <th>Services</th>}
-              <th>Inherent risk</th>
+              <th>CTP inherent risk</th>
               <th>Current stage</th>
               {assessment && <th>Plan</th>}
               <th>{register ? "Business owner" : "Owner"}</th>
@@ -846,7 +871,7 @@ function EngagementTable({
                   </td>
                 )}
                 <td>{row.owner}</td>
-                {(register || assessment) && <td>{row.due}</td>}
+                {(register || assessment) && <td>{formatDate(row.due)}</td>}
                 <td>
                   <Link onClick={() => open(row)}>
                     {register
@@ -965,8 +990,14 @@ function Page(c) {
 
 function Overview(c) {
   const { data, navigate, state, setDrawer } = c;
+  const status = workflowStatus(state);
   return (
     <>
+      <Card title="Evidence reviewed. Your team decides.">
+        <p>Osura reviews supplier evidence and prepares a clear recommendation. Your team makes the final decision.</p>
+        <Note>CTP inherent risk describes the service’s exposure before assurance work. Evidence support, independent QA and the customer outcome are separate.</Note>
+        {data.engagements.some(row => row.id === "cedar") && <p><b>Prepared CedarCloud example:</b> {status.label}. Next owner: {status.nextOwner}. <Link onClick={() => { c.update({ selected: "cedar" }); navigate(state.decision ? "C07" : "C09"); }}>View example review →</Link></p>}
+      </Card>
       <Stats
         items={[
           [
@@ -979,7 +1010,7 @@ function Overview(c) {
               (e) => !["Active", "Rejected"].includes(e.stage),
             ).length,
             "Active assessments",
-            "One decision ready",
+            status.ready ? "CedarCloud decision ready" : status.label,
           ],
           [
             data.engagements.filter((e) =>
@@ -1003,14 +1034,14 @@ function Overview(c) {
           {data.overviewActions.map((action) => (
             <div className="action-row" key={action.engagement}>
               <div>
-                <b>{action.title}</b>
+                <b>{action.engagement === "cedar" ? status.label : action.title}</b>
                 <p>
-                  {action.engagement === "atlas" && state.owners?.atlas
+                  {action.engagement === "cedar" ? `Next owner: ${status.nextOwner}. ${status.label}.` : action.engagement === "atlas" && state.owners?.atlas
                     ? `Business owner: ${state.owners.atlas}`
                     : action.detail}
                 </p>
               </div>
-              <Badge>{action.status}</Badge>
+              <Badge>{action.engagement === "cedar" ? status.label : action.status}</Badge>
               {action.route ? (
                 <Button
                   small
@@ -1029,7 +1060,7 @@ function Overview(c) {
                     : action.action}
                 </Button>
               ) : (
-                <Link onClick={() => setDrawer(action.dialog)}>
+                <Link onClick={() => { c.update({ selected: action.engagement }); setDrawer(action.dialog); }}>
                   {action.action} →
                 </Link>
               )}
@@ -1044,7 +1075,7 @@ function Overview(c) {
         >
           <Ring data={data} />
           <Note>
-            Inherent risk is calculated per service using the pinned CTP method;{" "}
+            CTP inherent risk values are prepared fixtures for each service, using the pinned CTP method; this prototype does not calculate risk. {" "}
             {data.engagements.length} engagements,{" "}
             {new Set(data.engagements.map((e) => e.supplier)).size} suppliers.
           </Note>
@@ -1076,12 +1107,18 @@ function Overview(c) {
         <Card
           title="Upcoming assurance"
           action={
-            <Link onClick={() => navigate("C08")}>Monitoring plan →</Link>
+            <Link onClick={item => {
+              const record = data.engagements.find(row => item[1].includes(row.supplier));
+              if (record) { c.update({ selected: record.id }); navigate("C08"); }
+            }}>Monitoring plan →</Link>
           }
         >
           <Timeline
             items={data.upcomingAssurance}
-            onClick={() => navigate("C08")}
+            onClick={item => {
+              const record = data.engagements.find(row => item[1].includes(row.supplier));
+              if (record) { c.update({ selected: record.id }); navigate("C08"); }
+            }}
           />
         </Card>
       </div>
@@ -1099,7 +1136,7 @@ function Timeline({ items, onClick }) {
   return (
     <div className="timeline">
       {items.map(([title, detail, status]) => (
-        <button key={title} onClick={onClick}>
+        <button key={title} onClick={() => onClick?.([title, detail, status])}>
           <span className="timeline-dot" />
           <span>
             <b>{title}</b>
@@ -1136,6 +1173,7 @@ function Filters({
           <button
             key={value}
             className={filter === value ? "active" : ""}
+            aria-pressed={filter === value}
             onClick={() => setFilter(value)}
           >
             {value === "All" ? "All risk tiers" : value}
@@ -1159,24 +1197,9 @@ function Registers(c) {
             ...data.directory.filter((e) => !data.engagements.some(row => row.id === e.id)),
           ]
         : data.directory
-      : screen.id === "C14"
-        ? Object.values(
-            data.engagements.reduce((all, e) => {
-              if (!all[e.supplier])
-                all[e.supplier] = { ...e, service: "", serviceCount: 0 };
-              const group = all[e.supplier];
-              group.serviceCount++;
-              group.risks = [...(group.risks || []), e.risk];
-              if (group.serviceCount > 1) {
-                group.risk = "Varies";
-                group.service = `${group.serviceCount} independent service scopes`;
-              }
-              return all;
-            }, {}),
-          )
-        : screen.id === "C15"
+      : screen.id === "C15"
           ? data.engagements.filter((e) =>
-              tab === "Approved" ? e.stage === "Active" : e.stage !== "Active",
+              tab === "Approved" ? e.stage === "Active" : !["Active", "Rejected"].includes(e.stage),
             )
           : data.engagements;
   let rows = filterEngagements(baseRows, search, filter).filter(
@@ -1184,7 +1207,8 @@ function Registers(c) {
   );
   if (tab === "Approved") rows = rows.filter((e) => e.stage === "Active");
   if (tab === "Needs attention")
-    rows = rows.filter((e) => e.stage !== "Active");
+    rows = rows.filter((e) => !["Active", "Rejected"].includes(e.stage));
+  if (screen.id === "C14") rows = filterSupplierServices(data.engagements, search, filter, tab, stageFilter);
   const supplier = screen.id === "C14",
     risk = screen.id === "C10",
     directory = screen.id === "O16";
@@ -1300,14 +1324,14 @@ function Registers(c) {
           </Link>
         </Note>
       )}
-      <Filters
+      {!(directory && ["Services", "Identity matches"].includes(tab)) && <Filters
         {...{ search, setSearch, filter, setFilter }}
         options={
           directory
             ? ["All", ...new Set(data.directory.map((e) => e.client))]
             : undefined
         }
-      />
+      />}
       {directory && ["Services", "Identity matches"].includes(tab) ? (
         <DirectoryDetails {...c} tab={tab} />
       ) : (
@@ -1511,7 +1535,7 @@ function SupplierRecord(c) {
     <>
       <div className="supplier-banner">
         <Entity name={engagement.supplier} service="Legal entity · confirmed" />
-        <Badge>Active relationship</Badge>
+        <Badge>{rows.some(row => row.stage === "Active") ? "Active service relationship" : "No approved service relationship"}</Badge>
         <span>
           {rows.length} service {rows.length === 1 ? "scope" : "scopes"}
         </span>
@@ -1608,21 +1632,35 @@ function Intake(c) {
   const step = ["C02", "C03", "C04", "C05"].indexOf(c.screen.id);
   const [query, setQuery] = useState(intake.supplier);
   const [error, setError] = useState("");
-  const edit = (patch) =>
+  const [missingQuestion, setMissingQuestion] = useState(null);
+  const edit = (patch) => {
+    setError("");
+    setMissingQuestion(null);
     update({ intake: { ...intake, ...patch }, intakeSubmitted: false });
+  };
+  const questions = [
+    "Will the supplier process personal or payment data?",
+    "Will the service connect to production systems?",
+    "Could an outage interrupt a critical customer journey?",
+    "Could the service be replaced within one business day?",
+  ];
+  const fail = (message, target) => {
+    setError(message);
+    requestAnimationFrame(() => document.getElementById(target)?.focus());
+  };
   const supplier = data.suppliers.find((s) => s.name === intake.supplier);
   const matches = data.suppliers.filter((s) =>
     `${s.name} ${s.domain}`.toLowerCase().includes(query.toLowerCase()),
   );
   const next = () => {
     if (step === 1 && !intake.use && !intake.purpose.trim()) {
-      setError("Select an intended use or describe your purpose.");
+      fail("Select an intended use or describe your purpose.", "intake-purpose");
       return;
     }
-    if (step === 2 && Object.keys(intake.answers).length < 4) {
-      setError(
-        "Answer all four business context questions. Unknown is a valid answer.",
-      );
+    const missing = questions.findIndex((_, i) => !["Yes", "No", "Unknown"].includes(intake.answers[i]));
+    if (step === 2 && missing !== -1) {
+      setMissingQuestion(missing);
+      fail(`Answer question ${missing + 1}: ${questions[missing]} Unknown is a valid answer.`, `intake-question-${missing}`);
       return;
     }
     navigate(["C02", "C03", "C04", "C05"][step + 1]);
@@ -1630,13 +1668,15 @@ function Intake(c) {
   const submit = (e) => {
     e.preventDefault();
     if (state.intakeSubmitted) {
+      const submitted = state.extraEngagements?.find(row => row.receipt === state.intakeReceipt);
+      if (submitted) update({ selected: submitted.id });
       navigate("C09");
       return;
     }
     if (
-      !intake.supplier ||
-      (!intake.use && !intake.purpose) ||
-      Object.keys(intake.answers).length < 4
+      !intake.supplier.trim() ||
+      (!intake.use && !intake.purpose.trim()) ||
+      questions.some((_, i) => !["Yes", "No", "Unknown"].includes(intake.answers[i]))
     ) {
       setError(
         "Complete supplier, intended use and all business context questions before submitting.",
@@ -1653,8 +1693,8 @@ function Intake(c) {
         ...(state.extraEngagements || []),
         {
           id,
-          supplier: intake.supplier,
-          service: intake.use || intake.purpose,
+          supplier: intake.supplier.trim(),
+          service: intake.use || intake.purpose.trim(),
           risk: "Pending triage",
           stage: "Intake",
           owner: data.workspace.analyst,
@@ -1663,20 +1703,14 @@ function Intake(c) {
           client: data.workspace.name,
           workspaceId: c.user?.workspaceId || "northstar",
           receipt,
-          answers: intake.answers,
-          attachments: intake.attachments,
+          answers: { ...intake.answers },
+          attachments: structuredClone(intake.attachments),
         },
       ],
     });
     notify("Request submitted. Your receipt is saved until refresh.");
     navigate("C09");
   };
-  const questions = [
-    "Will the supplier process personal or payment data?",
-    "Will the service connect to production systems?",
-    "Could an outage interrupt a critical customer journey?",
-    "Could the service be replaced within one business day?",
-  ];
   return (
     <>
       <div className="stepper intake-steps">
@@ -1684,6 +1718,7 @@ function Intake(c) {
           (label, i) => (
             <button
               key={label}
+              aria-current={i === step ? "step" : undefined}
               className={i === step ? "current" : i < step ? "done" : ""}
               onClick={() => {
                 if (i <= step) navigate(["C02", "C03", "C04", "C05"][i]);
@@ -1804,6 +1839,7 @@ function Intake(c) {
                     <button
                       type="button"
                       key={use}
+                      aria-pressed={intake.use === use}
                       className={intake.use === use ? "chosen" : ""}
                       onClick={() => edit({ use })}
                     >
@@ -1813,6 +1849,7 @@ function Intake(c) {
                 </div>
                 <Label title="Another purpose">
                   <textarea
+                    id="intake-purpose"
                     value={intake.purpose}
                     onChange={(e) => edit({ purpose: e.target.value })}
                     placeholder="Describe how your organisation will use the service"
@@ -1829,6 +1866,7 @@ function Intake(c) {
                       <button
                         type="button"
                         key={product}
+                        aria-pressed={intake.product === product}
                         className={intake.product === product ? "chosen" : ""}
                         onClick={() => edit({ product })}
                       >
@@ -1839,11 +1877,12 @@ function Intake(c) {
                 </Label>
               </>
             )}
+            {step === 2 && <Note>Choose Unknown when a fact is not confirmed. It stays unresolved for analyst triage; it is not treated as No or inferred from public research.</Note>}
             {step === 2 &&
               questions.map((q, i) => (
-                <div className="question" key={q}>
+                <div className="question" key={q} id={`intake-question-${i}`} tabIndex={-1} role="group" aria-labelledby={`intake-question-label-${i}`} aria-invalid={missingQuestion === i || undefined}>
                   <div>
-                    <b>{q}</b>
+                    <b id={`intake-question-label-${i}`}>{i + 1}. {q}</b>
                     <small>
                       Confirmed by the business owner · not inferred from public
                       research
@@ -1854,6 +1893,7 @@ function Intake(c) {
                       <button
                         type="button"
                         key={answer}
+                        aria-pressed={intake.answers[i] === answer}
                         className={intake.answers[i] === answer ? "chosen" : ""}
                         onClick={() =>
                           edit({ answers: { ...intake.answers, [i]: answer } })
@@ -1885,6 +1925,7 @@ function Intake(c) {
                     ]),
                   ]}
                 />
+                {Object.values(intake.answers).includes("Unknown") && <Note warning>Unresolved facts: {questions.filter((_, i) => intake.answers[i] === "Unknown").join("; ")} These remain for analyst triage.</Note>}
                 <Link onClick={() => navigate("C04")}>Edit details</Link>
               </>
             )}
@@ -1977,13 +2018,14 @@ function Intake(c) {
                     ["Supplier", intake.supplier],
                     ["Use", intake.use || intake.purpose || "Not selected"],
                     [
-                      "Answers known",
-                      `${Object.keys(intake.answers).length} customer-provided facts`,
+                      "Confirmed answers",
+                      `${Object.values(intake.answers).filter(value => value === "Yes" || value === "No").length} customer-provided facts`,
                     ],
                     [
                       "Customer-only answers",
                       `${4 - Object.keys(intake.answers).length} required`,
                     ],
+                    ["Unresolved facts", `${Object.values(intake.answers).filter(value => value === "Unknown").length} Unknown`],
                   ]}
                 />
                 <Note>
@@ -2045,7 +2087,7 @@ function Intake(c) {
     </>
   );
 }
-function UploadList({ files, onChange }) {
+function UploadList({ files, onChange, removable = true }) {
   return (
     <>
       <label className="upload-zone">
@@ -2072,13 +2114,13 @@ function UploadList({ files, onChange }) {
         <div className="list-row" key={`${file.name}-${i}`}>
           <Icon name="FileText" />
           <span>{file.name}</span>
-          <button
+          {removable && <button
             type="button"
             aria-label={`Remove ${file.name}`}
             onClick={() => onChange(files.filter((_, index) => index !== i))}
           >
             <Icon name="X" size={14} />
-          </button>
+          </button>}
         </div>
       ))}
     </>
@@ -2098,7 +2140,7 @@ function SecondaryCase(c) {
         <Card
           title={
             engagement.receipt
-              ? "Your request was received"
+              ? "Request received"
               : "Service assessment"
           }
         >
@@ -2110,7 +2152,7 @@ function SecondaryCase(c) {
               ["Stage", engagement.stage],
               ["Owner", engagement.owner],
               ["Assessment plan", engagement.plan],
-              ["Next date", engagement.due],
+              ["Next date", formatDate(engagement.due)],
               ...(engagement.receipt
                 ? [["Request receipt", engagement.receipt]]
                 : []),
@@ -2134,7 +2176,7 @@ function SecondaryCase(c) {
           )}
           <Note>
             {engagement.receipt
-              ? "Your request is now in the assessment register and operations queue. It is awaiting analyst triage. No risk classification or evidence conclusion has been invented."
+              ? "Your request is in the assessment register and operations queue, awaiting analyst triage. This receipt and the submitted facts last until refresh. No risk classification or evidence conclusion has been invented."
               : "This is a portfolio reference record. The full source-review and decision walkthrough uses CedarCloud’s payment service. Its evidence and decision state are kept separate from this record."}
           </Note>
         </Card>
@@ -2145,8 +2187,9 @@ function SecondaryCase(c) {
               : `${engagement.stage} review`}
           </h3>
           {c.data.engagements.some(row=>row.id === "cedar") ? <>
-            <p>Open the prepared CedarCloud case to explore evidence, supplier follow-up, QA and customer decisions.</p>
-            <Button primary onClick={()=>{update({selected:"cedar"});navigate(c.user?.role === "analyst" ? "O02" : "C09");}}>Open CedarCloud walkthrough</Button>
+            <p>{engagement.receipt ? "Next owner: an assigned analyst will triage this request. No response time or notification is promised in this demo." : "This service is a scoped portfolio preview."}</p>
+            <p>Separate prepared example: CedarCloud’s evidence, QA and customer decision walkthrough.</p>
+            <Button onClick={()=>{update({selected:"cedar"});navigate(c.user?.role === "analyst" ? "O02" : "C09");}}>View CedarCloud example</Button>
           </> : <p>No full evidence walkthrough is prepared in the current customer selection. This portfolio record remains separate from other customers’ evidence.</p>}
           <div className="divider" />
           <Link
@@ -2168,6 +2211,9 @@ function Assessment(c) {
   const { data, state, engagement, navigate, screen } = c;
   const customer = screen.role === "customer";
   const [tab, setTab] = useState("Summary");
+  const status = workflowStatus(state);
+  const pending = state.conclusion === "Needs review" || Object.values(state.pendingReviews || {}).some(Boolean);
+  const activeStep = state.decision ? 5 : pending ? 2 : status.ready ? 4 : 3;
   const steps = [
     "Intake",
     "CTP & scope",
@@ -2181,7 +2227,7 @@ function Assessment(c) {
         <Entity name={engagement.supplier} service={engagement.service} />
         <Badge>{engagement.risk}</Badge>
         <Badge>
-          {state.decision ? "Decision recorded" : "Ready for customer decision"}
+          {status.label}
         </Badge>
       </div>
       {!customer && (
@@ -2220,7 +2266,8 @@ function Assessment(c) {
         {!customer && <div className="micro-label">ASSESSMENT PATH</div>}
         {steps.map((s, i) => (
           <button
-            className={i < 4 ? "done" : "current"}
+            className={i < activeStep ? "done" : i === activeStep ? "current" : ""}
+            aria-current={i === activeStep ? "step" : undefined}
             key={s}
             onClick={() =>
               navigate(
@@ -2230,7 +2277,7 @@ function Assessment(c) {
               )
             }
           >
-            {i < 4 ? "✓ " : ""}
+            {i < activeStep ? "✓ " : ""}
             {s}
           </button>
         ))}
@@ -2284,17 +2331,17 @@ function Assessment(c) {
                       "Completed",
                     ],
                     [
-                      "Six evidence versions checked",
+                      pending ? "Evidence needs independent review" : "Evidence versions checked",
                       "Page-linked source references retained",
-                      "Completed",
+                      pending ? "Needs review" : "Completed",
                     ],
                     [
-                      "Targeted supplier response received",
-                      "Only affected controls rechecked",
-                      "Completed",
+                      state.supplierReceipt ? "Targeted supplier response received" : "Prepared supplier response example",
+                      state.supplierReceipt ? "Affected controls require independent review" : "No supplier response submitted in this session",
+                      state.supplierReceipt ? pending ? "Needs review" : "Reviewed" : "Prepared example",
                     ],
                     [
-                      "Independent QA finished",
+                      "Independent QA readiness",
                       "Different reviewer · challenge recorded",
                       state.qa,
                     ],
@@ -2302,8 +2349,8 @@ function Assessment(c) {
                       "Customer decision",
                       state.decision
                         ? "Signed outcome preserved"
-                        : "Your authorisation is now required",
-                      state.decision ? "Recorded" : "Action",
+                        : `Next owner: ${status.nextOwner}`,
+                      state.decision ? "Recorded" : status.label,
                     ],
                   ]}
                   onClick={() => navigate("C13")}
@@ -2313,7 +2360,7 @@ function Assessment(c) {
                   <Note warning>
                     {state.decision
                       ? "Customer decision recorded. The signed pack is preserved."
-                      : "Next owner: customer. The assessment is ready for an authorised customer decision. No analyst sign-off remains."}
+                      : `Next owner: ${status.nextOwner}. ${status.label}.`}
                   </Note>
                   <Fields
                     items={[
@@ -2323,7 +2370,8 @@ function Assessment(c) {
                         "Current outcomes",
                         "10 supported · 1 partial · 1 unknown",
                       ],
-                      ["Decision gate", "Customer authorisation required"],
+                      ["Decision gate", status.label],
+                      ["Next owner", status.nextOwner],
                     ]}
                   />
                 </>
@@ -2385,9 +2433,9 @@ function Assessment(c) {
             <Card title="Case action">
               <div className="list-row">
                 <div>
-                  <b>Customer memo queued for review</b>
+                  <b>{status.label}</b>
                   <p>
-                    {state.decision ? "Decision recorded" : "Awaiting customer"}
+                    Next owner: {status.nextOwner}
                   </p>
                 </div>
                 <Link onClick={() => navigate("C06")}>
@@ -2491,7 +2539,7 @@ function Findings(c) {
                           : row.state}
                       </Badge>
                     </td>
-                    <td>{row.due}</td>
+                    <td>{formatDate(row.due)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -2514,9 +2562,9 @@ function Findings(c) {
                 ["Supplier", f.supplier],
                 ["Service", f.service],
                 ["Requirement", `${f.control} · ${f.issue}`],
-                ["Treatment", "Conditional approval"],
+                ["Treatment", f.state === "Open condition" || (f.id === "F-01" && state.decision?.condition) ? "Customer approval condition" : f.id === "F-01" && !state.decision ? "Proposed condition · no customer decision" : f.state],
                 ["Owner", f.owner],
-                ["Due", f.due],
+                ["Due", formatDate(f.due)],
                 ["Closure requires", f.evidence],
               ]}
             />
@@ -2526,7 +2574,7 @@ function Findings(c) {
             </p>
             <Button
               small
-              onClick={() => navigate(customer ? "C13" : "O09")}
+              onClick={() => { c.update({ selected: f.engagementId || "cedar", selectedRequirement: f.control }); navigate(customer ? "C13" : f.id === "F-01" ? "O09" : "O04"); }}
               icon="FileText"
             >
               {customer
@@ -2571,55 +2619,41 @@ function EvidenceReview(c) {
   const baseRequirement =
     data.requirements.find((r) => r.id === requirementId) ||
     data.requirements[0];
-  const requirement =
-    baseRequirement.id === "R-07" && state.supplierReceipt
-      ? {
-          ...baseRequirement,
-          source: `${state.supplierReceipt.fileName} · supplier response`,
-          passage: state.supplierReceipt.answer,
-          proves: "Supplier-provided claim · independent review required",
-          doesNotProve: "Verified coverage until reviewed",
-        }
-      : baseRequirement;
+  const requirement = baseRequirement;
   const savedReview = state.reviews?.[requirementId];
   const currentConclusion = state.pendingReviews?.[requirementId]
     ? "Needs review"
     : requirementId === "R-07"
       ? state.conclusion
       : savedReview?.conclusion || baseRequirement.conclusion;
-  const sourceDocument = data.documents.find(
+  const sourceDocument = requirement.sourceDocument || [...data.documents].reverse().find(
     (doc) => doc.requirement === requirementId,
   );
-  const [judgement, setJudgement] = useState(
-    requirementId === "R-07" ? state.judgement : savedReview?.judgement || "",
-  );
-  const [conclusion, setConclusion] = useState(currentConclusion);
-  const [reason, setReason] = useState("");
-  const [showProposal, setShowProposal] = useState(false);
-  const [recommendation, setRecommendation] = useState(savedReview?.recommendation || "Approve with conditions");
-  const [error, setError] = useState("");
-  useEffect(() => {
-    setJudgement(
-      requirementId === "R-07"
-        ? state.judgement
-        : state.reviews?.[requirementId]?.judgement || "",
-    );
-    setConclusion(currentConclusion);
-    setReason("");
-    setShowProposal(false);
-    setRecommendation(state.reviews?.[requirementId]?.recommendation || "Approve with conditions");
+  const draftKey = `${c.user.id}:${requirementId}`;
+  const draft = state.reviewDrafts?.[draftKey] || {
+    judgement: requirementId === "R-07" ? state.judgement : savedReview?.judgement || "",
+    conclusion: currentConclusion,
+    reason: "",
+    recommendation: savedReview?.recommendation || "Approve with conditions",
+  };
+  const { judgement, conclusion, reason, recommendation } = draft;
+  const editDraft = (patch) => {
+    update({ reviewDrafts: { ...state.reviewDrafts, [draftKey]: { ...draft, ...patch } } });
     setError("");
-  }, [requirementId]);
+  };
+  const [showProposal, setShowProposal] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => { setShowProposal(false); setError(""); }, [requirementId]);
   const save = () => {
     try {
-      update(
-        saveRequirementReview(state, data, requirementId, {
+      const reviewDrafts = { ...state.reviewDrafts };
+      delete reviewDrafts[draftKey];
+      update({ ...saveRequirementReview(state, data, requirementId, {
           judgement,
           conclusion,
           reason,
           recommendation,
-        }),
-      );
+        }), reviewDrafts });
       notify("Independent judgement saved.");
       setError("");
     } catch (error) {
@@ -2629,6 +2663,7 @@ function EvidenceReview(c) {
   return (
     <>
       <Scope {...c} />
+      <Note>Review drafts stay in this session until refresh. Source excerpts are synthetic; original PDF viewing is unavailable.</Note>
       <Note>{savedReview ? `Last recommendation: ${savedReview.actor} · ${new Date(savedReview.at).toLocaleString()}` : "Prepared conclusion · no analyst action recorded in this session."}</Note>
       <Tabs
         tabs={
@@ -2718,10 +2753,10 @@ function EvidenceReview(c) {
             title={
               customer
                 ? "Source inspection"
-                : "Original evidence · exact source version"
+                : "Source excerpt · exact source version"
             }
             action={
-              <Link onClick={() => setDrawer("source")}>View original ↗</Link>
+              <Link onClick={() => setDrawer("source")}>View source excerpt ↗</Link>
             }
           >
             <div className="source-caption">
@@ -2782,14 +2817,14 @@ function EvidenceReview(c) {
                 <Label title="Your initial conclusion">
                   <textarea
                     value={judgement}
-                    onChange={(e) => setJudgement(e.target.value)}
+                    onChange={(e) => editDraft({ judgement: e.target.value })}
                     placeholder="Record your independent reading before viewing the prepared proposal."
                   />
                 </Label>
                 <Label title="Evidence conclusion">
                   <select
                     value={conclusion}
-                    onChange={(e) => setConclusion(e.target.value)}
+                    onChange={(e) => editDraft({ conclusion: e.target.value })}
                   >
                     {currentConclusion === "Needs review" && (
                       <option value="Needs review" disabled>
@@ -2811,7 +2846,7 @@ function EvidenceReview(c) {
                   <Label title="Reason for changing the conclusion">
                     <textarea
                       value={reason}
-                      onChange={(e) => setReason(e.target.value)}
+                      onChange={(e) => editDraft({ reason: e.target.value })}
                     />
                   </Label>
                 )}
@@ -2821,7 +2856,7 @@ function EvidenceReview(c) {
                   </p>
                 )}
                 <Label title="Suggested customer outcome">
-                  <select aria-label="Suggested customer outcome" value={recommendation} onChange={e=>setRecommendation(e.target.value)}>
+                  <select aria-label="Suggested customer outcome" value={recommendation} onChange={e=>editDraft({ recommendation: e.target.value })}>
                     {["Approve","Approve with conditions","Reject","Return for clarification"].map(value=><option key={value}>{value}</option>)}
                   </select>
                   <small>A recommendation only; the customer records the final decision.</small>
@@ -2860,19 +2895,17 @@ function EvidenceReview(c) {
                   items={[
                     [
                       "File",
-                      requirementId === "R-07" && state.supplierReceipt
-                        ? state.supplierReceipt.fileName
-                        : sourceDocument?.name || "No matching document",
+                      sourceDocument?.name || "No matching document",
                     ],
                     [
                       "Source / upload",
-                      `Supplier · ${sourceDocument?.date || "Date unavailable"}`,
+                      `Supplier · ${sourceDocument?.date ? formatDate(sourceDocument.date) : "Date unavailable"}`,
                     ],
                     [
                       "Pin / version",
-                      `${sourceDocument?.version || "Unversioned"} · immutable local fixture`,
+                      `${sourceDocument?.version || "Unversioned"} · pinned source`,
                     ],
-                    ["Extraction", "Prepared synthetic excerpt"],
+                    ["Extraction", /metadata|no extraction/i.test(sourceDocument?.page || "") ? "Supplier metadata and answer · no extraction" : "Prepared synthetic excerpt"],
                     ["Sensitivity", <Badge>Supplier evidence</Badge>],
                     ["Reuse confidence", <Badge>Not assumed</Badge>],
                   ]}
@@ -2895,30 +2928,35 @@ function EvidenceReview(c) {
 
 function Decision(c) {
   const { state, data, engagement, setDrawer, navigate, notify } = c;
-  const [choice, setChoice] = useState("Approve with conditions");
-  const [rationale, setRationale] = useState(data.defaults.rationale);
-  const [owner, setOwner] = useState(data.workspace.decisionOwner);
-  const [due, setDue] = useState(data.defaults.conditionDue);
-  const [evidence, setEvidence] = useState(data.defaults.conditionEvidence);
+  const draftKey = c.user.id;
+  const draft = state.decisionDrafts?.[draftKey] || { choice: "", rationale: "", owner: "", due: "", evidence: "" };
+  const { choice, rationale, owner, due, evidence } = draft;
+  const editDraft = (patch) => {
+    c.update({ decisionDrafts: { ...state.decisionDrafts, [draftKey]: { ...draft, ...patch } } });
+    setError("");
+  };
+  const status = workflowStatus(state);
   const [error, setError] = useState("");
+  const [confirming, setConfirming] = useState(false);
   const submit = (e) => {
     e.preventDefault();
+    if (!choice || !rationale.trim()) { setError("Choose an outcome and enter your own decision rationale."); return; }
+    if (choice === "Approve with conditions" && (!owner.trim() || !due || !evidence.trim())) { setError("Complete the condition owner, due date and required evidence."); return; }
+    if (!status.ready) { setError(`${status.label}. Next owner: ${status.nextOwner}.`); return; }
+    setConfirming(true);
+  };
+  const confirm = () => {
     try {
-      const next = recordDecision(state, data, choice, rationale, {
-        owner,
-        due,
-        evidence,
+      const next = recordDecision(state, data, choice, rationale.trim(), {
+        owner: owner.trim(), due, evidence: evidence.trim(),
       });
-      c.update(next);
-      notify(
-        choice === "Return for clarification"
-          ? "Returned to the analyst for clarification."
-          : "Customer decision recorded. Decision Pack frozen.",
-      );
+      const decisionDrafts = { ...state.decisionDrafts };
+      delete decisionDrafts[draftKey];
+      c.update({ ...next, decisionDrafts });
+      setConfirming(false);
+      notify(choice === "Return for clarification" ? "Returned to the analyst for clarification." : "Customer decision recorded. Decision Pack frozen.");
       navigate(choice === "Return for clarification" ? "C09" : "C07");
-    } catch (err) {
-      setError(err.message);
-    }
+    } catch (err) { setConfirming(false); setError(err.message); }
   };
   if (c.user?.role !== "customer") return <>
     <Scope {...c}/><Card title="Customer decision · read only">
@@ -2931,9 +2969,9 @@ function Decision(c) {
     <>
       <div className="supplier-banner">
         <Entity name={engagement.supplier} service={engagement.service} />
-        <Badge>{engagement.risk}</Badge>
+        <Badge>CTP inherent risk: {engagement.risk}</Badge>
         <Badge>
-          {state.decision ? "Decision recorded" : "Ready for customer decision"}
+          {status.label}
         </Badge>
       </div>
       <div className="stepper assessment-steps">
@@ -2944,8 +2982,8 @@ function Decision(c) {
           "QA",
           "Decision",
         ].map((s, i) => (
-          <span key={s} className={i < 4 ? "done" : "current"}>
-            {i < 4 ? "✓ " : ""}
+          <span key={s} className={i < (status.ready || state.decision ? 4 : 3) ? "done" : i === (status.ready || state.decision ? 4 : 3) ? "current" : ""}>
+            {i < (status.ready || state.decision ? 4 : 3) ? "✓ " : ""}
             {s}
           </span>
         ))}
@@ -2953,9 +2991,9 @@ function Decision(c) {
       <div className="grid equal">
         <Card title="Decision memo">
           <div className="badges">
-            <Badge>{engagement.risk}</Badge>
+            <Badge>CTP inherent risk: {engagement.risk}</Badge>
             <Badge>{engagement.plan}</Badge>
-            <Badge>{state.qa}</Badge>
+            <Badge>QA: {state.qa}</Badge>
           </div>
           <h2 className="memo-title">{state.reviews?.["R-07"]?.recommendation || "Approve with conditions"}</h2>
           <small>{state.reviews?.["R-07"] ? `Recommended by ${state.reviews["R-07"].actor} · ${new Date(state.reviews["R-07"].at).toLocaleString()}` : "Prepared analyst recommendation · no session action recorded"}</small>
@@ -2995,6 +3033,8 @@ function Decision(c) {
               </tbody>
             </table>
           </div>
+          <Fields items={[["Proposed condition owner", data.defaults.conditionOwner || data.workspace.decisionOwner], ["Proposed due date", formatDate(data.defaults.conditionDue)], ["Proposed required evidence", data.defaults.conditionEvidence]]}/>
+          <Note>The analyst recommendation and proposed obligation are read-only advice. Choose your own customer outcome and rationale.</Note>
           <Fields items={[["QA reviewer",state.qaReview?.actor || "Not recorded"],["QA recorded",state.qaReview?.prepared ? "Prepared fixture" : state.qaReview?.at ? new Date(state.qaReview.at).toLocaleString() : "Not recorded"],["QA rationale",state.qaNote]]}/>
           <Link onClick={() => c.setDrawer("audit")}>Inspect review history →</Link>
           <Link onClick={() => navigate("C13")}>Inspect complete evidence →</Link>
@@ -3043,8 +3083,9 @@ function Decision(c) {
                       type="radio"
                       name="decision"
                       value={value}
+                      required
                       checked={choice === value}
-                      onChange={() => setChoice(value)}
+                      onChange={() => editDraft({ choice: value })}
                     />
                     <span>
                       <b>{value}</b>
@@ -3057,16 +3098,17 @@ function Decision(c) {
                 <textarea
                   required
                   value={rationale}
-                  onChange={(e) => setRationale(e.target.value)}
+                  onChange={(e) => editDraft({ rationale: e.target.value })}
                 />
               </Label>
               {choice === "Approve with conditions" && (
                 <>
+                  <Button small onClick={() => editDraft({ owner: data.defaults.conditionOwner || data.workspace.decisionOwner, due: data.defaults.conditionDue, evidence: data.defaults.conditionEvidence })}>Use proposed obligation</Button>
                   <Label title="Condition owner">
                     <input
                       required
                       value={owner}
-                      onChange={(e) => setOwner(e.target.value)}
+                      onChange={(e) => editDraft({ owner: e.target.value })}
                     />
                   </Label>
                   <Label title="Due date">
@@ -3074,14 +3116,14 @@ function Decision(c) {
                       type="date"
                       required
                       value={due}
-                      onChange={(e) => setDue(e.target.value)}
+                      onChange={(e) => editDraft({ due: e.target.value })}
                     />
                   </Label>
                   <Label title="Required evidence">
                     <input
                       required
                       value={evidence}
-                      onChange={(e) => setEvidence(e.target.value)}
+                      onChange={(e) => editDraft({ evidence: e.target.value })}
                     />
                   </Label>
                 </>
@@ -3101,27 +3143,21 @@ function Decision(c) {
                   primary
                   type="submit"
                   icon="Check"
-                  disabled={
-                    !state.qa.startsWith("Passed") ||
-                    state.conclusion === "Needs review" ||
-                    Object.values(state.pendingReviews || {}).some(Boolean)
-                  }
+                  disabled={!status.ready}
                 >
                   Record decision
                 </Button>
               </div>
-              {(!state.qa.startsWith("Passed") ||
-                state.conclusion === "Needs review" ||
-                Object.values(state.pendingReviews || {}).some(Boolean)) && (
-                <Note warning>
-                  Independent QA requires rework. Complete QA before making a
-                  decision.
-                </Note>
-              )}
+              {!status.ready && <Note warning>{status.label}. Next owner: {status.nextOwner}.</Note>}
             </form>
           )}
         </Card>
       </div>
+      {confirming && <Dialog title="Confirm customer decision" onClose={() => setConfirming(false)}>
+        <Fields items={[["Customer", engagement.client], ["Supplier", engagement.supplier], ["Service", engagement.service], ["Acting Decision Owner", c.user.name], ["Outcome", choice], ["Customer rationale", rationale], ...(choice === "Approve with conditions" ? [["Condition owner", owner], ["Due date", formatDate(due)], ["Required evidence", evidence]] : [["Condition", "None"]])]} />
+        <Note>{choice === "Return for clarification" ? "This requests analyst rework and creates no signed Decision Pack." : "Confirming attributes the outcome to you and freezes the evidence, QA and decision in a Decision Pack. Later changes do not rewrite this record."}</Note>
+        <div className="form-actions"><Button onClick={() => setConfirming(false)}>Keep editing</Button><Button primary onClick={confirm}>Confirm outcome</Button></div>
+      </Dialog>}
     </>
   );
 }
@@ -3130,18 +3166,21 @@ function Reports(c) {
   const [tab, setTab] = useState("All");
   const [search, setSearch] = useState("");
   const { state, data, navigate } = c;
+  const cedar = data.engagements.find(row => row.id === "cedar");
+  const status = workflowStatus(state);
   const reports = [
-    {
-      supplier: data.engagements[0].supplier,
-      service: data.engagements[0].service,
-      status: state.decision?.outcome || "Ready for decision",
+    ...(cedar ? [{
+      engagementId: cedar.id,
+      supplier: cedar.supplier,
+      service: cedar.service,
+      status: state.decision?.outcome || status.label,
       date: state.decision
-        ? new Date(state.decision.at).toLocaleDateString()
+        ? formatDate(state.decision.at)
         : data.workspace.date,
-      owner: state.decision?.actor || "Waiting customer",
+      owner: state.decision?.actor || status.nextOwner,
       file: state.signedPack ? "Pack v1 · published" : "Draft / not signed",
       route: state.signedPack ? "C07" : "C06",
-    },
+    }] : []),
     ...data.historicalReports,
   ].filter(
     (r) =>
@@ -3152,7 +3191,7 @@ function Reports(c) {
         (tab === "Published"
           ? r.file.includes("published")
           : tab === "Decision required"
-            ? r.status === "Ready for decision"
+            ? r.engagementId === "cedar" && status.ready
             : r.file.includes("Historical"))),
   );
   return (
@@ -3198,17 +3237,17 @@ function Reports(c) {
                   <td>
                     <Badge>{r.status}</Badge>
                   </td>
-                  <td>{r.date}</td>
+                  <td>{formatDate(r.date)}</td>
                   <td>{r.owner}</td>
                   <td>{r.file}</td>
                   <td>
                     <Link
                       onClick={() => {
-                        if (r.supplier !== data.engagements[0].supplier) {
+                        if (!r.engagementId) {
                           c.setDrawer(`historical:${r.supplier}`);
                           return;
                         }
-                        c.update({ selected: "cedar" });
+                        c.update({ selected: r.engagementId });
                         navigate(r.route);
                       }}
                     >
@@ -3236,6 +3275,7 @@ function Pack(c) {
   const { state, navigate, data } = c;
   const pack = state.signedPack || data.referencePack;
   const preview = !state.signedPack;
+  const exportedPack = pack && { ...pack, preparedExample: preview, recordType: preview ? "Prepared reference example · not a current customer decision" : "Session customer decision" };
   return (
     <>
       <Scope {...c} />
@@ -3266,10 +3306,11 @@ function Pack(c) {
                 OSURA <small>ASSURANCE</small>
               </div>
               <div className="accent-line" />
+              {preview && <Note warning>PREPARED REFERENCE EXAMPLE · this is not a decision made in this session.</Note>}
               <div className="eyebrow">SUPPLIER RISK ASSESSMENT</div>
               <h1>{pack.engagement.supplier}</h1>
               <p>
-                {pack.engagement.service} · {data.workspace.name}
+                {pack.engagement.service} · {pack.workspace?.name || pack.engagement.client}
               </p>
               <Badge>{pack.decision.outcome.toUpperCase()}</Badge>
               <Fields
@@ -3279,7 +3320,7 @@ function Pack(c) {
                     `${pack.decision.actor} · customer decision-maker`,
                   ],
                   ["Recorded", new Date(pack.decision.at).toLocaleString()],
-                  ["CTP tier", pack.engagement.risk],
+                  ["CTP inherent risk", pack.engagement.risk],
                   ["Policy / review", `${pack.overlay} · ${pack.policy}`],
                   [
                     "Report version",
@@ -3292,7 +3333,7 @@ function Pack(c) {
               {pack.decision.condition && (
                 <>
                   <h3>Condition and obligation</h3>
-                  <Fields items={Object.entries(pack.decision.condition)} />
+                  <Fields items={[["Owner", pack.decision.condition.owner], ["Due date", formatDate(pack.decision.condition.due)], ["Required evidence", pack.decision.condition.evidence]]} />
                 </>
               )}
               <h3>Evidence index and conclusions</h3>
@@ -3338,12 +3379,11 @@ function Pack(c) {
               ))}
             </div>
             <Note>
-              This record is frozen from the current session’s review state.
-              Subsequent condition closure leaves the original pack unchanged.
+              {preview ? "This prepared example is separate from your session review and is labelled as an example in print and JSON." : "This record is frozen from the current session’s review state. Subsequent condition closure leaves the original pack unchanged."}
             </Note>
             <div className="form-actions">
               <Button
-                onClick={() => downloadJSON("Decision-Pack-v1", pack)}
+                onClick={() => downloadJSON(preview ? "Prepared-Decision-Pack-example" : "Decision-Pack-v1", exportedPack)}
                 icon="Download"
               >
                 Download JSON
@@ -3352,9 +3392,11 @@ function Pack(c) {
                 Print / Save PDF
               </Button>
             </div>
-            <Link onClick={() => navigate("C08")}>
-              Continue to active assurance →
-            </Link>
+            {!preview && ["Approve", "Approve with conditions"].includes(pack.decision.outcome) && <Link onClick={item => {
+              const record = data.engagements.find(row => item[1].includes(row.supplier));
+              if (record) { c.update({ selected: record.id }); navigate("C08"); }
+            }}>Continue to active assurance →</Link>}
+            {!preview && pack.decision.outcome === "Reject" && <Note>This service was rejected and has no active assurance relationship.</Note>}
           </Card>
         </div>
       )}
@@ -3377,6 +3419,7 @@ function Monitoring(c) {
         ? "Closed"
         : row.status,
       row.route,
+      row.engagementId || data.engagements.find(e => e.supplier === row.supplier && e.client === row.client)?.id,
     ]),
     ...(state.scheduledReviews || []).map((r) => [
       r.supplier,
@@ -3385,16 +3428,18 @@ function Monitoring(c) {
       r.owner,
       "Scheduled",
       "O12",
+      r.engagementId,
     ]),
     ...state.events
       .filter((e) => e.message.includes("Material change"))
       .map((e) => [
         "CedarCloud",
         e.message,
-        new Date(e.at).toLocaleDateString(),
+            e.at,
         "A. Morgan",
         "Needs triage",
         "O12",
+        e.engagementId,
       ]),
   ].filter(
     (row) =>
@@ -3428,8 +3473,8 @@ function Monitoring(c) {
                   "Recovery testing",
                 ],
                 [
-                  state.decision?.condition?.due ||
-                    (state.decision ? "—" : data.defaults.conditionDue),
+                  formatDate(state.decision?.condition?.due ||
+                    (state.decision ? "—" : data.defaults.conditionDue)),
                   "Next condition due",
                   `Owner: ${state.decision?.condition?.owner || data.defaults.conditionOwner}`,
                 ],
@@ -3438,7 +3483,7 @@ function Monitoring(c) {
                   state.signedPack ? 1 : 0,
                   "Current signed pack",
                   state.signedPack
-                    ? new Date(state.decision.at).toLocaleDateString()
+                    ? formatDate(state.decision.at)
                     : "Awaiting customer decision",
                 ],
               ]
@@ -3459,8 +3504,8 @@ function Monitoring(c) {
               : "Conditions and obligations"
           }
           action={
-            <Link onClick={() => setDrawer("review")}>
-              {analyst ? "Calendar view" : "View all conditions"} →
+            <Link onClick={() => analyst ? setDrawer("review") : navigate("C12")}>
+              {analyst ? "Schedule a review" : "View all conditions"} →
             </Link>
           }
         >
@@ -3485,13 +3530,18 @@ function Monitoring(c) {
                         <small className="cell-sub">{row[1]}</small>
                       </td>
                       <td>{row[3]}</td>
-                      <td>{row[2]}</td>
+                      <td>{formatDate(row[2])}</td>
                       <td>
                         <Badge>{row[4]}</Badge>
                       </td>
                       <td>
                         <Link
-                          onClick={() => navigate(analyst ? row[5] : "C12")}
+                          onClick={() => {
+                            const supplier = row[0].split(" / ").at(-1);
+                            const record = data.engagements.find(e => e.id === row[6]) || data.engagements.find(e => e.supplier === supplier && (row[1] === "Recovery condition" ? e.id === "cedar" : true));
+                            if (record) c.update({ selected: record.id });
+                            navigate(analyst ? row[5] : "C12");
+                          }}
                         >
                           View {i === 0 ? "condition" : "review"} →
                         </Link>
@@ -3569,6 +3619,7 @@ function Operations(c) {
   const { data, navigate } = c;
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
+  const rows = filterEngagements(data.engagements.filter(e => !["Active", "Rejected"].includes(e.stage)), search, filter);
   return (
     <>
       <Stats
@@ -3604,11 +3655,7 @@ function Operations(c) {
                 </tr>
               </thead>
               <tbody>
-                {filterEngagements(
-                  data.engagements.filter((e) => e.stage !== "Active"),
-                  search,
-                  filter,
-                ).map((r, i) => (
+                {rows.map((r, i) => (
                   <tr key={r.id}>
                     <td>
                       <Entity
@@ -3617,14 +3664,14 @@ function Operations(c) {
                       />
                     </td>
                     <td>
-                      {data.operationsAttention[r.id] ||
+                      {(r.id === "cedar" ? `${workflowStatus(c.state).label} · ${workflowStatus(c.state).nextOwner}` : data.operationsAttention[r.id]) ||
                         "New request awaiting triage"}
                     </td>
                     <td>
                       <Badge>{r.risk}</Badge>
                     </td>
                     <td>{r.owner}</td>
-                    <td>{r.due}</td>
+                    <td>{formatDate(r.due)}</td>
                     <td>
                       <Link
                         onClick={() => {
@@ -3640,6 +3687,7 @@ function Operations(c) {
               </tbody>
             </table>
           </div>
+          {!rows.length && <div className="empty" role="status">No exceptions match “{search}” and {filter}. Try another search or risk filter.</div>}
         </Card>
       </div>
       <div className="grid equal">
@@ -3649,7 +3697,10 @@ function Operations(c) {
         <Card title="Delivery handoffs">
           <Timeline
             items={data.operationsHandoffs}
-            onClick={() => navigate("O02")}
+            onClick={item => {
+              const record = data.engagements.find(row => item[0].includes(row.supplier));
+              if (record) { c.update({ selected: record.id }); navigate("O02"); }
+            }}
           />
         </Card>
       </div>
@@ -3904,7 +3955,7 @@ function Communications(c) {
   const [tab, setTab] = useState("All");
   const threads = c.data.communications
     .map((row, i) =>
-      i === 0
+      state.retries?.[row[0]] ? [...row.slice(0, 3), "Retry queued (local)", "Session retry recorded", ...row.slice(5)] : i === 0
         ? [...row.slice(0, 3), state.requestStatus, ...row.slice(4)]
         : row,
     )
@@ -3916,7 +3967,7 @@ function Communications(c) {
       <Stats
         items={[
           [state.requestStatus.includes("Queued") ? 2 : 1, "Queued"],
-          [1, "Failed delivery"],
+          [threads.filter(row => row[3].includes("Failed")).length, "Failed delivery"],
           [state.supplierReceipt ? 3 : 2, "Supplier replies"],
           [0, "Unknown send status"],
         ]}
@@ -3962,7 +4013,7 @@ function Communications(c) {
                       {r[3].includes("Failed") && (
                         <Link
                           onClick={() => {
-                            c.event("Local simulated retry queued");
+                            c.event("Local simulated retry queued", { retries: { ...state.retries, [r[0]]: true } });
                             c.notify(
                               "Retry queued locally. No external email was sent.",
                             );
@@ -4087,7 +4138,7 @@ function Response(c) {
               [
                 "Source version",
                 state.supplierReceipt
-                  ? "v2 · local receipt recorded"
+                  ? state.supplierReceipt.reference
                   : "v1 · prepared reference",
               ],
               ["Other controls", "Unchanged"],
@@ -4109,8 +4160,10 @@ function Response(c) {
 
 function Quality(c) {
   const { state, event, notify, data } = c;
-  const [outcome, setOutcome] = useState(state.qa);
-  const [note, setNote] = useState(state.qaNote);
+  const draft = state.qaDrafts?.[c.user.id] || { outcome: state.qa, note: state.qaNote };
+  const { outcome, note } = draft;
+  const editDraft = (patch) => { c.update({ qaDrafts: { ...state.qaDrafts, [c.user.id]: { ...draft, ...patch } } }); setError(""); };
+  const status = workflowStatus(state);
   const [error, setError] = useState("");
   const submit = (e) => {
     e.preventDefault();
@@ -4128,7 +4181,10 @@ function Quality(c) {
       setError("Record the QA challenge and rationale.");
       return;
     }
-    try { c.update(recordQA(state, data, outcome, note)); }
+    try {
+      const qaDrafts = { ...state.qaDrafts }; delete qaDrafts[c.user.id];
+      c.update({ ...recordQA(state, data, outcome, note.trim()), qaDrafts });
+    }
     catch (error) { setError(error.message); return; }
     notify(
       outcome.startsWith("Passed")
@@ -4140,6 +4196,7 @@ function Quality(c) {
   return (
     <>
       <Scope {...c} />
+      <Note>QA readiness: {status.label}. Next owner: {status.nextOwner}. Drafts stay in this session until refresh.</Note>
       <Note>{state.qaReview?.prepared ? "Prepared fixture QA" : "Latest QA"}: {state.qaReview?.actor || "Not recorded"} · {state.qaReview?.at ? new Date(state.qaReview.at).toLocaleString() : "No timestamp"}. Acting as {c.user?.name}; independent QA permission is required.</Note>
       <div className="grid equal">
         <Card title="Challenge brief">
@@ -4148,7 +4205,7 @@ function Quality(c) {
               <b>Material claim</b>
               <p>Payment service recovery exercise coverage</p>
             </div>
-            <Badge>Partial</Badge>
+            <Badge>Evidence support: {state.conclusion}</Badge>
           </div>
           <div className="list-row">
             <div>
@@ -4163,14 +4220,17 @@ function Quality(c) {
           <div className="list-row">
             <div>
               <b>Evidence inspected</b>
-              <p>BCP v2 · p8 · Recovery Test v1 · pp2–4</p>
+              <p>{data.requirements.map(requirement => {
+                const doc = requirement.sourceDocument || [...data.documents].reverse().find(row => row.requirement === requirement.id);
+                return doc ? `${doc.name} · ${doc.version}` : requirement.source;
+              }).join("; ")}</p>
             </div>
             <Link onClick={() => c.navigate("O03")}>View sources →</Link>
           </div>
           <Label title="Independent challenge">
             <textarea
               value={note}
-              onChange={(e) => setNote(e.target.value)}
+              onChange={(e) => editDraft({ note: e.target.value })}
               form="qa-form"
               required
             />
@@ -4190,8 +4250,9 @@ function Quality(c) {
             <Label title="QA state">
               <select
                 value={outcome}
-                onChange={(e) => setOutcome(e.target.value)}
+                onChange={(e) => editDraft({ outcome: e.target.value })}
               >
+                {!["Passed with condition", "Passed", "Rework requested", "More evidence required"].includes(outcome) && <option disabled>{outcome}</option>}
                 <option>Passed with condition</option>
                 <option>Passed</option>
                 <option>Rework requested</option>
@@ -4208,7 +4269,8 @@ function Quality(c) {
                   type="button"
                   key={o}
                   className={outcome === o ? "chosen" : ""}
-                  onClick={() => setOutcome(o)}
+                  aria-pressed={outcome === o}
+                  onClick={() => editDraft({ outcome: o })}
                 >
                   {o === "Passed with condition"
                     ? "Accept with rationale"
@@ -4242,10 +4304,11 @@ function Quality(c) {
 
 function Closure(c) {
   const { state, event, notify } = c;
-  const [decision, setDecision] = useState("Return for more proof");
-  const [reason, setReason] = useState(
-    "Exercise scope and recovery objectives must be documented. Record constraints and confirm the exercise applies before closure.",
-  );
+  const draft = state.closureDrafts?.[c.user.id] || { decision: "Return for more proof", reason: "" };
+  const { decision, reason } = draft;
+  const editDraft = (patch) => { c.update({ closureDrafts: { ...state.closureDrafts, [c.user.id]: { ...draft, ...patch } } }); setError(""); };
+  const eligible = canCloseCondition(state);
+  const condition = state.signedPack?.decision.condition;
   const [error, setError] = useState("");
   const submit = (e) => {
     e.preventDefault();
@@ -4259,22 +4322,12 @@ function Closure(c) {
       setError("Enter reviewer reasoning.");
       return;
     }
-    if (decision === "Verify closure" && !state.supplierReceipt) {
-      setError(
-        "A new supplier evidence receipt is required before verifying closure.",
-      );
-      return;
+    if (decision === "Verify closure") {
+      try { c.update(closeCondition(state, c.data, reason.trim())); }
+      catch (error) { setError(error.message); return; }
+    } else {
+      event("Condition returned for more proof", { conditionClosed: false, closureReason: reason.trim() });
     }
-    if (decision === "Verify closure" && state.conclusion !== "Supported") {
-      setError(
-        "Save a supported analyst conclusion for the new evidence before verifying closure.",
-      );
-      return;
-    }
-    event(
-      `Condition ${decision === "Verify closure" ? "closed" : "returned for more proof"}`,
-      { conditionClosed: decision === "Verify closure", closureReason: reason },
-    );
     notify(
       decision === "Verify closure"
         ? "Condition closed. Original signed pack remains unchanged."
@@ -4285,12 +4338,13 @@ function Closure(c) {
   return (
     <>
       <Scope {...c} />
+      {!eligible && !state.conditionClosed && <Note warning>Closure preview only. Record a conditional customer decision, then receive and independently review newer evidence before verifying closure. Evidence received before the decision cannot close its condition.</Note>}
       <div className="grid equal">
         <Card title="Condition evidence">
           <div className="list-row">
             <div>
               <b>Customer condition</b>
-              <p>Service-scoped recovery exercise due 20 Nov</p>
+              <p>{condition ? `${condition.evidence} · due ${formatDate(condition.due)}` : "Prepared example · no signed customer condition"}</p>
             </div>
             <Badge>{state.conditionClosed ? "Closed" : "Open"}</Badge>
           </div>
@@ -4303,7 +4357,7 @@ function Closure(c) {
               </p>
             </div>
             <Badge>
-              {state.supplierReceipt ? "Received" : "Awaiting evidence"}
+              {eligible ? "Reviewed newer evidence" : state.supplierReceipt ? "Received · closure blocked" : "Awaiting evidence"}
             </Badge>
           </div>
           <div className="list-row">
@@ -4317,7 +4371,7 @@ function Closure(c) {
             <textarea
               form="closure-form"
               value={reason}
-              onChange={(e) => setReason(e.target.value)}
+              onChange={(e) => editDraft({ reason: e.target.value })}
               required
             />
           </Label>
@@ -4327,8 +4381,8 @@ function Closure(c) {
             <Fields
               items={[
                 ["Finding", "R-07 · recovery exercise"],
-                ["Owner", c.data.defaults.conditionOwner],
-                ["Approval condition", "Recorded in signed pack v1"],
+                ["Owner", condition?.owner || "Prepared example"],
+                ["Approval condition", condition ? "Recorded in signed pack v1" : "Not recorded"],
                 ["Initial state", "Awaiting review"],
               ]}
             />
@@ -4338,7 +4392,8 @@ function Closure(c) {
                   key={d}
                   type="button"
                   className={decision === d ? "chosen" : ""}
-                  onClick={() => setDecision(d)}
+                  aria-pressed={decision === d}
+                  onClick={() => editDraft({ decision: d })}
                 >
                   {d}
                 </button>
@@ -4353,7 +4408,7 @@ function Closure(c) {
               Closing a condition changes current obligations only. The signed
               assessment and original decision pack remain immutable.
             </Note>
-            <Button primary small type="submit">
+            <Button primary small type="submit" disabled={!condition || (decision === "Verify closure" && !eligible)}>
               Record verification
             </Button>
           </form>
@@ -4607,12 +4662,13 @@ function ClientHealth(c) {
 function SupplierPortal(c) {
   const { screen, data, state, update, navigate, notify } = c;
   const item = state.supplierItem || data.request.items[0];
-  const [draft, setDraft] = useState(
-    state.supplierDrafts?.[item] || { fileName: "", answer: "", scope: "" },
-  );
+  const actualReceipt = state.supplierReceipts?.[item];
+  const draft = actualReceipt || state.supplierDrafts?.[item] || { fileName: "", answer: "", scope: "" };
+  const remainingItems = data.request.items.filter(name => !state.supplierReceipts?.[name]);
   const [error, setError] = useState("");
   const edit = (patch) => {
-    setDraft((old) => ({ ...old, ...patch }));
+    if (actualReceipt) return;
+    setError("");
     update({
       supplierDraft: { ...draft, ...patch },
       supplierDrafts: {
@@ -4623,6 +4679,10 @@ function SupplierPortal(c) {
   };
   const submit = (e) => {
     e.preventDefault();
+    if (actualReceipt) {
+      navigate("S03");
+      return;
+    }
     try {
       const next = submitSupplier(
         { ...state, supplierDraft: draft },
@@ -4630,13 +4690,13 @@ function SupplierPortal(c) {
         data.request.items[0],
       );
       update(next);
-      notify("Your response was received. Receipt saved.");
+      if (next.supplierReceipts?.[item] !== state.supplierReceipts?.[item])
+        notify("Your response was received. Receipt saved until refresh.");
       navigate("S03");
     } catch (err) {
       setError(err.message);
     }
   };
-  const actualReceipt = state.supplierReceipts?.[item] || state.supplierReceipt;
   const receipt = actualReceipt || data.referenceReceipt;
   if (screen.id === "S01")
     return (
@@ -4663,7 +4723,7 @@ function SupplierPortal(c) {
                 }}
                 icon="ArrowRight"
               >
-                Open
+                {state.supplierReceipts?.[name] ? "View submitted response" : "Open"}
               </Button>
             </div>
           ))}
@@ -4677,7 +4737,7 @@ function SupplierPortal(c) {
             items={[
               ["Customer", data.workspace.name],
               ["Request reference", data.request.reference],
-              ["Due", data.request.due],
+              ["Due", formatDate(data.request.due)],
               [
                 "Completed",
                 `${Object.keys(state.supplierReceipts || {}).length} of ${data.request.items.length} items`,
@@ -4687,20 +4747,24 @@ function SupplierPortal(c) {
           />
           <Button
             primary
-            onClick={() => navigate(state.supplierReceipt ? "S03" : "S02")}
+            onClick={() => {
+              update({ supplierItem: remainingItems[0] || item });
+              navigate(remainingItems.length ? "S02" : "S03");
+            }}
           >
-            {state.supplierReceipt ? "View receipt" : "Start response"}
+            {remainingItems.length ? `Provide ${remainingItems[0]}` : "View receipt"}
           </Button>
         </Card>
       </div>
     );
+  if (screen.id === "S03" && !actualReceipt && item !== data.request.items[0])
+    return <Card title="No submission receipt for this item"><p>{item} has not been submitted. Another item’s receipt does not confirm this response.</p><Button primary onClick={() => navigate("S02")}>Provide {item}</Button><Button onClick={() => navigate("S01")}>Return to all requested items</Button></Card>;
   if (screen.id === "S03")
     return (
       <>
         {!actualReceipt && (
           <Note warning>
-            Reference receipt preview · no new response has been submitted in
-            this browser.{" "}
+            Prepared receipt preview · {item} has not been submitted in this session. The example is not a receipt for this item.{" "}
             <Link onClick={() => navigate("S02")}>
               Submit your own response →
             </Link>
@@ -4710,11 +4774,12 @@ function SupplierPortal(c) {
           <Icon name="Check" size={23} />
         </div>
         <div className="grid wide-left">
-          <Card title="Submission receipt">
+          <Card title={actualReceipt ? "Submission receipt" : "Prepared receipt example"}>
             <Fields
               items={[
                 ["Reference", receipt.reference],
-                ["Received", new Date(receipt.at).toLocaleString()],
+                ["Received", formatDate(receipt.at)],
+                ["Item", actualReceipt ? item : receipt.item || data.request.items[0]],
                 ["Service", "Payment event processing"],
                 ["Submitted by", data.defaults.supplierTeam],
                 ["Review state", <Badge>Pending independent review</Badge>],
@@ -4729,6 +4794,9 @@ function SupplierPortal(c) {
               View submitted items
             </Button>
             <div className="divider" />
+            <Note>Submitted items are read-only. Corrections and cannot-provide responses are unavailable in this prototype. Session receipts are cleared on refresh.</Note>
+            {remainingItems.length > 0 && <div className="form-actions"><Button primary onClick={() => { update({ supplierItem: remainingItems[0] }); navigate("S02"); }}>Provide {remainingItems[0]}</Button></div>}
+            <p>{actualReceipt ? `Submitted: ${item}.` : "No receipt for the selected item."} Remaining: {remainingItems.join(", ") || "None"}.</p>
             <Link onClick={() => navigate("S01")}>
               Return to all requested items →
             </Link>
@@ -4765,6 +4833,8 @@ function SupplierPortal(c) {
     <form id="supplier-form" onSubmit={submit}>
       <div className="grid wide-left">
         <Card title="Provide the requested information">
+          {actualReceipt && <><Note>Submitted response · {actualReceipt.reference}. This item is read-only. Corrections are unavailable in this prototype.</Note><Button onClick={() => navigate("S03")}>View this item’s receipt</Button></>}
+          <fieldset disabled={Boolean(actualReceipt)} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
           <div className="field">
             <span>Document upload</span>
             <UploadList
@@ -4793,6 +4863,7 @@ function SupplierPortal(c) {
                   <button
                     type="button"
                     key={scope}
+                    aria-pressed={draft.scope === scope}
                     className={draft.scope === scope ? "chosen" : ""}
                     onClick={() => edit({ scope })}
                   >
@@ -4821,12 +4892,13 @@ function SupplierPortal(c) {
               Submit response
             </Button>
           </div>
+          </fieldset>
         </Card>
         <Card title="Requirement details">
           <Fields
             items={[
               ["Item", state.supplierItem || item],
-              ["Due", data.request.due],
+              ["Due", formatDate(data.request.due)],
               [
                 "Acceptable proof",
                 item === data.request.items[0]
@@ -4891,7 +4963,7 @@ function dialogTitle(kind) {
   return (
     {
       screens: "Explore the demo",
-      search: "Global search",
+      search: "Find a demo screen",
       settings: "Demo settings",
       workspace: "Current access",
       notifications: "Your notifications",
@@ -4920,6 +4992,9 @@ function Drawer(c) {
   const [value, setValue] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState(data.defaults.conditionDue);
+  const [control, setControl] = useState("");
+  const [severity, setSeverity] = useState("");
+  const [owner, setOwner] = useState("");
   if (kind === "screens" || kind === "search")
     return (
       <>
@@ -4927,7 +5002,7 @@ function Drawer(c) {
           <Icon name="Search" size={15} />
           <input
             autoFocus
-            placeholder="Search screens, suppliers or workflows"
+            placeholder="Find a demo screen"
             aria-label="Search demo screens"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -4967,6 +5042,7 @@ function Drawer(c) {
             </div>
           </div>
         ))}
+        {!c.catalog.screens.some(s => s.role === c.user?.role && `${s.label} ${s.id}`.toLowerCase().includes(query.toLowerCase())) && <p role="status">No demo screens match “{query}”. This searches screen names and IDs.</p>}
       </>
     );
   if (kind === "reset")
@@ -5020,6 +5096,9 @@ function Drawer(c) {
         </div>
         <Fields
           items={[
+            ["File", r.sourceDocument?.name || r.source],
+            ["Version", r.sourceDocument?.version || "Prepared excerpt"],
+            ["Received / source date", formatDate(r.sourceDocument?.date)],
             ["What this proves", r.proves],
             ["Not established", r.doesNotProve],
             [
@@ -5035,25 +5114,27 @@ function Drawer(c) {
     return (
       <Timeline
         items={[
-          ...data.notifications,
+          ...data.notifications.map(row => /decision/i.test(row[0]) ? [workflowStatus(state).label, `CedarCloud · Next owner: ${workflowStatus(state).nextOwner}`, workflowStatus(state).ready ? "Ready" : "Review"] : row),
           ...state.events.map((e) => [
             e.message,
             new Date(e.at).toLocaleString(),
             "Recorded",
           ]),
         ]}
-        onClick={() => navigate("C09")}
+        onClick={item => {
+          const record = data.engagements.find(row => item.join(" ").includes(row.supplier));
+          if (record) { c.update({ selected: record.id }); navigate("C09"); }
+        }}
       />
     );
   if (kind === "submitted")
     return (
+      state.supplierReceipts?.[state.supplierItem || data.request.items[0]] ?
       <Fields
         items={Object.entries(
-          state.supplierReceipts?.[state.supplierItem] ||
-            state.supplierReceipt ||
-            data.referenceReceipt,
+          state.supplierReceipts[state.supplierItem || data.request.items[0]],
         ).map(([key, value]) => [key, String(value)])}
-      />
+      /> : <Note>No response has been submitted for this item in this session.</Note>
     );
   if (
     kind === "thread" &&
@@ -5213,17 +5294,14 @@ function Drawer(c) {
       <>
         <UploadList
           files={state.uploads || []}
-          onChange={(uploads) =>
-            c.update({
-              uploads: uploads.map((f) => ({
-                ...f,
-                status: "Needs review",
-                version: "v1",
-                page: "Not extracted",
-                requirement: "R-07",
-              })),
-            })
-          }
+          removable={false}
+          onChange={(uploads) => {
+            let next = state;
+            for (const file of uploads.filter(f => !(state.uploads || []).some(old => old === f))) {
+              next = addEvidence(next, data, { ...file, page: "Not extracted", requirement: state.selectedRequirement || "R-07" });
+            }
+            c.update(next);
+          }}
         />
         <Note>
           Only demo file metadata is stored. New documents remain unverified.
@@ -5251,15 +5329,20 @@ function Drawer(c) {
     <form
       onSubmit={(e) => {
         e.preventDefault();
+        const inputs = [...e.currentTarget.querySelectorAll("input[required], textarea[required]")];
+        const blank = inputs.find(input => !input.value.trim());
+        if (blank) { blank.setCustomValidity("Enter a non-blank value."); blank.reportValidity(); return; }
+        const title = value.trim();
+        const details = description.trim();
         const message =
           kind === "change"
-            ? `Material change: ${value}`
+            ? `Material change: ${title}`
             : kind === "owner"
-              ? `Business owner confirmed: ${value}`
-              : `${dialogTitle(kind)}: ${value}`;
+              ? `Business owner confirmed: ${title}`
+              : `${dialogTitle(kind)}: ${title}`;
         const patch = {};
         if (kind === "owner")
-          patch.owners = { ...(state.owners || {}), atlas: value };
+          patch.owners = { ...(state.owners || {}), [c.engagement.id]: title };
         if (kind === "review")
           patch.scheduledReviews = [
             ...(state.scheduledReviews || []),
@@ -5269,8 +5352,8 @@ function Drawer(c) {
               engagementId: c.engagement.id,
               client: c.engagement.client,
               supplier: c.engagement.supplier,
-              title: value,
-              description,
+              title,
+              description: details,
               date,
               owner: data.workspace.decisionOwner,
             },
@@ -5285,13 +5368,13 @@ function Drawer(c) {
               client: c.engagement.client,
               supplier: c.engagement.supplier,
               service: c.engagement.service,
-              issue: value,
-              control: "R-07",
-              severity: "Medium",
-              owner: data.workspace.decisionOwner,
+              issue: title,
+              control,
+              severity,
+              owner: owner.trim(),
               state: "Open",
               due: date,
-              evidence: description,
+              evidence: details,
             },
           ];
         c.event(message, patch);
@@ -5310,7 +5393,7 @@ function Drawer(c) {
           required
           autoFocus
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => { e.target.setCustomValidity(""); setValue(e.target.value); }}
         />
       </Label>
       {kind !== "owner" && (
@@ -5319,7 +5402,7 @@ function Drawer(c) {
             <textarea
               required
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => { e.target.setCustomValidity(""); setDescription(e.target.value); }}
             />
           </Label>
           <Label title="Due / effective date">
@@ -5332,6 +5415,11 @@ function Drawer(c) {
           </Label>
         </>
       )}
+      {kind === "finding" && <>
+        <Label title="Requirement"><select required value={control} onChange={e => setControl(e.target.value)}><option value="">Select requirement</option>{data.requirements.map(r => <option key={r.id} value={r.id}>{r.id} · {r.name}</option>)}</select></Label>
+        <Label title="Severity"><select required value={severity} onChange={e => setSeverity(e.target.value)}><option value="">Select severity</option>{["Low", "Medium", "High", "Critical"].map(s => <option key={s}>{s}</option>)}</select></Label>
+        <Label title="Finding owner"><input required value={owner} onChange={e => { e.target.setCustomValidity(""); setOwner(e.target.value); }} /></Label>
+      </>}
       <Note>
         Saved in this tab until refresh. No message is sent
         externally.

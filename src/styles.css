@@ -12,7 +12,7 @@
   font-size: 12px;
   --purple: #7057fa;
   --line: #dce4f0;
-  --muted: #8193ae;
+  --muted: #526781;
   --soft: #f1edff;
 }
 * {
@@ -77,12 +77,12 @@ textarea {
   line-height: 1.6;
 }
 small {
-  font-size: 10px;
+  font-size: 11px;
 }
 p {
   line-height: 1.65;
   margin: 8px 0 14px;
-  color: #778ba7;
+  color: #526781;
 }
 h1,
 h2,
@@ -138,7 +138,7 @@ svg {
   letter-spacing: -0.9px;
 }
 .brand small {
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 650;
   letter-spacing: 1.2px;
   color: #8e9eb7;
@@ -170,7 +170,7 @@ svg {
   display: block;
   color: #8b9bb3;
   letter-spacing: 1px;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 650;
   margin-bottom: 8px;
 }
@@ -184,7 +184,7 @@ svg {
   color: #90a0b8;
 }
 .nav-label {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 1px;
   color: #97a6bc;
   font-weight: 650;
@@ -247,11 +247,11 @@ svg {
   min-height: 65px;
 }
 .profile b {
-  font-size: 10px;
+  font-size: 11px;
   display: block;
 }
 .profile small {
-  font-size: 10px;
+  font-size: 11px;
   color: #8a9cb4;
   display: block;
   margin-top: 3px;
@@ -267,7 +267,7 @@ svg {
   background: #eee9ff;
   color: #674eea;
   border-radius: 50%;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -306,7 +306,7 @@ svg {
   align-items: center;
 }
 .synthetic {
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 1.1px;
   font-weight: 650;
 }
@@ -333,7 +333,7 @@ main {
   color: #7a8da9;
 }
 .eyebrow {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 650;
   letter-spacing: 1.15px;
   color: #8974ce;
@@ -371,7 +371,7 @@ main {
   background: #6045e7;
 }
 .button.small {
-  font-size: 10px;
+  font-size: 11px;
   padding: 7px 10px;
   min-height: 29px;
 }
@@ -417,7 +417,7 @@ main {
   font-size: 11px;
 }
 .stat > span {
-  font-size: 10px;
+  font-size: 11px;
   color: #8b9db7;
   line-height: 1.6;
 }
@@ -470,7 +470,7 @@ main {
   border-bottom: 1px solid #e8edf5;
 }
 .card-head small {
-  font-size: 9px;
+  font-size: 11px;
 }
 .card-body {
   padding: 18px 19px;
@@ -499,12 +499,12 @@ main {
   font-size: 11px;
 }
 .action-row p {
-  font-size: 10px;
+  font-size: 11px;
   margin: 5px 0 0;
 }
 .badge {
   display: inline-flex;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
   padding: 4px 6px;
   border: 1px solid;
@@ -576,7 +576,7 @@ main {
   font-weight: 650;
 }
 .ring small {
-  font-size: 9px;
+  font-size: 11px;
   color: #8d9fba;
   margin-top: 4px;
 }
@@ -610,7 +610,7 @@ main {
   color: #7e91ad;
   padding: 11px 10px;
   margin-top: 12px;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.65;
   border-radius: 4px;
 }
@@ -644,7 +644,7 @@ main {
 }
 .activity span {
   color: #7a8dab;
-  font-size: 10px;
+  font-size: 11px;
 }
 .activity strong {
   font-size: 24px;
@@ -653,7 +653,7 @@ main {
 .activity small {
   color: #8a9db9;
   line-height: 1.8;
-  font-size: 10px;
+  font-size: 11px;
 }
 .timeline {
   padding: 3px 0;
@@ -709,13 +709,13 @@ table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.7;
 }
 thead {
   background: #f7f9fc;
   color: #8598b2;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.4px;
   text-transform: uppercase;
@@ -736,10 +736,10 @@ tr:last-child td {
   border-bottom: 0;
 }
 td > .link {
-  font-size: 10px;
+  font-size: 11px;
 }
 td .badge {
-  font-size: 8px;
+  font-size: 11px;
 }
 tbody tr:hover {
   background: #fbfaff;
@@ -758,7 +758,7 @@ tbody tr:hover {
   display: grid;
   place-items: center;
   color: #7058dd;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -770,7 +770,7 @@ tbody tr:hover {
 .entity small {
   display: block;
   color: #8a9cb5;
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 3px;
 }
 .entity > span:last-child {
@@ -779,7 +779,7 @@ tbody tr:hover {
 .cell-sub {
   display: block;
   color: #94a3b9;
-  font-size: 9px;
+  font-size: 11px;
   margin-top: 4px;
 }
 .tabs {
@@ -827,7 +827,7 @@ tbody tr:hover {
   padding: 8px 0;
   box-shadow: none;
   width: 100%;
-  font-size: 10px;
+  font-size: 11px;
   background: transparent;
 }
 .search-input:focus-within {
@@ -846,7 +846,7 @@ tbody tr:hover {
   padding: 8px 10px;
   color: #8292a8;
   border-radius: 4px;
-  font-size: 9px;
+  font-size: 11px;
 }
 .filter-chips button.active {
   background: #f1edff;
@@ -869,7 +869,7 @@ tbody tr:hover {
   gap: 20px;
   border-bottom: 1px solid #edf1f7;
   padding: 12px 0;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.65;
 }
 .fields > div:last-child {
@@ -906,7 +906,7 @@ tbody tr:hover {
   border: 1px solid #e5eaf2;
   border-radius: 5px;
   margin: 16px 0 20px;
-  font-size: 10px;
+  font-size: 11px;
   flex-wrap: wrap;
 }
 .scope span {
@@ -931,7 +931,7 @@ tbody tr:hover {
 }
 .supplier-banner > span:last-child:not(.badge) {
   color: #98a7bc;
-  font-size: 10px;
+  font-size: 11px;
 }
 .supplier-banner .entity-icon {
   width: 39px;
@@ -961,7 +961,7 @@ tbody tr:hover {
   font-size: 11px;
 }
 .list-row p {
-  font-size: 10px;
+  font-size: 11px;
   margin: 5px 0 0;
   color: #91a1b8;
 }
@@ -985,7 +985,7 @@ tbody tr:hover {
   background: white;
   border-radius: 5px;
   color: #8a98ae;
-  font-size: 10px;
+  font-size: 11px;
   flex: 0 0 auto;
 }
 .stepper .current {
@@ -1014,7 +1014,7 @@ tbody tr:hover {
   border: 0;
   background: none;
   padding: 4px;
-  font-size: 10px;
+  font-size: 11px;
 }
 .assessment-steps .current {
   background: none;
@@ -1030,7 +1030,7 @@ tbody tr:hover {
   min-width: 0;
 }
 .field > span:first-child {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: #657b99;
 }
@@ -1041,12 +1041,12 @@ tbody tr:hover {
   font-size: 11px;
 }
 .field small {
-  font-size: 9px;
+  font-size: 11px;
   color: #9cabc0;
   line-height: 1.6;
 }
 .micro-label {
-  font-size: 9px;
+  font-size: 11px;
   color: #94a2b7;
   font-weight: 550;
   line-height: 1.5;
@@ -1062,7 +1062,7 @@ tbody tr:hover {
   border: 1px solid #e7ebf3;
   background: #fff;
   padding: 7px 9px;
-  font-size: 9px;
+  font-size: 11px;
   color: #8797af;
   border-radius: 4px;
 }
@@ -1102,7 +1102,7 @@ tbody tr:hover {
 .question small {
   display: block;
   color: #a0acbd;
-  font-size: 9px;
+  font-size: 11px;
   margin-top: 6px;
   line-height: 1.6;
 }
@@ -1112,7 +1112,7 @@ tbody tr:hover {
   flex-shrink: 0;
 }
 .segmented button {
-  font-size: 9px;
+  font-size: 11px;
   padding: 7px 8px;
 }
 .supplier-matches .match {
@@ -1128,7 +1128,7 @@ tbody tr:hover {
   min-width: 200px;
 }
 .match p {
-  font-size: 10px;
+  font-size: 11px;
   margin: 3px 0;
 }
 .match b {
@@ -1179,7 +1179,7 @@ tbody tr:hover {
 }
 .upload-zone small {
   color: #a0acc0;
-  font-size: 9px;
+  font-size: 11px;
 }
 .document {
   background: #f2f4f8;
@@ -1191,7 +1191,7 @@ tbody tr:hover {
   color: #53627a;
 }
 .document-label {
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 1.2px;
   color: #a5afbd;
 }
@@ -1226,14 +1226,14 @@ blockquote {
   bottom: 22px;
   left: 27px;
   color: #a4afbf;
-  font-size: 8px;
+  font-size: 11px;
 }
 .source-caption {
   display: flex;
   justify-content: space-between;
   align-items: center;
   color: #a4aebe;
-  font-size: 10px;
+  font-size: 11px;
   margin-bottom: 14px;
   gap: 10px;
 }
@@ -1273,12 +1273,12 @@ blockquote {
   box-shadow: 0 0 0 1px #e6dcff;
 }
 .decision-options b {
-  font-size: 10px;
+  font-size: 11px;
 }
 .decision-options small {
   display: block;
   color: #99a8bc;
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.6;
   margin-top: 5px;
 }
@@ -1304,7 +1304,7 @@ blockquote {
 }
 .pack-logo small {
   color: #a5adc0;
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 1px;
   margin-left: 6px;
 }
@@ -1315,7 +1315,7 @@ blockquote {
   margin-bottom: 40px;
 }
 .signed-document > .eyebrow {
-  font-size: 9px;
+  font-size: 11px;
   color: #9ba9bb;
 }
 .signed-document h1 {
@@ -1337,7 +1337,7 @@ blockquote {
   float: right;
 }
 .pack-requirement p {
-  font-size: 10px;
+  font-size: 11px;
 }
 .risk-heading {
   color: #b94c60;
@@ -1355,12 +1355,12 @@ blockquote {
   align-items: center;
 }
 .risk-grid-row:first-child {
-  font-size: 8px;
+  font-size: 11px;
   color: #9caabd;
   margin-bottom: 5px;
 }
 .risk-grid-row small {
-  font-size: 8px;
+  font-size: 11px;
   text-align: center;
 }
 .risk-grid-row > button {
@@ -1378,7 +1378,7 @@ blockquote {
 .risk-grid > small {
   margin-top: 14px;
   color: #a1afc0;
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.6;
 }
 .bia-grid {
@@ -1393,7 +1393,7 @@ blockquote {
   gap: 10px;
 }
 .bia-grid h3 small {
-  font-size: 9px;
+  font-size: 11px;
   color: #a2afbf;
   font-weight: 400;
 }
@@ -1403,7 +1403,7 @@ blockquote {
   align-items: center;
   padding: 7px 0;
   border-bottom: 1px solid #f0f3f8;
-  font-size: 9px;
+  font-size: 11px;
   color: #94a3b9;
   justify-content: space-between;
 }
@@ -1426,7 +1426,7 @@ blockquote {
 }
 .muted {
   color: #9aabc0;
-  font-size: 10px;
+  font-size: 11px;
 }
 .empty {
   padding: 40px 20px;
@@ -1468,13 +1468,13 @@ blockquote {
   letter-spacing: -0.9px;
 }
 .portal-brand small {
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 650;
   color: #a3afc0;
   letter-spacing: 0.9px;
 }
 .supplier-app .topbar-end {
-  font-size: 10px;
+  font-size: 11px;
   color: #a6b1c3;
 }
 .supplier-app .page-heading {
@@ -1484,7 +1484,7 @@ blockquote {
   font-size: 25px;
 }
 .supplier-app .eyebrow {
-  font-size: 9px;
+  font-size: 11px;
   color: #9d99ba;
 }
 .supplier-app .page-heading p {
@@ -1523,11 +1523,11 @@ blockquote {
   gap: 9px;
   z-index: 30;
   padding: 6px 9px;
-  font-size: 10px;
+  font-size: 11px;
   white-space: nowrap;
 }
 .demo-toolbar > b {
-  font-size: 9px;
+  font-size: 11px;
   color: #827591;
 }
 .demo-dot {
@@ -1537,7 +1537,7 @@ blockquote {
   background: #9883ef;
 }
 .demo-toolbar select {
-  font-size: 10px;
+  font-size: 11px;
   border: 0;
   border-left: 1px solid #eee9f5;
   padding: 5px 9px;
@@ -1552,7 +1552,7 @@ blockquote {
   color: #88779f;
   border-left: 1px solid #eee9f5;
   padding-left: 9px;
-  font-size: 10px;
+  font-size: 11px;
 }
 .dialog {
   position: fixed;
@@ -1618,7 +1618,7 @@ blockquote {
   background: #f7f3ff;
 }
 .screen-links button > span {
-  font-size: 9px;
+  font-size: 11px;
   color: #8d77ce;
   background: #f3edff;
   padding: 4px;
@@ -1663,7 +1663,7 @@ footer {
   border-top: 1px solid #e2e8f2;
   padding: 16px 0 45px;
   color: #a0afc5;
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.1px;
 }
 .mobile-menu {
@@ -1714,7 +1714,7 @@ footer {
   min-height: 470px;
 }
 .assessment-path-rail .micro-label {
-  font-size: 8px;
+  font-size: 11px;
   margin: 0 0 11px;
 }
 .assessment-path-rail button {
@@ -1722,7 +1722,7 @@ footer {
   border-left: 1px solid #e4e0f1;
   padding: 11px 7px;
   color: #879ab4;
-  font-size: 10px;
+  font-size: 11px;
 }
 .assessment-path-rail .done {
   color: #6d9c8c;
@@ -1924,10 +1924,10 @@ main:has(.assessment-path-rail) > footer {
     min-height: 100px;
   }
   .stat b {
-    font-size: 10px;
+    font-size: 11px;
   }
   .stat > span {
-    font-size: 9px;
+    font-size: 11px;
   }
   .topbar-end .synthetic {
     display: none;
@@ -1996,7 +1996,7 @@ main:has(.assessment-path-rail) > footer {
     color: #7a66b7;
   }
   .breadcrumb {
-    font-size: 9px;
+    font-size: 11px;
     gap: 7px;
     flex: 1;
   }
@@ -2049,7 +2049,7 @@ main:has(.assessment-path-rail) > footer {
     font-size: 12px;
   }
   .card-head .link {
-    font-size: 9px;
+    font-size: 11px;
   }
   .card-body {
     padding: 15px;
@@ -2063,7 +2063,7 @@ main:has(.assessment-path-rail) > footer {
     padding: 16px;
   }
   .scope {
-    font-size: 9px;
+    font-size: 11px;
     gap: 10px;
     padding: 12px;
     line-height: 1.7;
@@ -2084,7 +2084,7 @@ main:has(.assessment-path-rail) > footer {
   }
   .assessment-steps button,
   .assessment-steps > span {
-    font-size: 8px;
+    font-size: 11px;
     padding: 3px;
   }
   .decision-options {
@@ -2108,12 +2108,12 @@ main:has(.assessment-path-rail) > footer {
     display: none;
   }
   .demo-toolbar select {
-    font-size: 9px;
+    font-size: 11px;
     max-width: 160px;
     padding: 6px;
   }
   .demo-toolbar button {
-    font-size: 9px;
+    font-size: 11px;
   }
   .demo-dot {
     margin-left: 3px;
@@ -2129,7 +2129,7 @@ main:has(.assessment-path-rail) > footer {
     margin: 0 18px;
   }
   .supplier-app .topbar-end {
-    font-size: 8px;
+    font-size: 11px;
   }
   .supplier-app .portal-brand b {
     font-size: 19px;
@@ -2161,10 +2161,10 @@ main:has(.assessment-path-rail) > footer {
   .toast {
     right: 15px;
     bottom: 67px;
-    font-size: 10px;
+    font-size: 11px;
   }
   footer {
-    font-size: 8px;
+    font-size: 11px;
   }
   .document {
     padding: 30px 18px;
@@ -2281,3 +2281,23 @@ legend { padding: 0 5px; font-weight: 600; }
 .audit-item summary { cursor: pointer; color: #6144cc; margin: 10px 0; }
 @media(max-width: 850px) { .customer-filter select { max-width: 155px; } .topbar:has(.customer-filter) .breadcrumb { display: none; } }
 @media(max-width: 500px) { .topbar:has(.customer-filter) .synthetic { display: none; } .customer-filter select { max-width: 180px; } }
+
+/* Keep review text readable during screen sharing and contain wide tables. */
+.card, .grid > *, .app, main, .table-wrap { min-width: 0; }
+.card-body { min-width: 0; }
+.fields dd { overflow-wrap: anywhere; }
+.mobile-nav-close { display: none; }
+fieldset { min-width: 0; border: 0; padding: 0; margin: 0; }
+@media (max-width: 640px) {
+  html, body { overflow-x: clip; }
+  .app, main { max-width: 100%; }
+  .table-wrap { width: 100%; overflow-x: auto; contain: inline-size paint; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .filters, .action-row, .card-head { flex-wrap: wrap; }
+  .search-input { min-width: 0; max-width: 100%; }
+  .ring-layout { flex-wrap: wrap; }
+  .mobile-nav-close { display: flex; gap: 8px; align-items: center; padding: 12px; }
+  main, .supplier-app main { padding-bottom: 100px; }
+}
+.cell-sub, .helper, .micro-label, .source-caption, .document > small, .field > small, .fields dt, .note, thead { color: #526781; }

@@ -2,7 +2,7 @@
 
 Standalone React/Vite supplier-assurance prototype deployed on Vercel. All data is synthetic; changes live in memory until refresh. Public seed JSON and the demo-user selector are not real authentication or tenant security.
 
-Current stage: the data model/session editor is published. The user approved simplifying workspace switching into Customer, Analyst and Superadmin roles with assigned-customer access and named review history. Other proposals in the parent workspace’s UI review board remain unapproved.
+Current stage: the owner approved the full final call sheet from `Osura Decision Call.html` on 6 November 2026. This branch implements its 16 areas; see `docs/approved-v2-changes.md` for scope and deliberate deferrals. Customer, Analyst and Superadmin roles retain assigned-customer access and named review history. The v2 demo is deployed separately at `osura-v2.dev.fems.education`; the original demo remains unchanged.
 
 - `src/main.jsx`, `styles.css`: screens, routing and UI.
 - `src/access.mjs`, `RoleAdmin.jsx`: simulated role checks, customer assignments, superadmin controls and activity history.

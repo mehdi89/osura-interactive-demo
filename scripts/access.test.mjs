@@ -96,6 +96,7 @@ test("case mutations cannot attribute Cedar evidence to another customer's engag
   assert.throws(()=>saveRequirementReview(state,other,"R-07",review),/scoped/);
   const qa={...other,access:{...other.access,canQA:true}};
   assert.throws(()=>recordQA(state,qa,"Passed","Checked"),/scoped/);
+  assert.throws(()=>recordDecision({...state,selected:"cedar"},{...context("customer-morgan"),activeEngagementId:"atlas"},"Approve","Proceed",null),/Decision Owner|scoped/);
 });
 
 
@@ -114,4 +115,15 @@ test("saving from a filtered view preserves other customers' workflow records an
   const initial={events:[first],scheduledReviews:[{id:"northstar-review",workspaceId:"northstar"}],extraFindings:[{id:"ridgeway-finding",workspaceId:"ridgeway"}]};
   const next=mergeWorkflowPatch(initial,{events:[{...first,actor:"Changed"},{id:"event-2",workspaceId:"ridgeway"}],scheduledReviews:[{id:"ridgeway-review",workspaceId:"ridgeway"}],extraFindings:[]});
   assert.equal(next.scheduledReviews.length,2);assert.equal(next.extraFindings.length,1);assert.equal(next.events.length,2);assert.equal(next.events[0].actor,"Original actor");assert.equal(initial.events.length,1);
+});
+
+
+test("QA independence retains authors after their review is overwritten", () => {
+  const initial = createState(base);
+  const first = saveRequirementReview(initial, context("analyst-02"), "IAM-04", { ...review, conclusion: "Unknown" });
+  const overwritten = saveRequirementReview(first, context("analyst-01"), "IAM-04", { ...review, conclusion: "Unknown" });
+  assert.equal(overwritten.reviews["IAM-04"].actorId, "osura-analyst-01");
+  assert.throws(() => recordQA(overwritten, context("analyst-02"), "Passed", "I authored the earlier version"), /own analysis/);
+  const fresh = createState(base);
+  assert.doesNotThrow(() => recordQA(fresh, context("analyst-02"), "Passed", "New isolated assessment"));
 });

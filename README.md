@@ -1,5 +1,9 @@
 # Osura interactive demo
 
+[V2 client review](https://osura-v2.dev.fems.education) · [Approved improvements and deployment notes](docs/approved-v2-changes.md)
+
+This branch implements the approved final decision call sheet. The demo stays synthetic and session-only; the actual V2 application owns milestone acceptance.
+
 [Live demo](https://osura-demo-mehdi89.vercel.app) · [Public repository](https://github.com/mehdi89/osura-interactive-demo)
 
 A standalone React/Vite interactive supplier-assurance demo: 16 customer screens, 16 Osura operations screens and 3 supplier portal screens, plus a superadmin team/access page. All example data is synthetic.
@@ -36,9 +40,9 @@ Labels, layout and interaction logic are React components in `src/main.jsx`; sty
 - **Customer intake:** Overview → Request assessment → confirm a supplier → intended use → business context → review/attachments → submit. A local receipt, new assessment-register row and operations-queue item are created. Draft values last until refresh.
 - **Evidence:** Operations → Assessments → CedarCloud → Evidence → inspect a requirement/source version → save independent judgement → compare the prepared proposal. A changed conclusion requires a reason.
 - **Supplier loop:** Prepare supplier follow-up → review the packet → queue locally → supplier portal → upload metadata and describe service scope → submit → session receipt. The two requested items have independent drafts and receipts. Response inspection opens the changed recovery evidence for review; receipt alone does not mark it supported.
-- **QA and customer decision:** Independent QA → accept or return for rework → Customer decision → choose one of four outcomes. QA rework blocks signing. Conditional approval requires an owner, due date and required evidence. Returning for clarification produces no signed pack.
+- **QA and customer decision:** Independent QA → accept or return for rework → Customer decision → choose one of four outcomes. QA rework blocks signing until an analyst revision and new independent QA pass. Customer intent starts blank and requires confirmation. Conditional approval requires an owner, due date and required evidence. Returning for clarification produces no signed pack.
 - **Decision Pack:** Recording a customer outcome snapshots the case, evidence, rationale and QA. Open the pack, download its JSON or use **Print / Save PDF**. Later condition changes leave this snapshot unchanged.
-- **Ongoing assurance:** Report a change, create a scheduled review, inspect a condition and record closure reasoning. A closure needs a prior signed condition and newly submitted evidence.
+- **Ongoing assurance:** Report a change, create a scheduled review, inspect a condition and record closure reasoning. A closure needs a prior signed condition and supported, independently reviewed evidence received after that decision. Submitted supplier items are read-only.
 
 See [Roles and accountability](docs/roles-and-accountability.md) for analyst assignments, independent QA and named action history.
 

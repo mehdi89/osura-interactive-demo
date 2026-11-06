@@ -7,6 +7,12 @@ import {
   submitSupplier,
   filterEngagements,
   saveRequirementReview,
+  recordQA,
+  workflowStatus,
+  addEvidence,
+  canCloseCondition,
+  closeCondition,
+  filterSupplierServices,
 } from "../src/state.mjs";
 
 import { sessionUser } from "../src/access.mjs";
@@ -217,4 +223,74 @@ test("custom supplier item labels and reference ids come from the dataset", () =
   const next = submitSupplier(state, "Custom recovery", "Custom recovery");
   assert.equal(next.supplierReceipt.reference, "CUSTOM-1-R01");
   assert.equal(next.conclusion, "Needs review");
+});
+
+
+test("QA send-back requires an analyst revision and readiness agrees with the decision gate", () => {
+  const qaData = { ...data, access: sessionUser(model, "analyst-02") };
+  const sentBack = recordQA(createState(data), qaData, "Rework requested", "Explain service scope");
+  assert.equal(workflowStatus(sentBack).label, "Analyst revision required");
+  assert.equal(workflowStatus(sentBack).nextOwner, "Analyst");
+  assert.throws(() => recordQA(sentBack, qaData, "Passed", "Changed my mind"), /must revise/);
+  const revised = saveRequirementReview(sentBack, analystData, "R-07", {
+    recommendation: "Approve with conditions", judgement: "Exact service scope considered", conclusion: "Partially supported", reason: "",
+  });
+  assert.equal(workflowStatus(revised).label, "Independent QA required");
+  const passed = recordQA(revised, qaData, "Passed with condition", "Independently checked revision");
+  assert.equal(workflowStatus(passed).ready, true);
+  const signed = recordDecision(passed, data, "Reject", "Service scope is unacceptable", null);
+  assert.equal(workflowStatus(signed).label, "Rejected");
+  assert.equal(workflowStatus(signed).ready, false);
+});
+
+test("ordinary evidence uploads invalidate readiness and require their own review", () => {
+  const initial = createState(data);
+  const uploaded = addEvidence(initial, analystData, { name: "access.pdf", requirement: "IAM-04" });
+  assert.equal(uploaded.pendingReviews["IAM-04"], true);
+  assert.equal(workflowStatus(uploaded).label, "Evidence re-review required");
+  assert.throws(() => recordDecision(uploaded, data, "Approve", "Proceed", null), /supplier evidence/);
+  assert.throws(() => addEvidence(initial, analystData, { name: "  " }), /file/);
+  assert.throws(() => addEvidence(initial, analystData, { name: "file.pdf", requirement: "missing" }), /valid/);
+  const all = addEvidence(initial, analystData, { name: "general.pdf" });
+  assert.equal(Object.values(all.pendingReviews).filter(Boolean).length, data.requirements.length);
+  assert.notEqual(addEvidence(initial, analystData, { name: "file.pdf" }).uploads[0].version, all.uploads[0].version);
+  assert.equal(initial.uploads, undefined);
+});
+
+test("a signed pack keeps its workspace name and cannot close on evidence predating the decision", () => {
+  const signed = recordDecision(createState(data), data, "Approve with conditions", "Proceed with future proof", condition);
+  assert.equal(signed.signedPack.workspace.name, data.workspace.name);
+  const old = {
+    ...signed,
+    supplierReceipt: { at: "2020-01-01T00:00:00Z", reference: "old" },
+    reviews: { "R-07": { conclusion: "Supported", at: "2026-11-05T00:00:00Z", evidenceVersions: ["old"] } },
+    conclusion: "Supported",
+  };
+  assert.equal(canCloseCondition(old), false);
+  assert.throws(() => closeCondition(old, analystData, "Looks fine"), /after the customer decision/);
+  const decisionAt = "2026-11-05T00:00:00Z";
+  const receipt = { at: "2026-11-06T00:00:00Z", reference: "new" };
+  const later = { ...old, signedPack: { ...signed.signedPack, decision: { ...signed.decision, at: decisionAt } },
+    supplierReceipt: receipt, reviews: { "R-07": { conclusion: "Supported", at: "2026-11-06T01:00:00Z", evidenceVersions: [receipt.reference] } } };
+  assert.equal(canCloseCondition(later), true);
+  assert.equal(canCloseCondition({ ...later, pendingReviews: { "R-07": true } }), false);
+  const closed = closeCondition(later, analystData, "Reviewed the later scoped proof");
+  assert.equal(closed.conditionClosed, true);
+  assert.equal(closed.signedPack, later.signedPack);
+  assert.equal(canCloseCondition({ ...later, reviews: { "R-07": { ...later.reviews["R-07"], evidenceVersions: ["old"] } } }), false);
+});
+
+test("supplier filters match service scope before grouping mixed supplier outcomes", () => {
+  const rows = [
+    { id: "review", workspaceId: "one", supplier: "Shared", service: "Events", stage: "Decision", risk: "High" },
+    { id: "approved", workspaceId: "one", supplier: "Shared", service: "CRM", stage: "Active", risk: "Low" },
+    { id: "rejected", workspaceId: "one", supplier: "Rejected", service: "Storage", stage: "Rejected", risk: "High" },
+  ];
+  assert.deepEqual(filterSupplierServices(rows, "", "All", "Approved").map(row => row.id), ["approved"]);
+  assert.equal(filterSupplierServices(rows, "", "All", "Approved")[0].service, "CRM");
+  assert.deepEqual(filterSupplierServices(rows, "", "All", "Needs attention").map(row => row.id), ["review"]);
+  const low = filterSupplierServices(rows, "", "Low");
+  assert.equal(low.length, 1); assert.equal(low[0].service, "CRM"); assert.equal(low[0].serviceCount, 1);
+  const grouped = filterSupplierServices(rows);
+  assert.equal(grouped[0].serviceCount, 2); assert.equal(grouped[0].service, "Events · CRM");
 });

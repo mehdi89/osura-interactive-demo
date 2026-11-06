@@ -75,3 +75,12 @@ test("generated SQL stays in sync and quotes fixture values safely", async () =>
   assert.ok(sql.includes("O''Brien''); DROP TABLE actors; --"));
   assert.equal((output["schema.sql"].match(/CREATE TABLE/g) || []).length, 19);
 });
+
+
+test("the data editor cannot redirect CedarCloud's walkthrough to another supplier service", () => {
+  const engagement = data.engagements.find(row => row.id === "cedar");
+  const otherService = data.services.find(row => row.supplierId !== "cedarcloud");
+  assert.throws(() => changeRecord(data, "engagements", "update", { ...engagement, serviceId: otherService.id }, validate), /original supplier service link/);
+  const service = data.services.find(row => row.id === engagement.serviceId);
+  assert.throws(() => changeRecord(data, "services", "update", { ...service, supplierId: otherService.supplierId }, validate), /original supplier service link/);
+});

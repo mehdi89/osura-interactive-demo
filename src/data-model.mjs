@@ -69,6 +69,9 @@ export function createModelValidator(schema, presentation) {
     };
     const walkthrough = pinned("engagements", s.walkthroughEngagementId);
     pinned("workspaces", s.workspaceId);
+    const service = pinned("services", "cedarcloud-payment-event-processing");
+    if (walkthrough.serviceId !== service.id || service.supplierId !== "cedarcloud")
+      throw new Error("The CedarCloud walkthrough must keep its original supplier service link");
     if (walkthrough.workspaceId !== s.workspaceId || !walkthrough.analystId || !walkthrough.qaReviewerId || !walkthrough.decisionOwnerId || !walkthrough.overlayVersionId)
       throw new Error("The walkthrough needs its original workspace, review actors and overlay");
     const request = pinned("supplierRequests", s.requestId);
