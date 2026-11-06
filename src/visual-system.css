@@ -24,6 +24,15 @@ small, .helper, .field > small, .cell-sub { font-size: 12px; line-height: 1.65; 
 .sidebar-bottom button { min-height: 40px; font-size: 12px; }
 .profile b { font-size: 13px; }
 .profile small { font-size: 11px; }
+.profile { width: 100%; }
+.profile:hover { background: #f6f3ff; }
+.profile > span:nth-child(2) { flex: 1; min-width: 0; }
+.profile-options { position: fixed; inset: auto; left: 8px; margin: 0; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: #1f2e45; box-shadow: 0 10px 35px #22364b25; overflow-y: auto; }
+.profile-options button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 10px; border-radius: 6px; text-align: left; }
+.profile-options button:hover { background: #f1edff; color: var(--purple); }
+.profile-options button:last-child { border-top: 1px solid var(--line); border-radius: 0 0 6px 6px; }
+.session-ended { max-width: 480px; margin: 12vh auto; padding: 24px; }
+.session-ended > .logo { margin-bottom: 24px; }
 .topbar { min-height: 66px; padding: 0 30px; gap: 18px; }
 .breadcrumb { font-size: 12px; }
 .topbar-end { margin-left: auto; gap: 12px; }

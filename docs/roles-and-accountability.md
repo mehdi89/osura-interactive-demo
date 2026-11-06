@@ -12,6 +12,8 @@ Independent QA is a permission on an analyst, not another administrative role. I
 
 Switch customer demo identities and roles only through the **Demo user** selector in the bottom presentation bar. This presenter control does not grant one customer user access to another company. Customer, Analyst and Superadmin sidebar workspace cards are removed; analysts use the topbar Customer filter for their assigned customers. The supplier invitation walkthrough remains separate. Demo identity switching is not real authentication.
 
+Customer, Analyst and Superadmin open Notifications, Account, Change password, Billing and Log out from the bottom-left profile's native popover. The top-right synthetic-data badge, notification bell and avatar are removed. Change password is explicitly labelled as a local form preview and saves no credentials. Billing has no connected subscription or charges; team roles have no customer billing records. Log out hides the workspace locally and offers Resume, preserving saved session records and checking for unsaved drafts before leaving. Refresh still resets demo data. These account controls do not change role permissions or customer access, and the supplier invitation flow is unchanged.
+
 ## Try the flow
 
 1. Select **Superadmin · Sam Taylor** in the demo bar. Add an analyst and assign Northstar, Ridgeway or both. Use Edit to change assignments, active status or QA permission. Empty assignments mean an empty work list. No invitation email is sent.

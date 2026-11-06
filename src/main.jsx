@@ -315,10 +315,18 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   const [toast, setToast] = useState("");
   const [mobileNav, setMobileNav] = useState(false);
   const [demoTools, setDemoTools] = useState(false);
+  const [signedOut, setSignedOut] = useState(false);
   const [navigationIntent, setNavigationIntent] = useState(null);
   const [tourStep, setTourStep] = useState(null);
   const menuButton = React.useRef(null);
   const sidebarRef = React.useRef(null);
+  const profileButton = React.useRef(null);
+  const profileMenu = React.useRef(null);
+  const openAccountPanel = kind => {
+    profileMenu.current?.hidePopover();
+    profileButton.current?.focus();
+    setDrawer(kind);
+  };
   const closeMobileNav = () => { setMobileNav(false); menuButton.current?.focus(); };
   useEffect(() => {
     if (!mobileNav) return;
@@ -444,11 +452,13 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
     return () => clearTimeout(timer);
   }, [toast]);
   useEffect(() => {
-    document.title = `${screen.id === "S02" && state.supplierItem === data.request.items[1] ? "Upload access review evidence" : screen.title.replace("{supplier}", screen.id === "C03" ? viewState.intake.supplier : engagement.supplier)} · Osura`;
-  }, [screen, engagement]);
+    document.title = signedOut ? "Demo session ended · Osura" : `${screen.id === "S02" && state.supplierItem === data.request.items[1] ? "Upload access review evidence" : screen.title.replace("{supplier}", screen.id === "C03" ? viewState.intake.supplier : engagement.supplier)} · Osura`;
+  }, [screen, engagement, signedOut]);
   useEffect(() => {
     const handler = (e) => {
+      if (signedOut) return;
       if (e.key === "Escape") {
+        if (profileMenu.current?.matches(":popover-open")) return;
         setDrawer(null);
         closeMobileNav();
       }
@@ -459,7 +469,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [signedOut]);
   useEffect(() => {
     const hasWork = auditLog.length || model !== initialModel.current || state.events.length || state.intakeSubmitted || state.uploads?.length || Object.keys(state.supplierDrafts || {}).length || Object.keys(state.reviewDrafts || {}).length || Object.keys(state.qaDrafts || {}).length || Object.keys(state.decisionDrafts || {}).length || Object.keys(state.closureDrafts || {}).length || JSON.stringify(state.intake) !== JSON.stringify(baseData.intake);
     const warn = e => { e.preventDefault(); e.returnValue = ""; };
@@ -514,6 +524,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   const action = secondaryCase || ["O07", "O15", "C08", "C05"].includes(screen.id) || (role === "analyst" && screen.id === "C06") ? null : (
     primaryAction(screen.id, ctx)
   );
+  if (signedOut) return <div className="session-ended"><span className="logo">O</span><h1>Demo session ended</h1><p>Your workspace is hidden. Saved demo work remains in this tab until refresh.</p><Note>This is a simulated logout; no authenticated session is connected.</Note><Button primary onClick={() => setSignedOut(false)}>Resume as {user?.name}</Button></div>;
   return (
     <>
       {!isSupplier && (
@@ -551,7 +562,13 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
               Settings
             </button>
           </div>
-          <div className="profile"><span className="avatar">{role === "customer" ? data.workspace.initials : "OS"}</span><span><b>{user?.name || "Inactive account"}</b><small>{role === "superadmin" ? "Superadmin" : role === "analyst" ? `Analyst${user.canQA ? " · Independent QA" : ""}` : "Customer Decision Owner"}</small></span></div>
+          <button ref={profileButton} className="profile" popoverTarget="profile-options" aria-label="Account menu" onClick={() => {
+            const rect = profileButton.current.getBoundingClientRect();
+            Object.assign(profileMenu.current.style, { bottom: `${window.innerHeight - rect.top + 8}px`, width: `${rect.width - 16}px`, maxHeight: `${Math.max(120, rect.top - 16)}px` });
+          }}><span className="avatar">{role === "customer" ? data.workspace.initials : "OS"}</span><span><b>{user?.name || "Inactive account"}</b><small>{role === "superadmin" ? "Superadmin" : role === "analyst" ? `Analyst${user.canQA ? " · Independent QA" : ""}` : "Customer Decision Owner"}</small></span><Icon name="ChevronUp" size={16}/></button>
+          <div ref={profileMenu} id="profile-options" className="profile-options" popover="auto" aria-label="Account options">
+            {[["notifications", "Bell", "Notifications"], ["account", "UserRound", "Account"], ["password", "LockKeyhole", "Change password"], ["billing", "CreditCard", "Billing"], ["logout", "LogOut", "Log out"]].map(([kind, icon, label]) => <button key={kind} onClick={() => openAccountPanel(kind)}><Icon name={icon} size={16}/>{label}</button>)}
+          </div>
         </aside>
       )}
       {mobileNav && <button className="nav-backdrop" aria-label="Close navigation backdrop" onClick={closeMobileNav} />}
@@ -591,20 +608,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
                 <Icon name="LockKeyhole" size={12} />
                 Private invitation · {data.workspace.name}
               </span>
-            ) : (
-              <>
-                <span className="synthetic">SYNTHETIC DESIGN EXAMPLE</span>
-                <button
-                  aria-label="Notifications"
-                  onClick={() => setDrawer("notifications")}
-                >
-                  <Icon name="Bell" />
-                </button>
-                <span className="avatar">
-                  {role === "customer" ? data.workspace.initials : "OS"}
-                </span>
-              </>
-            )}
+            ) : null}
           </div>
         </header>
         <main key={screen.id} data-screen={screen.id}>
@@ -680,6 +684,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
           <Drawer
             kind={drawer}
             {...ctx}
+            onLogout={() => requestNavigation(() => { setDrawer(null); setMobileNav(false); setDemoTools(false); setTourStep(null); setToast(""); setSignedOut(true); })}
             onReset={() => {
               const nextRevision = (state.assessmentRevision || 1) + 1;
               onAudit(actionEntry(data,"Demo walkthrough reset","Reset the synthetic walkthrough; prior actions remain in session history.",{nextAssessmentVersion:`cedar-review-v${nextRevision}`}));
@@ -1162,17 +1167,18 @@ function Overview(c) {
   );
 }
 function Timeline({ items, onClick }) {
+  const Item = onClick ? "button" : "div";
   return (
     <div className="timeline">
       {items.map(([title, detail, status]) => (
-        <button key={title} onClick={() => onClick?.([title, detail, status])}>
+        <Item className="timeline-item" key={title} onClick={onClick ? () => onClick([title, detail, status]) : undefined}>
           <span className="timeline-dot" />
           <span>
             <b>{title}</b>
             <small>{detail}</small>
           </span>
           <Badge>{status}</Badge>
-        </button>
+        </Item>
       ))}
     </div>
   );
@@ -3254,6 +3260,10 @@ function dialogTitle(kind) {
       settings: "Demo settings",
       workspace: "Current access",
       notifications: "Your notifications",
+      account: "Your account",
+      password: "Change password",
+      billing: "Billing",
+      logout: "Log out of the demo?",
       reset: "Reset interactive demo",
       source: "Exact source passage",
       owner: "Confirm business owner",
@@ -3291,12 +3301,28 @@ function FindingForm(c) {
   </form>}</div>;
 }
 
+function PasswordPreview() {
+  const [validated, setValidated] = useState(false);
+  return <><Note>Use an example password only. This demo validates the form; it does not save or change credentials.</Note>{validated ? <p role="status">Password form validated. No credentials were changed.</p> : <form onSubmit={e => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const confirmation = form.elements.namedItem("confirmPassword");
+    if (form.elements.namedItem("newPassword").value !== confirmation.value) { confirmation.setCustomValidity("Passwords must match."); confirmation.reportValidity(); return; }
+    form.reset();
+    setValidated(true);
+  }}><Label title="New example password"><input name="newPassword" type="password" required minLength={12} autoComplete="off" onChange={e => e.currentTarget.form.elements.namedItem("confirmPassword").setCustomValidity("")}/><small>Use at least 12 characters.</small></Label><Label title="Confirm example password"><input name="confirmPassword" type="password" required minLength={12} autoComplete="off" onChange={e => e.currentTarget.setCustomValidity("")}/></Label><div className="form-actions"><Button primary type="submit">Preview password change</Button></div></form>}</>;
+}
+
 function Drawer(c) {
   const { kind, data, state, navigate, notify, setDrawer } = c;
   const [query, setQuery] = useState("");
   const [value, setValue] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState(data.defaults.conditionDue);
+  if (kind === "account") return <><Fields items={[["Name", c.user.name], ["Email", c.user.email], ["Role", c.user.role === "superadmin" ? "Superadmin" : c.user.role === "analyst" ? "Analyst" : "Customer Decision Owner"], ["Organisation", c.user.workspaceName || "Osura team"]]}/><Button icon="LockKeyhole" onClick={() => setDrawer("password")}>Change password</Button></>;
+  if (kind === "password") return <PasswordPreview/>;
+  if (kind === "billing") return <><Fields items={[["Organisation", c.user.role === "customer" ? data.workspace.name : "Osura team"], ["Subscription", "No subscription connected"], ["Payment method", "None connected"]]}/><Note>{c.user.role === "customer" ? "No invoices or charges are created in this demo." : "Customer billing is managed by each customer's account. No customer billing records are available here."}</Note></>;
+  if (kind === "logout") return <><p>Hide this workspace and end the current demo view?</p><Note>Saved records remain in this tab until refresh. You can resume the same demo identity.</Note><div className="form-actions"><Button onClick={() => setDrawer(null)}>Stay in workspace</Button><Button primary onClick={c.onLogout}>Log out</Button></div></>;
   if (kind === "finding") return <FindingForm {...c} />;
   if (kind === "search") return <WorkspaceSearch {...c} />;
   if (kind === "screens")
@@ -3414,23 +3440,26 @@ function Drawer(c) {
       </>
     );
   }
-  if (kind === "notifications")
-    return (
-      <Timeline
-        items={[
+  if (kind === "notifications") {
+    const items = [
           ...data.notifications.map(row => /decision/i.test(row[0]) ? [workflowStatus(state).label, `CedarCloud · Next owner: ${workflowStatus(state).nextOwner}`, workflowStatus(state).ready ? "Ready" : "Review"] : row),
           ...state.events.map((e) => [
             e.message,
             formatDate(e.at),
             "Recorded",
           ]),
-        ]}
-        onClick={item => {
+        ];
+    if (!items.length) return <p role="status">You have no notifications in this workspace.</p>;
+    return (
+      <Timeline
+        items={items}
+        onClick={c.user.role === "superadmin" ? undefined : item => {
           const record = data.engagements.find(row => item.join(" ").includes(row.supplier));
-          if (record) { c.update({ selected: record.id }); navigate("C09"); }
+          if (record) { c.update({ selected: record.id }); navigate(c.user.role === "analyst" ? "O02" : "C09"); }
         }}
       />
     );
+  }
   if (kind === "submitted")
     return (
       state.supplierReceipts?.[state.supplierItem || data.request.items[0]] ?

@@ -658,7 +658,7 @@ main {
 .timeline {
   padding: 3px 0;
 }
-.timeline button {
+.timeline > .timeline-item {
   display: flex;
   text-align: left;
   width: 100%;
@@ -668,7 +668,7 @@ main {
   padding: 8px 0 14px 14px;
   min-height: 56px;
 }
-.timeline button:before {
+.timeline > .timeline-item:before {
   content: "";
   position: absolute;
   top: 26px;
@@ -677,7 +677,7 @@ main {
   width: 1px;
   background: #e2ddff;
 }
-.timeline button:last-child:before {
+.timeline > .timeline-item:last-child:before {
   display: none;
 }
 .timeline-dot {
@@ -690,7 +690,7 @@ main {
   border: 3px solid #e6deff;
   border-radius: 50%;
 }
-.timeline button > span:nth-child(2) {
+.timeline > .timeline-item > span:nth-child(2) {
   flex: 1;
 }
 .timeline b {

@@ -12,12 +12,12 @@ import { createState, recordDecision } from "../src/state.mjs";
 // Render the actual screen functions without starting the browser-only app bootstrap.
 const source = await readFile(new URL("../src/main.jsx", import.meta.url), "utf8");
 const bundled = await build({
-  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { App, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
+  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { App, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
   bundle: true, platform: "node", format: "cjs", packages: "external", loader: { ".css": "empty" }, write: false,
 });
 const module = { exports: {} };
 new Function("require", "module", "exports", bundled.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports);
-const { App, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm } = module.exports;
+const { App, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm } = module.exports;
 const readJSON = async name => JSON.parse(await readFile(new URL(`../public/data/${name}.json`, import.meta.url)));
 const model = await readJSON("workspace");
 const user = sessionUser(model, "customer-morgan");
@@ -250,14 +250,38 @@ test("customers have no sidebar switcher and Ridgeway renders only its own portf
   assert.doesNotMatch(html, /CedarCloud needs your decision|CedarCloud_BCP|Northstar Payments \/ Customer overview/);
 });
 
-test("analysts retain the top-bar customer filter and role profiles without sidebar cards", async () => {
+test("all workspace roles use the bottom profile menu and only analysts have a top-bar customer filter", async () => {
   const base = projectWorkspace(model, await readJSON("presentation"), await readJSON("examples"));
-  for (const id of ["analyst-01", "analyst-02", "superadmin"]) {
+  for (const id of ["customer-morgan", "customer-singh", "analyst-01", "analyst-02", "superadmin"]) {
     const user = sessionUser(model, id);
-    const html = renderApp(user.role === "superadmin" ? "A01" : "O01", { data: base, user, identity: id });
+    const html = renderApp({ superadmin: "A01", analyst: "O01", customer: "C01" }[user.role], { data: base, user, identity: id });
     assert.doesNotMatch(html, /class="workspace |aria-label="Customer workspace"/);
-    assert.match(html, /class="profile"/);
+    assert.match(html, /class="profile" popoverTarget="profile-options" aria-label="Account menu"/i);
+    for (const action of ["Notifications", "Account", "Change password", "Billing", "Log out"]) assert.ok(html.includes(`</svg>${action}</button>`));
+    const header = html.match(/<header[\s\S]*?<\/header>/)[0];
+    assert.doesNotMatch(header, /SYNTHETIC DESIGN EXAMPLE|aria-label="Notifications"|class="avatar"/);
     if (user.role === "analyst") assert.match(html, /aria-label="Customer filter"/);
     else assert.doesNotMatch(html, /aria-label="Customer filter"/);
   }
+});
+
+test("account and billing panels keep each customer scope and password preview claims no credential change", async () => {
+  const base = projectWorkspace(model, await readJSON("presentation"), await readJSON("examples"));
+  const ridgeway = sessionUser(model, "customer-singh");
+  const c = context({ user: ridgeway, data: scopeWorkspace(base, ridgeway) });
+  const account = render(Drawer, { ...c, kind: "account" });
+  assert.match(account, /T\. Singh/);
+  assert.match(account, /singh@ridgeway\.example/);
+  const billing = render(Drawer, { ...c, kind: "billing" });
+  assert.match(billing, /Ridgeway Finance/);
+  assert.match(billing, /No subscription connected/);
+  assert.doesNotMatch(billing, /Northstar Payments/);
+  const password = render(Drawer, { ...c, kind: "password" });
+  assert.match(password, /does not save or change credentials/);
+  assert.equal((password.match(/type="password" required="" minLength="12"/gi) || []).length, 2);
+  assert.match(render(Drawer, { ...c, kind: "notifications" }), /no notifications/);
+  const adminUser = sessionUser(model, "superadmin");
+  const admin = render(Drawer, { ...c, user: adminUser, data: scopeWorkspace(base, adminUser), kind: "notifications" });
+  assert.doesNotMatch(admin, /<button/);
+  assert.match(render(Drawer, { ...c, kind: "logout" }), /Saved records remain in this tab until refresh/);
 });
