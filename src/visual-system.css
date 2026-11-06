@@ -86,6 +86,7 @@ td { padding: 15px 10px; }
 .scope { font-size: 13px; padding: 14px 16px; margin-bottom: 20px; }
 .scope b { font-size: 13px; }
 .list-row { padding: 17px 0; }
+.list-row > .badge { max-width: 100%; white-space: normal; }
 .list-row b { font-size: 14px; }
 .list-row p, .timeline small { font-size: 12px; }
 .form-actions { gap: 10px; padding-top: 18px; }
@@ -131,6 +132,10 @@ td { padding: 15px 10px; }
 .demo-toolbar > button { min-height: 34px; padding: 7px 9px; font-size: 12px; }
 footer { font-size: 12px; line-height: 1.7; color: #596a80; margin-top: 28px; }
 @media (min-width: 1700px) { main { max-width: 1540px; margin: auto; } }
+@media (max-width: 1280px) {
+  .analyst-assessment > .card:last-child .fields > div { flex-direction: column; gap: 4px; }
+  .analyst-assessment > .card:last-child .fields dd { text-align: left; }
+}
 @media (max-width: 1100px) { .workspace-search-trigger span, .workspace-search-trigger kbd { display: none; } .topbar { padding: 0 22px; } main { padding: 26px 22px 100px; } }
 @media (max-width: 760px) {
   h1 { font-size: 27px; }

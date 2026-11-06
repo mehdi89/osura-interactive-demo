@@ -67,7 +67,7 @@ export function scopeWorkspace(base, user, customerFilter = "all") {
     historicalReports: base.historicalReports.filter(row => inWorkspace(row.workspaceId)),
     overviewActions: base.overviewActions.filter(row => ids.has(row.engagement)),
     communications: base.communications.filter(row => inWorkspace(row[6])).map(row=>user?.role === "analyst" ? [row[0], `${customerName(row[6])} / ${row[1]}`, ...row.slice(2)] : row),
-    operationsHandoffs: base.operationsHandoffs.filter(row => inWorkspace(row[3])),
+    operationsHandoffs: base.operationsHandoffs.filter(row => inWorkspace(row[3]) && rows.some(item => item.id === row[4] && item.workspaceId === row[3])),
     upcomingAssurance: base.upcomingAssurance.filter(row => inWorkspace(row[3])),
     notifications: base.notifications.filter(row => inWorkspace(row[3])),
   };

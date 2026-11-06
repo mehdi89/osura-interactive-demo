@@ -143,7 +143,7 @@
     {
       "id": "C06",
       "role": "customer",
-      "label": "Decision ready",
+      "label": "Customer decision",
       "title": "Customer decision",
       "subtitle": "{supplier} \u00b7 {service}",
       "nav": "C16",
@@ -161,9 +161,9 @@
     {
       "id": "C08",
       "role": "customer",
-      "label": "Active supplier assurance",
-      "title": "Active supplier assurance",
-      "subtitle": "{supplier} \u00b7 assurance after the customer decision",
+      "label": "Monitoring",
+      "title": "Monitoring",
+      "subtitle": "{supplier} \u00b7 service obligations, scheduled reviews and decision history",
       "nav": "C08",
       "reference": "Customer Panel.html#s16"
     },
@@ -190,7 +190,7 @@
       "role": "analyst",
       "label": "Assessment case",
       "title": "{supplier} \u00b7 assessment",
-      "subtitle": "Northstar Payments \u00b7 {service}",
+      "subtitle": "{customer} \u00b7 {service}",
       "nav": "O02",
       "reference": "Analyst Panel.html#s3"
     },
@@ -305,9 +305,9 @@
     {
       "id": "O11",
       "role": "analyst",
-      "label": "Northstar Payments service health",
+      "label": "Service health",
       "title": "Client 360",
-      "subtitle": "Northstar Payments \u00b7 delivery health and portfolio overview.",
+      "subtitle": "{customer} \u00b7 delivery health and portfolio overview.",
       "nav": "O15",
       "reference": "Analyst Panel.html#s16"
     },
@@ -334,7 +334,7 @@
       "role": "supplier",
       "label": "Submission received",
       "title": "Your response was received",
-      "subtitle": "Northstar Payments\u2019 assurance team can now review the submitted evidence.",
+      "subtitle": "Osura\u2019s assurance team reviews your response before verification.",
       "nav": "S03",
       "reference": "Vendor Portal.html#s3"
     }

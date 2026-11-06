@@ -15,9 +15,9 @@ main:has(.case-task-heading) > .page-heading { display: none; }
 .case-two-pane h3 { color: #24364e; font-size: 17px; line-height: 1.4; }
 .case-two-pane p { line-height: 1.7; }
 .case-session-note { color: #526781; font-size: 12px; line-height: 1.65; margin: 16px 0 0; }
-.case-readiness { display: flex; align-items: flex-start; gap: 15px; border: 1px solid #e7ce99; background: #fff8eb; border-radius: 8px; padding: 21px 24px; margin: 24px 0; color: #8b590e; }
+.case-readiness { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 15px; border: 1px solid #e7ce99; background: #fff8eb; border-radius: 8px; padding: 21px 24px; margin: 24px 0; color: #8b590e; }
 .case-readiness > svg { flex: 0 0 22px; width: 22px; height: 22px; margin-top: 1px; }
-.case-readiness > div { flex: 1; min-width: 0; }
+.case-readiness > div { flex: 1 1 14rem; min-width: 0; }
 .case-readiness b { display: block; font-size: 17px; line-height: 1.4; }
 .case-readiness p { color: #5a6578; margin: 7px 0 0; font-size: 14px; line-height: 1.65; }
 .case-readiness.ready { background: #effaf4; border-color: #b4dec9; color: #24765d; }
@@ -32,8 +32,8 @@ main:has(.case-task-heading) > .page-heading { display: none; }
 .case-gate.action { background: #fff9ee; border-color: #e6c789; }
 .case-gate.action > span { color: #8b590e; }
 .readiness-details { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
-.case-blocker { display: flex; gap: 15px; align-items: center; padding: 0 0 20px; margin: 0 0 18px; border-bottom: 1px solid #e2e7ef; }
-.case-blocker > div { flex: 1; min-width: 0; }
+.case-blocker { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; padding: 0 0 20px; margin: 0 0 18px; border-bottom: 1px solid #e2e7ef; }
+.case-blocker > div { flex: 1 1 14rem; min-width: 0; }
 .case-blocker b { display: block; color: #24364e; line-height: 1.5; }
 .case-blocker p { margin: 5px 0 0; font-size: 13px; overflow-wrap: anywhere; }
 .case-blocker .button { flex-shrink: 0; }
@@ -124,18 +124,17 @@ main:has(.case-task-heading) > .page-heading { display: none; }
 .qa-outcome-card .choices, .closure-outcome-card .choices { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin: 22px 0; }
 .qa-outcome-card .choices button, .closure-outcome-card .choices button { min-height: 47px; font-size: 14px; text-align: left; padding: 12px 15px; }
 .closure-evidence-card .list-row { align-items: flex-start; padding: 18px 0; }
-.closure-evidence-card .list-row > div { min-width: 0; flex: 1; }
+.closure-evidence-card .list-row > div { min-width: 0; flex: 1 1 14rem; }
 .closure-evidence-card .list-row .fields { margin-bottom: 0; }
 @media (max-width: 1100px) {
   .case-task-heading { flex-wrap: wrap; }
-  .case-blocker { flex-wrap: wrap; }
   .case-gate { padding: 15px; }
   .case-two-pane .card-head, .case-two-pane .card-body { padding: 20px; }
 }
 @media (max-width: 850px) {
   .case-two-pane, .readiness-details, .pack-task-grid { grid-template-columns: minmax(0, 1fr); }
   .case-gates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .case-readiness { flex-wrap: wrap; padding: 20px; }
+  .case-readiness { padding: 20px; }
   .case-readiness .button { margin-left: 36px; }
   .pack-contents-card { position: static; }
   .outcome-receipt { padding: 22px; gap: 14px; }

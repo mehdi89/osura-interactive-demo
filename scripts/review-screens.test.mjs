@@ -12,12 +12,12 @@ import { createState, recordDecision } from "../src/state.mjs";
 // Render the actual screen functions without starting the browser-only app bootstrap.
 const source = await readFile(new URL("../src/main.jsx", import.meta.url), "utf8");
 const bundled = await build({
-  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { App, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
+  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { App, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm, Operations, Quality, Monitoring, SupplierPortal, formatDue };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
   bundle: true, platform: "node", format: "cjs", packages: "external", loader: { ".css": "empty" }, write: false,
 });
 const module = { exports: {} };
 new Function("require", "module", "exports", bundled.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports);
-const { App, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm } = module.exports;
+const { App, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm, Operations, Quality, Monitoring, SupplierPortal, formatDue } = module.exports;
 const readJSON = async name => JSON.parse(await readFile(new URL(`../public/data/${name}.json`, import.meta.url)));
 const model = await readJSON("workspace");
 const user = sessionUser(model, "customer-morgan");
@@ -30,7 +30,7 @@ test("customer outcome starts blank with one deliberate review action and read-o
   assert.equal((html.match(/>Review my decision →</g) || []).length, 1);
   assert.equal((html.match(/>Record customer decision</g) || []).length, 0);
   assert.equal((html.match(/checked=""/g) || []).length, 0);
-  assert.match(html, /<textarea required=""[^>]*><\/textarea>/);
+  assert.match(html, /<textarea(?=[^>]*name="rationale")(?=[^>]*required="")[^>]*><\/textarea>/);
   assert.match(html, /Proposed required evidence/);
   assert.match(html, /read-only advice/);
 });
@@ -284,4 +284,71 @@ test("account and billing panels keep each customer scope and password preview c
   const admin = render(Drawer, { ...c, user: adminUser, data: scopeWorkspace(base, adminUser), kind: "notifications" });
   assert.doesNotMatch(admin, /<button/);
   assert.match(render(Drawer, { ...c, kind: "logout" }), /Saved records remain in this tab until refresh/);
+});
+
+test("handoffs use the scoped record and live Cedar readiness after new evidence", async () => {
+  const base = projectWorkspace(model, await readJSON("presentation"), await readJSON("examples"));
+  const user = sessionUser(model, "analyst-02");
+  const scoped = scopeWorkspace(base, user);
+  const c = context({ data: scoped, user, screen: { role: "analyst" } });
+  const ready = render(Operations, c);
+  assert.doesNotMatch(ready, /Ridgeway|Kite Legal|delivery confirmed|waiting for sponsor/);
+  assert.match(ready, /Open case/);
+  c.state = { ...c.state, pendingReviews: { "R-07": true }, conclusion: "Needs review" };
+  const paused = render(Operations, c);
+  const handoffs = paused.match(/class="op-handoff"[\s\S]*?Review communications/)[0];
+  assert.match(handoffs, /Evidence re-review required/);
+  assert.doesNotMatch(handoffs, /Ready for customer decision/);
+});
+
+test("portfolio titles are stage-aware, customer headers are scoped and directory uses only the topbar customer filter", async () => {
+  const base = projectWorkspace(model, await readJSON("presentation"), await readJSON("examples"));
+  const singh = sessionUser(model, "customer-singh");
+  for (const id of ["C06", "C08", "C09"]) {
+    const html = renderApp(id, { data: base, user: singh, identity: singh.id });
+    assert.match(html, /Clearbridge Data · Evidence preview/);
+    assert.doesNotMatch(html, /Ready for customer decision|assurance after the customer decision/);
+    assert.match(html, /05 Nov 2026 · Overdue/);
+  }
+  const analyst = sessionUser(model, "analyst-01");
+  const scoped = scopeWorkspace(base, analyst, "ridgeway");
+  const assessment = renderApp("O02", { data: scoped, user: analyst, identity: analyst.id });
+  assert.match(assessment, /Ridgeway Finance · File transfer/);
+  assert.doesNotMatch(assessment, /Northstar Payments · File transfer/);
+  const directory = renderApp("O16", { data: base, user: analyst, identity: analyst.id });
+  assert.match(directory, /aria-label="Customer filter"/);
+  assert.doesNotMatch(directory, /aria-label="Directory customer"/);
+  assert.match(renderApp("O11", { data: base, user: analyst, identity: analyst.id }), /Assigned customers · delivery health/);
+  assert.doesNotMatch(renderApp("O06", { data: base, user: analyst, identity: analyst.id }), /is queued for targeted/);
+});
+
+test("QA and monitoring copy respect recorded outcomes and permissions", () => {
+  const c = context({ user: sessionUser(model, "analyst-01"), screen: { role: "analyst" } });
+  const quality = render(Quality, c);
+  assert.doesNotMatch(quality, /Record your independent challenge and a reasoned QA outcome|Northstar sponsor/);
+  assert.match(quality, /A\. Morgan · Customer Decision Owner/);
+  c.state = { ...c.state, qa: "More evidence required" };
+  assert.match(render(Quality, c), /A different analyst with independent QA permission/);
+  c.user = sessionUser(model, "analyst-02");
+  c.state = { ...c.state, events: [{ action: "Analyst recommendation recorded", actorId: c.user.actorId }] };
+  assert.match(render(Quality, c), /A different analyst with independent QA permission/);
+  const customer = context();
+  assert.match(render(Monitoring, customer), /Once signed, the customer decision stays frozen/);
+  customer.state = recordDecision(customer.state, customer.data, "Approve", "The reviewed evidence meets our needs.", null);
+  assert.match(render(Monitoring, customer), /The signed decision stays frozen/);
+});
+
+test("an untouched supplier response is not labelled as a saved draft", () => {
+  const html = render(SupplierPortal, context({ screen: { id: "S02", role: "supplier" } }));
+  assert.match(html, /Response not started/);
+  assert.doesNotMatch(html, /Draft saved in this session/);
+});
+
+test("engagement dates visibly distinguish overdue, today, future and unscheduled dates", () => {
+  const now = new Date("2026-11-07T12:00:00");
+  assert.equal(formatDue("05 Nov 2026", now), "05 Nov 2026 · Overdue");
+  assert.equal(formatDue("07 Nov 2026", now), "07 Nov 2026");
+  assert.equal(formatDue("09 Nov 2026", now), "09 Nov 2026");
+  assert.equal(formatDue("Pending review", now), "Pending review");
+  assert.equal(formatDue(undefined, now), "Not scheduled");
 });

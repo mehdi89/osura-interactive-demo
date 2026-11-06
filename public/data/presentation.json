@@ -284,21 +284,24 @@
   "operationsHandoffs": [
     [
       "Northstar · CedarCloud",
-      "Customer decision · waiting for sponsor",
+      "Customer decision · awaiting Decision Owner",
       "Customer",
-      "northstar"
+      "northstar",
+      "cedar"
     ],
     [
       "Ridgeway · Kite Legal",
-      "Supplier response · delivery confirmed",
-      "Supplier",
-      "northstar"
+      "New request · awaiting analyst triage",
+      "Analyst",
+      "ridgeway",
+      "kite"
     ],
     [
       "Northstar · Atlas Identity",
       "Internal exception · scope review",
       "Analyst",
-      "northstar"
+      "northstar",
+      "atlas"
     ]
   ],
   "communications": [

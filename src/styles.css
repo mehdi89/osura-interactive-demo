@@ -947,6 +947,7 @@ tbody tr:hover {
 }
 .list-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 11px;
   padding: 14px 0;
@@ -959,7 +960,7 @@ tbody tr:hover {
   border: 0;
 }
 .list-row > div {
-  flex: 1;
+  flex: 1 1 14rem;
   min-width: 0;
 }
 .list-row b {
@@ -971,7 +972,7 @@ tbody tr:hover {
   color: #91a1b8;
 }
 .list-row > span:not(.badge):not(.entity-icon) {
-  flex: 1;
+  flex: 1 1 14rem;
 }
 .divider {
   height: 1px;

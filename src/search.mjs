@@ -19,6 +19,8 @@ export function searchWorkspace(data, catalog, user, query = "") {
   }
   const pages = user.role === "superadmin"
     ? [{ id: "A01", role: "superadmin", label: "Team & customer access", title: "Manage analysts, customer assignments and activity" }]
-    : catalog.screens.filter(page => page.role === user.role);
+    : catalog.screens.filter(page => page.role === user.role).map(page => user.role === "customer" && !records.some(row => row.id === "cedar") && ["C06", "C08", "C09"].includes(page.id)
+      ? { ...page, label: { C06: "Customer decision preview", C08: "Monitoring preview", C09: "Assessment progress preview" }[page.id], title: "Service portfolio preview", subtitle: "View the current service scope and review stage." }
+      : page);
   return { suppliers: [...groups.values()], services, pages: pages.filter(page => matches(`${page.id} ${page.label} ${page.title || ""} ${page.subtitle || ""}`)) };
 }

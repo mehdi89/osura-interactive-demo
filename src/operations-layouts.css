@@ -148,9 +148,9 @@
 .op-handoff b { font-size: 13px; line-height: 1.7; color: #30425c; }
 .op-handoff small { display: block; font-size: 12px; line-height: 1.7; color: #62738c; margin: 5px 0 9px; }
 .op-outbox-layout { display: grid; grid-template-columns: minmax(0,1.55fr) minmax(320px,1fr); gap: 22px; align-items: start; }
-.op-thread-row { display: flex; width: 100%; text-align: left; gap: 15px; align-items: center; border-bottom: 1px solid #e1e7f0; border-left: 3px solid transparent; padding: 19px 12px; cursor: pointer; }
+.op-thread-row { display: flex; flex-wrap: wrap; width: 100%; text-align: left; gap: 15px; align-items: center; border-bottom: 1px solid #e1e7f0; border-left: 3px solid transparent; padding: 19px 12px; cursor: pointer; }
 .op-thread-row.is-selected { border-left-color: #8860d7; background: #f6f2ff; }
-.op-thread-row > span:nth-child(2) { flex: 1; min-width: 0; }
+.op-thread-row > span:nth-child(2) { flex: 1 1 14rem; min-width: 0; }
 .op-thread-row b { display: block; font-size: 15px; color: #30425c; margin: 6px 0; }
 .op-thread-row small { font-size: 11px; color: #8b7b9d; line-height: 1.6; }
 .op-thread-row p { font-size: 12px; line-height: 1.7; margin: 5px 0; color: #62738c; }
@@ -190,7 +190,6 @@
   .op-completion-row { flex-wrap: wrap; }
   .op-work-row { grid-template-columns: minmax(0,1fr); }
   .op-work-row > .button { grid-column: 1; }
-  .op-thread-row { flex-wrap: wrap; }
   .op-thread-row > .badge { margin-left: 61px; }
   .op-finding-row { gap: 10px; padding: 16px 8px; }
   .op-choice-card { flex-wrap: wrap; }

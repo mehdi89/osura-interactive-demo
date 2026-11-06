@@ -25,6 +25,21 @@ test("customers see one company; analysts combine all and only assigned customer
   assert.equal(filtered.communications.some(row=>row[1]==="CedarCloud"),false);
 });
 
+test("handoffs require a matching accessible engagement and customer tag", () => {
+  const qa = context("analyst-02");
+  assert.deepEqual(qa.operationsHandoffs.map(row => row[4]), ["cedar", "atlas"]);
+  const ridgeway = scopeWorkspace(base, sessionUser(model, "analyst-01"), "ridgeway");
+  assert.deepEqual(ridgeway.operationsHandoffs.map(row => row[4]), ["kite"]);
+  assert.match(ridgeway.operationsHandoffs[0][1], /awaiting analyst triage/);
+  assert.doesNotMatch(ridgeway.operationsHandoffs[0][1], /delivery confirmed/);
+  const badTag = structuredClone(base);
+  badTag.operationsHandoffs.find(row => row[4] === "kite")[3] = "northstar";
+  assert.equal(scopeWorkspace(badTag, sessionUser(model, "analyst-02")).operationsHandoffs.some(row => row[4] === "kite"), false);
+  const wrongRecord = structuredClone(base);
+  wrongRecord.operationsHandoffs[0][4] = "missing";
+  assert.equal(scopeWorkspace(wrongRecord, sessionUser(model, "analyst-01")).operationsHandoffs.some(row => row[4] === "missing"), false);
+});
+
 test("superadmin creates, changes and deactivates analysts; access follows assignments immediately", () => {
   const originalUsers = structuredClone(model.users);
   const result = saveAnalyst(model,admin,{name:"New Analyst",email:"new@osura.example",active:true,canQA:false,workspaceIds:["ridgeway"]},validate);

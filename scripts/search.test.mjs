@@ -45,3 +45,11 @@ test("same suppliers in different assigned customers keep separate results; admi
   assert.deepEqual(admin.pages.map(page => page.id), ["A01"]);
   assert.deepEqual(searchWorkspace(data, catalog, { ...user, active: false }), { suppliers: [], services: [], pages: [] });
 });
+
+test("portfolio decision search offers a preview without claiming decision readiness", () => {
+  const customer = { active: true, role: "customer", workspaceIds: ["ridgeway"] };
+  const results = searchWorkspace(data, catalog, customer, "decision");
+  assert.deepEqual(results.pages.map(page => page.id), ["C06"]);
+  assert.equal(results.pages[0].label, "Customer decision preview");
+  assert.doesNotMatch(JSON.stringify(results.pages), /Decision ready|Record decision/);
+});

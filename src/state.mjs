@@ -107,11 +107,13 @@ export function submitSupplier(
   const draft = state.supplierDraft;
   const responseType = draft.responseType || "evidence";
   if (!["evidence", "alternative", "cannot-provide"].includes(responseType)) throw new Error("Choose a valid response type.");
+  const scope = responseType === "cannot-provide" ? "" : draft.scope;
+  const fileName = responseType === "cannot-provide" ? "" : (draft.fileName || "").trim();
   if (!draft.answer.trim()) throw new Error("Describe the service coverage, alternative or reason evidence is unavailable.");
-  if (!draft.scope) throw new Error("Tell us whether the response covers the contracted service.");
-  if (responseType === "evidence" && !draft.fileName?.trim()) throw new Error("Attach evidence before submitting this item.");
+  if (responseType !== "cannot-provide" && !scope) throw new Error("Tell us whether the response covers the contracted service.");
+  if (responseType === "evidence" && !fileName) throw new Error("Attach evidence before submitting this item.");
   const normalize = value => (value || "").trim().replace(/\s+/g, " ");
-  if (previous && normalize(previous.fileName) === normalize(draft.fileName) && normalize(previous.answer) === normalize(draft.answer) && previous.scope === draft.scope && (previous.responseType || "evidence") === responseType) return state;
+  if (previous && normalize(previous.fileName) === normalize(fileName) && normalize(previous.answer) === normalize(draft.answer) && previous.scope === scope && (previous.responseType || "evidence") === responseType) return state;
   if (revision && !draft.changeReason?.trim()) throw new Error("Explain what changed before submitting a revised response.");
   const history = { ...(state.supplierReceiptHistory || {}) };
   const priorVersions = history[item] || (previous ? [previous] : []);
@@ -121,7 +123,7 @@ export function submitSupplier(
     ...draft,
     reference: `${state.requestReference || "CC-2026-104"}-R${String(allReceipts.length + 1).padStart(2, "0")}`,
     at: new Date().toISOString(), item,
-    answer: draft.answer.trim(), fileName: (draft.fileName || "").trim(), responseType,
+    answer: draft.answer.trim(), fileName, scope, responseType,
     version: priorVersions.length + 1,
     ...(revision ? { supersedes: previous.reference, changeReason: draft.changeReason.trim() } : {}),
   };

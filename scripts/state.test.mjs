@@ -373,10 +373,27 @@ test("supplier revisions preserve original receipts, require a change reason and
 
 test("cannot-provide and alternative supplier responses stay pending independent review", () => {
   for (const responseType of ["alternative", "cannot-provide"]) {
-    const next = submitSupplier({ ...createState(data), supplierDraft: { responseType, fileName: "", answer: "The scoped exercise report is unavailable; a dated test log can be discussed", scope: "Not sure" } });
+    const next = submitSupplier({ ...createState(data), supplierDraft: { responseType, fileName: "", answer: "The scoped exercise report is unavailable; a dated test log can be discussed", scope: responseType === "alternative" ? "Not sure" : "" } });
     assert.equal(next.supplierReceipt.responseType, responseType);
     assert.equal(next.conclusion, "Needs review");
     assert.equal(next.pendingReviews["R-07"], true);
     assert.equal(next.qa, "Evidence re-review required");
   }
+});
+
+test("unavailable evidence needs a reason, preserves review gates and cannot inherit document coverage", () => {
+  const initial = createState(data);
+  for (const responseType of ["evidence", "alternative"]) assert.throws(() => submitSupplier({ ...initial, supplierDraft: { responseType, fileName: "proof.pdf", answer: "Service-scoped response", scope: "" } }), /contracted service/);
+  assert.throws(() => submitSupplier({ ...initial, supplierDraft: { responseType: "cannot-provide", answer: "  ", scope: "" } }), /reason evidence is unavailable/);
+  const first = submitSupplier({ ...initial, supplierDraft: { responseType: "cannot-provide", fileName: "earlier-selection.pdf", scope: "Covers this service", answer: "The scoped exercise report is not available." } });
+  assert.equal(first.supplierReceipt.fileName, "");
+  assert.equal(first.supplierReceipt.scope, "");
+  assert.equal(first.pendingReviews["R-07"], true);
+  assert.equal(first.qa, "Evidence re-review required");
+  assert.equal(submitSupplier(first, data.request.items[0], data.request.items[0], { revision: true }), first);
+  const original = structuredClone(first.supplierReceipt);
+  const revised = submitSupplier({ ...first, supplierDraft: { ...first.supplierDraft, answer: "The scoped exercise report is unavailable under the current contract.", changeReason: "Explained the contractual restriction" } }, data.request.items[0], data.request.items[0], { revision: true });
+  assert.deepEqual(revised.supplierReceiptHistory[data.request.items[0]][0], original);
+  assert.equal(revised.supplierReceipt.supersedes, original.reference);
+  assert.equal(revised.supplierReceipt.reference, "CC-2026-104-R02");
 });
