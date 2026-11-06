@@ -12,12 +12,12 @@ import { createState, recordDecision } from "../src/state.mjs";
 // Render the actual screen functions without starting the browser-only app bootstrap.
 const source = await readFile(new URL("../src/main.jsx", import.meta.url), "utf8");
 const bundled = await build({
-  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { Decision, Pack, Closure, EvidenceReview, Overview };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
+  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { App, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
   bundle: true, platform: "node", format: "cjs", packages: "external", loader: { ".css": "empty" }, write: false,
 });
 const module = { exports: {} };
 new Function("require", "module", "exports", bundled.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports);
-const { Decision, Pack, Closure, EvidenceReview, Overview } = module.exports;
+const { App, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings } = module.exports;
 const readJSON = async name => JSON.parse(await readFile(new URL(`../public/data/${name}.json`, import.meta.url)));
 const model = await readJSON("workspace");
 const user = sessionUser(model, "customer-morgan");
@@ -106,4 +106,63 @@ test("customer overview and decision steps do not claim customer action during r
   assert.match(render(Decision, c), /aria-current="step" class="current">Evidence &amp; follow-up/);
   c.state = { ...c.state, qaReworkRevision: null, pendingReviews: { "IAM-04": true } };
   assert.match(render(Decision, c), /aria-current="step" class="current">Evidence &amp; follow-up/);
+});
+
+const catalog = await readJSON("screens");
+function renderApp(screenId, props = {}) {
+  const previous = globalThis.location;
+  globalThis.location = { hash: `#${screenId}` };
+  try {
+    return render(App, { data, catalog, model, user, identity: user.id, auditLog: [], onSwitch() {}, onDataChange() {}, onAudit() {}, ...props });
+  } finally { globalThis.location = previous; }
+}
+
+test("unsigned conditions remain proposals in findings and monitoring", () => {
+  const findings = renderApp("C12");
+  assert.match(findings, /Proposed condition/);
+  assert.match(findings, /<strong>0<\/strong><b>Customer approval conditions<\/b>/);
+  assert.doesNotMatch(findings, /<dt>Treatment<\/dt><dd>Customer approval condition<\/dd>/);
+  const monitoring = renderApp("C08");
+  assert.match(monitoring, /<strong>0<\/strong><b>Open condition<\/b>/);
+  assert.match(monitoring, /No signed customer condition/);
+});
+
+test("a selected Atlas finding never defaults to the CedarCloud condition", () => {
+  const c = context();
+  const finding = c.data.findings.find(row => row.supplier === "Atlas Identity");
+  c.state = { ...c.state, selected: finding.engagementId, selectedFinding: finding.id };
+  c.engagement = c.data.engagements.find(row => row.id === finding.engagementId);
+  const html = render(Findings, c);
+  assert.match(html, /<dt>Supplier<\/dt><dd>Atlas Identity<\/dd>/);
+  assert.doesNotMatch(html, /<dt>Supplier<\/dt><dd>CedarCloud<\/dd>/);
+});
+
+test("risk matrix includes the live QA stage and its critical review", () => {
+  const c = context();
+  c.data = { ...c.data, engagements: c.data.engagements.map(row => row.id === "cedar" ? { ...row, stage: "QA" } : row) };
+  assert.match(render(RiskGrid, c), /aria-label="Critical QA: 1 reviews"/);
+});
+
+test("assessment and inventory counts follow the current reviewed requirements", () => {
+  const c = context();
+  c.data = { ...c.data, requirements: c.data.requirements.map(row => row.id === "R-07" ? { ...row, conclusion: "Supported" } : row) };
+  c.state = { ...c.state, conclusion: "Supported" };
+  assert.match(render(Assessment, c), /3 supported · 1 unknown/);
+  assert.doesNotMatch(render(Assessment, c), /10 supported|12 applicable|1 partial/);
+  assert.match(render(Inventory, c), /<strong>3<\/strong><b>Requirements supported<\/b>/);
+  assert.match(render(Inventory, c), /<strong>0<\/strong><b>Partial coverage<\/b>/);
+});
+
+test("closure shows the exact eligible upload instead of an older supplier receipt", () => {
+  const c = context();
+  c.state = recordDecision(c.state, c.data, "Approve with conditions", "Require newer scoped proof.", { owner: "A. Morgan", due: "2026-11-20", evidence: "Scoped exercise" });
+  const signedAt = Date.parse(c.state.decision.at);
+  c.state.supplierReceipt = { fileName: "old-supplier.pdf", reference: "OLD", at: new Date(signedAt - 1000).toISOString() };
+  c.state.uploads = [{ name: "closure.pdf", version: "UPLOAD-NEW", receivedAt: new Date(signedAt + 1000).toISOString(), requirement: "R-07" }];
+  c.state.reviews = { "R-07": { actor: "Analyst 01", conclusion: "Supported", at: new Date(signedAt + 2000).toISOString(), evidenceVersions: ["UPLOAD-NEW"] } };
+  const html = render(Closure, c);
+  assert.match(html, /closure.pdf/);
+  assert.match(html, /UPLOAD-NEW/);
+  assert.match(html, /Evidence used for closure/);
+  assert.doesNotMatch(html, /old-supplier.pdf/);
 });

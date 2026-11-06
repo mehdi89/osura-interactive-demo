@@ -173,12 +173,22 @@ export function saveRequirementReview(state, data, id, review) {
       : state.reviews?.[id]?.conclusion || requirement.conclusion;
   if (review.conclusion !== previous && !review.reason.trim())
     throw new Error("Explain why the conclusion changed.");
+  const documents = data.documents.filter(row => row.requirement === id);
+  const evidenceVersions = [...new Set(documents.map(row => row.version))].sort();
+  const evidenceBasis = [...new Set(documents.map(row => JSON.stringify([row.name, row.version, row.date])))].sort();
+  const saved = state.reviews?.[id];
+  const normalize = text => (text || "").trim().replace(/\s+/g, " ");
+  if (saved && normalize(review.judgement) === normalize(saved.judgement) &&
+    review.conclusion === saved.conclusion && review.recommendation === saved.recommendation &&
+    (!normalize(review.reason) || normalize(review.reason) === normalize(saved.reason)) &&
+    JSON.stringify(evidenceBasis) === JSON.stringify(saved.evidenceBasis))
+    throw new Error("No review changes to save. Revise your judgement or explain how the QA challenge was resolved.");
   return {
     ...state,
     analysisRevision: (state.analysisRevision || 0) + 1,
     analysisAuthors: [...new Set([...(state.analysisAuthors || []), user.actorId])],
     pendingReviews: { ...state.pendingReviews, [id]: false },
-    reviews: { ...state.reviews, [id]: { ...review, judgement: review.judgement.trim(), reason: review.reason.trim(), evidenceVersions: data.documents.filter(row => row.requirement === id).map(row => row.version), actorId: user.actorId, actor: user.name, userId: user.id, at: new Date().toISOString() } },
+    reviews: { ...state.reviews, [id]: { ...review, judgement: review.judgement.trim(), reason: review.reason.trim(), evidenceVersions, evidenceBasis, actorId: user.actorId, actor: user.name, userId: user.id, at: new Date().toISOString() } },
     ...(id === "R-07"
       ? {
           judgement: review.judgement,
@@ -257,13 +267,19 @@ export function addEvidence(state, data, document) {
     events: [...state.events, actionEntry(data, "Evidence metadata uploaded", upload.name, { requirementIds: requirements, evidenceVersion: upload.version })] };
 }
 
-export function canCloseCondition(state) {
+export function closureEvidence(state) {
   const decision = state.signedPack?.decision;
   const review = state.reviews?.["R-07"];
-  if (!decision?.condition || state.pendingReviews?.["R-07"] || review?.conclusion !== "Supported") return false;
-  const evidence = [state.supplierReceipt, ...(state.uploads || []).filter(row => row.requirement === "R-07")].filter(Boolean);
-  return evidence.some(row => Date.parse(row.at || row.receivedAt) > Date.parse(decision.at) &&
-    Date.parse(review.at) >= Date.parse(row.at || row.receivedAt) && review.evidenceVersions?.includes(row.reference || row.version));
+  if (!decision?.condition || state.pendingReviews?.["R-07"] || review?.conclusion !== "Supported") return null;
+  const evidence = [state.supplierReceipt, ...(state.uploads || []).filter(row => row.requirement === "R-07")].filter(Boolean)
+    .filter(row => Date.parse(row.at || row.receivedAt) > Date.parse(decision.at))
+    .sort((a, b) => Date.parse(b.at || b.receivedAt) - Date.parse(a.at || a.receivedAt))[0];
+  return evidence && Date.parse(review.at) >= Date.parse(evidence.at || evidence.receivedAt) &&
+    review.evidenceVersions?.includes(evidence.reference || evidence.version) ? evidence : null;
+}
+
+export function canCloseCondition(state) {
+  return Boolean(closureEvidence(state));
 }
 
 export function closeCondition(state, data, reason) {

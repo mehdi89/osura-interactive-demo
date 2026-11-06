@@ -117,3 +117,7 @@ Validation: `npm test`, `npm run build`, browser interaction checks and public H
 The follow-up audit gaps are closed: both assurance links accept ordinary click events; register stages, step indicators, customer-action counts and readiness share `workflowStatus`; QA send-back returns ownership to the analyst; displayed dates use `dd MMM yyyy`; risk captions consistently identify CTP inherent risk. Direct navigation to intake review returns to the first missing field or business question.
 
 All 37 automated checks and the production build pass. Browser checks exercised QA send-back, the resulting register and customer views, blank customer intent, scoped decision confirmation, signed-pack continuation, monitoring navigation and direct intake validation. The earlier 390px containment and supplier-receipt checks remain applicable. No schema or seed records changed.
+
+## Follow-up acceptance
+
+The seven live-review findings and related scope omissions are resolved. See [the decision-file completion crosswalk](decision-file-completion.md) for D01–D16 evidence, the matching `(1).html` source hash, and the final call sheet’s explicit deferrals. The latest suite has 49 tests.

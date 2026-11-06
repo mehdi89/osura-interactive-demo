@@ -1347,10 +1347,12 @@ blockquote {
 .risk-grid {
   display: grid;
   gap: 5px;
+  overflow-x: auto;
 }
 .risk-grid-row {
   display: grid;
-  grid-template-columns: 65px repeat(5, 1fr);
+  grid-template-columns: 85px repeat(6, minmax(45px, 1fr));
+  min-width: 385px;
   gap: 5px;
   align-items: center;
 }
@@ -2300,4 +2302,6 @@ fieldset { min-width: 0; border: 0; padding: 0; margin: 0; }
   .mobile-nav-close { display: flex; gap: 8px; align-items: center; padding: 12px; }
   main, .supplier-app main { padding-bottom: 100px; }
 }
-.cell-sub, .helper, .micro-label, .source-caption, .document > small, .field > small, .fields dt, .note, thead { color: #526781; }
+.cell-sub, .helper, .micro-label, .source-caption, .document > small, .field > small, .fields dt, .note, thead,
+.entity small, .tabs button, .timeline small, .legend > div,
+.risk-grid-row:first-child, .risk-grid-row > button, .risk-grid > small { color: #526781; }

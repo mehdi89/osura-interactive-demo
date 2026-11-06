@@ -121,7 +121,7 @@ test("saving from a filtered view preserves other customers' workflow records an
 test("QA independence retains authors after their review is overwritten", () => {
   const initial = createState(base);
   const first = saveRequirementReview(initial, context("analyst-02"), "IAM-04", { ...review, conclusion: "Unknown" });
-  const overwritten = saveRequirementReview(first, context("analyst-01"), "IAM-04", { ...review, conclusion: "Unknown" });
+  const overwritten = saveRequirementReview(first, context("analyst-01"), "IAM-04", { ...review, judgement: "Revised independent review of the access record", conclusion: "Unknown" });
   assert.equal(overwritten.reviews["IAM-04"].actorId, "osura-analyst-01");
   assert.throws(() => recordQA(overwritten, context("analyst-02"), "Passed", "I authored the earlier version"), /own analysis/);
   const fresh = createState(base);

@@ -11,6 +11,7 @@ import {
   workflowStatus,
   addEvidence,
   canCloseCondition,
+  closureEvidence,
   closeCondition,
   filterSupplierServices,
 } from "../src/state.mjs";
@@ -300,4 +301,51 @@ test("supplier filters match service scope before grouping mixed supplier outcom
   assert.equal(low.length, 1); assert.equal(low[0].service, "CRM"); assert.equal(low[0].serviceCount, 1);
   const grouped = filterSupplierServices(rows);
   assert.equal(grouped[0].serviceCount, 2); assert.equal(grouped[0].service, "Events · CRM");
+});
+
+
+test("unchanged or whitespace-only review saves cannot release QA rework", () => {
+  const review = { judgement: "The recovery target is documented; scoped exercise evidence is still incomplete.",
+    conclusion: "Partially supported", recommendation: "Approve with conditions", reason: "Scope checked" };
+  const first = saveRequirementReview(createState(data), analystData, "R-07", review);
+  const qaData = { ...data, access: sessionUser(model, "analyst-02") };
+  const sentBack = recordQA(first, qaData, "Rework requested", "Resolve the exercise scope challenge");
+  for (const noChange of [review, { ...review, judgement: `  ${review.judgement.replaceAll(" ", "  ")}  `, reason: "Scope   checked" }, { ...review, reason: "" }])
+    assert.throws(() => saveRequirementReview(sentBack, analystData, "R-07", noChange), /No review changes/);
+  assert.throws(() => recordQA(sentBack, qaData, "Passed", "No substantive revision"), /must revise/);
+  assert.equal(sentBack.analysisRevision, first.analysisRevision);
+  const resolved = saveRequirementReview(sentBack, analystData, "R-07", { ...review, reason: "QA challenge resolved: scoped exercise remains an explicit customer condition" });
+  assert.equal(resolved.analysisRevision, sentBack.analysisRevision + 1);
+  assert.doesNotThrow(() => recordQA(resolved, qaData, "Passed with condition", "Resolution independently checked"));
+});
+
+test("new evidence versions allow the same conclusion but reordered identical evidence does not count as revision", () => {
+  const review = { judgement: "The service exercise remains only partially supported", conclusion: "Partially supported", recommendation: "Approve with conditions", reason: "New source independently inspected" };
+  const first = saveRequirementReview(createState(data), analystData, "R-07", review);
+  assert.throws(() => saveRequirementReview(first, { ...analystData, documents: [...analystData.documents].reverse() }, "R-07", review), /No review changes/);
+  const uploaded = addEvidence(first, analystData, { name: "same.pdf", requirement: "R-07", version: "same-v1" });
+  const firstFile = uploaded.uploads[0];
+  const newData = { ...analystData, documents: [...data.documents, firstFile] };
+  const reReviewed = saveRequirementReview(uploaded, newData, "R-07", review);
+  assert.equal(reReviewed.pendingReviews["R-07"], false);
+  assert.equal(reReviewed.analysisRevision, first.analysisRevision + 1);
+  const replacement = { ...firstFile, version: "same-v2" };
+  assert.doesNotThrow(() => saveRequirementReview({ ...reReviewed, pendingReviews: { "R-07": true } }, { ...newData, documents: [...newData.documents, replacement] }, "R-07", review));
+});
+
+test("closure selects the newest reviewed evidence version even when filenames match", () => {
+  const signed = recordDecision(createState(data), data, "Approve with conditions", "Proceed subject to newer scoped proof", condition);
+  const oldReceipt = { fileName: "same.pdf", reference: "supplier-v1", at: "2026-11-05T01:00:00Z" };
+  const upload = { name: "same.pdf", version: "upload-v2", requirement: "R-07", receivedAt: "2026-11-05T02:00:00Z" };
+  const state = { ...signed, signedPack: { ...signed.signedPack, decision: { ...signed.decision, at: "2026-11-05T00:00:00Z" } }, supplierReceipt: oldReceipt, uploads: [upload],
+    reviews: { "R-07": { conclusion: "Supported", at: "2026-11-05T03:00:00Z", evidenceVersions: [oldReceipt.reference, upload.version] } } };
+  assert.equal(closureEvidence(state), upload);
+  assert.equal(canCloseCondition(state), true);
+  const laterReceipt = { ...oldReceipt, reference: "supplier-v3", at: "2026-11-05T04:00:00Z" };
+  assert.equal(closureEvidence({ ...state, supplierReceipt: laterReceipt }), null);
+  const latestReviewed = { ...state, supplierReceipt: laterReceipt, reviews: { "R-07": { ...state.reviews["R-07"], at: "2026-11-05T05:00:00Z", evidenceVersions: [upload.version, laterReceipt.reference] } } };
+  assert.equal(closureEvidence(latestReviewed), laterReceipt);
+  assert.equal(closureEvidence({ ...latestReviewed, pendingReviews: { "R-07": true } }), null);
+  assert.equal(closureEvidence({ ...latestReviewed, signedPack: { ...state.signedPack, decision: { ...state.signedPack.decision, at: "2026-11-05T06:00:00Z" } } }), null);
+  assert.equal(closeCondition(state, analystData, "Reviewed exact newer upload").signedPack, state.signedPack);
 });

@@ -76,6 +76,7 @@ import {
   addEvidence,
   filterSupplierServices,
   canCloseCondition,
+  closureEvidence,
   closeCondition,
 } from "./state.mjs";
 import "./styles.css";
@@ -163,6 +164,11 @@ const Fields = ({ items }) => (
     ))}
   </dl>
 );
+
+function evidenceSummary(requirements) {
+  const counts = requirements.reduce((all, row) => ({ ...all, [row.conclusion]: (all[row.conclusion] || 0) + 1 }), {});
+  return { total: requirements.length, counts, text: Object.entries(counts).map(([conclusion, count]) => `${count} ${conclusion.toLowerCase()}`).join(" · ") };
+}
 const Label = ({ title, children, hint }) => (
   <label className="field">
     <span>{title}</span>
@@ -175,6 +181,36 @@ function formatDate(value) {
   if (!value || value === "—") return value || "—";
   const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function projectRequirementEvidence(requirement, state, data) {
+  const receipt = state.supplierReceipts?.[data.request.items[requirement.id === "R-07" ? 0 : requirement.id === "IAM-04" ? 1 : -1]];
+  const upload = (state.uploads || []).filter(doc => doc.requirement === requirement.id || !doc.requirement)
+    .sort((a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt))[0];
+  const selected = upload && (!receipt || Date.parse(upload.receivedAt) > Date.parse(receipt.at))
+    ? { kind: "upload", record: upload }
+    : receipt ? { kind: "receipt", record: receipt } : null;
+  const sourceDocument = selected?.kind === "upload"
+    ? { name: upload.name, version: upload.version, date: upload.receivedAt, page: "Metadata only · no extraction" }
+    : selected?.kind === "receipt"
+      ? { name: receipt.fileName, version: receipt.reference, date: receipt.at, page: "Supplier response · no extraction" }
+      : data.documents.find(doc => doc.requirement === requirement.id);
+  return {
+    ...requirement,
+    sourceDocument,
+    conclusion: state.pendingReviews?.[requirement.id] ? "Needs review" : state.reviews?.[requirement.id]?.conclusion || requirement.conclusion,
+    ...(selected?.kind === "receipt" ? {
+      source: `${selected.record.fileName} · ${selected.record.reference} · supplier response`,
+      passage: selected.record.answer,
+      proves: "Supplier claim requiring independent review",
+      doesNotProve: "Operational effectiveness without reviewed support",
+    } : selected?.kind === "upload" ? {
+      source: `${selected.record.name} · ${selected.record.version}`,
+      passage: "Only file metadata was supplied. No document contents have been extracted; inspect the original outside this prototype before recording a conclusion.",
+      proves: "File metadata received; no content verified",
+      doesNotProve: "Scope or effectiveness without independent evidence review",
+    } : {}),
+  };
 }
 
 function Demo({ initialModel, presentation, examples, schema, catalog, validate }) {
@@ -207,7 +243,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
               evidence: currentCondition.evidence,
               state: state.conditionClosed ? "Closed" : "Open condition",
             }
-          : f,
+          : f.id === "F-01" && !state.decision ? { ...f, state: "Proposed condition" } : f,
       ),
     monitoring: scopedData.monitoring
       .filter(
@@ -219,7 +255,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
           ),
       )
       .map((row) =>
-        row.activity === "Recovery condition" && currentCondition
+        row.activity === "Recovery condition" && !state.decision ? { ...row, status: "Proposed condition" } : row.activity === "Recovery condition" && currentCondition
           ? {
               ...row,
               owner: currentCondition.owner,
@@ -228,41 +264,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
             }
           : row,
       ),
-    requirements: scopedData.requirements.map((r) => {
-      const receipt =
-        state.supplierReceipts?.[
-          scopedData.request.items[
-            r.id === "R-07" ? 0 : r.id === "IAM-04" ? 1 : -1
-          ]
-        ];
-      const upload = (state.uploads || []).filter(doc => doc.requirement === r.id || !doc.requirement).at(-1);
-      const sourceDocument = upload && (!receipt || upload.receivedAt > receipt.at)
-        ? { name: upload.name, version: upload.version, date: upload.receivedAt, page: "Metadata only · no extraction" }
-        : receipt ? { name: receipt.fileName, version: receipt.reference, date: receipt.at, page: "Supplier response · no extraction" }
-        : scopedData.documents.find(doc => doc.requirement === r.id);
-      return {
-        ...r,
-        sourceDocument,
-        conclusion: state.pendingReviews?.[r.id]
-          ? "Needs review"
-          : state.reviews?.[r.id]?.conclusion || r.conclusion,
-        ...(receipt
-          ? {
-              source: `${receipt.fileName} · supplier response`,
-              passage: receipt.answer,
-              proves: "Supplier claim requiring independent review",
-              doesNotProve:
-                "Operational effectiveness without reviewed support",
-            }
-          : {}),
-        ...(upload && sourceDocument?.name === upload.name ? {
-          source: `${upload.name} · ${upload.version}`,
-          passage: "Only file metadata was supplied. No document contents have been extracted; inspect the original outside this prototype before recording a conclusion.",
-          proves: "File metadata received; no content verified",
-          doesNotProve: "Scope or effectiveness without independent evidence review",
-        } : {}),
-      };
-    }),
+    requirements: scopedData.requirements.map(r => projectRequirementEvidence(r, state, scopedData)),
     documents: [
       ...scopedData.documents,
       ...Object.entries(state.supplierReceipts || {}).map(
@@ -915,7 +917,7 @@ function Requirements({ data, navigate, update, state, customer = false }) {
               <td>{r.name}</td>
               <td>
                 <Badge>
-                  {i === 0 && state?.conclusion
+                  {r.id === "R-07" && state?.conclusion
                     ? state.conclusion
                     : r.conclusion}
                 </Badge>
@@ -1395,7 +1397,7 @@ function Registers(c) {
   );
 }
 function RiskGrid(c) {
-  const stages = ["Request", "Evidence", "Questions", "Findings", "Decision"];
+  const stages = ["Request", "Evidence", "Questions", "Findings", "QA", "Decision"];
   return (
     <div className="risk-grid">
       <div className="risk-grid-row">
@@ -1469,7 +1471,12 @@ function DirectoryDetails(c) {
                   <td>
                     <Link
                       onClick={() => {
-                        update({ identityCandidate: row });
+                        const record = data.engagements.find(record => record.supplier === row.supplier);
+                        if (!record) {
+                          c.notify("No accessible assessment is available for this identity candidate.");
+                          return;
+                        }
+                        update({ selected: record.id, identityCandidate: row });
                         setDrawer("identity-candidate");
                       }}
                     >
@@ -2224,6 +2231,7 @@ function Assessment(c) {
   const status = workflowStatus(state);
   const pending = state.conclusion === "Needs review" || Object.values(state.pendingReviews || {}).some(Boolean);
   const activeStep = status.step;
+  const evidence = evidenceSummary(data.requirements);
   const steps = [
     "Intake",
     "CTP & scope",
@@ -2375,10 +2383,10 @@ function Assessment(c) {
                   <Fields
                     items={[
                       ["Scope", engagement.service],
-                      ["Assessment set", "12 applicable controls"],
+                      ["Assessment set", `${evidence.total} requirements in this demo`],
                       [
                         "Current outcomes",
-                        "10 supported · 1 partial · 1 unknown",
+                        evidence.text,
                       ],
                       ["Decision gate", status.label],
                       ["Next owner", status.nextOwner],
@@ -2394,7 +2402,7 @@ function Assessment(c) {
                   ["Assessment plan", engagement.plan],
                   [
                     "Control coverage",
-                    "12 applicable · 10 supported · 1 partial · 1 unknown",
+                    `${evidence.total} demo requirements · ${evidence.text}`,
                   ],
                   [
                     "Open conditions",
@@ -2465,7 +2473,7 @@ function Assessment(c) {
 
 function Findings(c) {
   const { data, screen, navigate, state, setDrawer } = c;
-  const [selected, setSelected] = useState(0);
+  const [selectedId, setSelected] = useState(state.selectedFinding || null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const customer = screen.role === "customer";
@@ -2479,7 +2487,8 @@ function Findings(c) {
           ? f.state.includes("condition")
           : f.state === filter)),
   );
-  const f = rows[selected] || rows[0];
+  const f = rows.find(row => row.id === selectedId) || rows.find(row => row.engagementId === state.selected) || rows[0];
+  const selectFinding = row => { setSelected(row.id); c.update({ selected: row.engagementId, selectedFinding: row.id }); };
   return (
     <>
       {customer && <Scope {...c} />}
@@ -2490,11 +2499,8 @@ function Findings(c) {
             "Open material items",
           ],
           [
-            state.conditionClosed ||
-            (state.decision && !state.decision.condition)
-              ? 0
-              : 1,
-            "Approval condition",
+            data.findings.filter(row => row.state === "Open condition").length,
+            "Customer approval conditions",
           ],
           [
             1,
@@ -2527,11 +2533,11 @@ function Findings(c) {
                   <tr
                     key={row.id}
                     className={f?.id === row.id ? "selected-row" : ""}
-                    onClick={() => setSelected(i)}
+                    onClick={() => selectFinding(row)}
                   >
                     {!customer && <td>{row.client || data.workspace.name} / {row.supplier}</td>}
                     <td>
-                      <Link onClick={() => setSelected(i)}>{row.issue}</Link>
+                      <Link onClick={() => selectFinding(row)}>{row.issue}</Link>
                       {customer && (
                         <small className="cell-sub">
                           {row.supplier} · {row.service}
@@ -2572,7 +2578,7 @@ function Findings(c) {
                 ["Supplier", f.supplier],
                 ["Service", f.service],
                 ["Requirement", `${f.control} · ${f.issue}`],
-                ["Treatment", f.state === "Open condition" || (f.id === "F-01" && state.decision?.condition) ? "Customer approval condition" : f.id === "F-01" && !state.decision ? "Proposed condition · no customer decision" : f.state],
+                ["Treatment", f.id === "F-01" && !state.decision ? "Proposed condition · no customer decision" : f.state === "Open condition" || (f.id === "F-01" && state.decision?.condition) ? "Customer approval condition" : f.state],
                 ["Owner", f.owner],
                 ["Due", formatDate(f.due)],
                 ["Closure requires", f.evidence],
@@ -2643,7 +2649,7 @@ function EvidenceReview(c) {
   const draft = state.reviewDrafts?.[draftKey] || {
     judgement: requirementId === "R-07" ? state.judgement : savedReview?.judgement || "",
     conclusion: currentConclusion,
-    reason: "",
+    reason: savedReview?.reason || "",
     recommendation: savedReview?.recommendation || "Approve with conditions",
   };
   const { judgement, conclusion, reason, recommendation } = draft;
@@ -2852,8 +2858,8 @@ function EvidenceReview(c) {
                     ))}
                   </select>
                 </Label>
-                {conclusion !== currentConclusion && (
-                  <Label title="Reason for changing the conclusion">
+                {(conclusion !== currentConclusion || state.qaReworkRevision != null) && (
+                  <Label title={conclusion !== currentConclusion ? "Reason for changing the conclusion" : "Response to QA challenge"}>
                     <textarea
                       value={reason}
                       onChange={(e) => editDraft({ reason: e.target.value })}
@@ -3472,18 +3478,14 @@ function Monitoring(c) {
               ]
             : [
                 [
-                  state.conditionClosed ||
-                  (state.decision && !state.decision.condition)
-                    ? 0
-                    : 1,
+                  state.decision?.condition && !state.conditionClosed ? 1 : 0,
                   "Open condition",
-                  "Recovery testing",
+                  state.decision ? "Customer decision recorded" : "Proposed recovery condition · not signed",
                 ],
                 [
-                  formatDate(state.decision?.condition?.due ||
-                    (state.decision ? "—" : data.defaults.conditionDue)),
+                  formatDate(state.decision?.condition?.due),
                   "Next condition due",
-                  `Owner: ${state.decision?.condition?.owner || data.defaults.conditionOwner}`,
+                  state.decision?.condition ? `Owner: ${state.decision.condition.owner}` : "No signed customer condition",
                 ],
                 [3, "Evidence due within 90d", "Actions programme"],
                 [
@@ -3496,6 +3498,7 @@ function Monitoring(c) {
               ]
         }
       />
+      {!state.decision && <Note>Recovery condition shown below is a prepared proposal. It becomes a customer obligation only after conditional approval is signed.</Note>}
       {analyst && (
         <Filters
           {...{ search, setSearch, filter, setFilter }}
@@ -3546,11 +3549,13 @@ function Monitoring(c) {
                           onClick={() => {
                             const supplier = row[0].split(" / ").at(-1);
                             const record = data.engagements.find(e => e.id === row[6]) || data.engagements.find(e => e.supplier === supplier && (row[1] === "Recovery condition" ? e.id === "cedar" : true));
-                            if (record) c.update({ selected: record.id });
-                            navigate(analyst ? row[5] : "C12");
+                            if (!record) { c.notify("No accessible assessment is linked to this item."); return; }
+                            const finding = [...data.findings, ...(state.extraFindings || [])].find(f => f.engagementId === record.id);
+                            c.update({ selected: record.id, selectedFinding: finding?.id || null });
+                            navigate(analyst ? row[5] : finding ? "C12" : "C09");
                           }}
                         >
-                          View {i === 0 ? "condition" : "review"} →
+                          View {/condition/i.test(row[1]) ? "condition" : "review"} →
                         </Link>
                       </td>
                     </tr>
@@ -3805,6 +3810,7 @@ function Impact(c) {
 function Inventory(c) {
   const { data, navigate, state } = c;
   const docs = data.documents;
+  const evidence = evidenceSummary(data.requirements);
   return (
     <>
       {!c.embedded && (
@@ -3813,9 +3819,10 @@ function Inventory(c) {
           <Stats
             items={[
               [docs.length, "Source versions"],
-              [2, "Requirements supported"],
-              [1, "Partial coverage"],
-              [1, "Unknown scope"],
+              [evidence.counts.Supported || 0, "Requirements supported"],
+              [evidence.counts["Partially supported"] || 0, "Partial coverage"],
+              [evidence.counts.Unknown || 0, "Unknown scope"],
+              [evidence.counts["Needs review"] || 0, "Pending evidence review"],
             ]}
           />
         </>
@@ -4314,7 +4321,14 @@ function Closure(c) {
   const draft = state.closureDrafts?.[c.user.id] || { decision: "Return for more proof", reason: "" };
   const { decision, reason } = draft;
   const editDraft = (patch) => { c.update({ closureDrafts: { ...state.closureDrafts, [c.user.id]: { ...draft, ...patch } } }); setError(""); };
-  const eligible = canCloseCondition(state);
+  const eligibleEvidence = closureEvidence(state);
+  const eligible = Boolean(eligibleEvidence);
+  const latestEvidence = [state.supplierReceipt, ...(state.uploads || []).filter(row => row.requirement === "R-07" || !row.requirement)]
+    .filter(Boolean).sort((a, b) => Date.parse(b.at || b.receivedAt) - Date.parse(a.at || a.receivedAt))[0];
+  const evidence = eligibleEvidence || latestEvidence;
+  const review = state.reviews?.["R-07"];
+  const reviewedVersion = evidence && review?.evidenceVersions?.includes(evidence.reference || evidence.version) &&
+    Date.parse(review.at) >= Date.parse(evidence.at || evidence.receivedAt);
   const condition = state.signedPack?.decision.condition;
   const [error, setError] = useState("");
   const submit = (e) => {
@@ -4357,14 +4371,16 @@ function Closure(c) {
           </div>
           <div className="list-row">
             <div>
-              <b>New supplier evidence</b>
-              <p>
-                {state.supplierReceipt?.fileName ||
-                  "No new evidence submitted in this browser"}
-              </p>
+              <b>{eligible ? "Evidence used for closure" : "Latest evidence received"}</b>
+              <p>{evidence?.fileName || evidence?.name || "No new evidence submitted in this browser"}</p>
+              {evidence && <Fields items={[
+                ["Evidence version", evidence.reference || evidence.version],
+                ["Received", formatDate(evidence.at || evidence.receivedAt)],
+                ["Review", reviewedVersion ? `${review.actor || "Assigned analyst"} · ${formatDate(review.at)} · ${review.conclusion}` : "This version requires independent review"],
+              ]} />}
             </div>
             <Badge>
-              {eligible ? "Reviewed newer evidence" : state.supplierReceipt ? "Received · closure blocked" : "Awaiting evidence"}
+              {eligible ? "Reviewed newer evidence" : evidence ? "Received · closure blocked" : "Awaiting evidence"}
             </Badge>
           </div>
           <div className="list-row">
