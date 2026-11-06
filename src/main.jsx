@@ -373,12 +373,18 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
     const current = stateRef.current;
     const collection = { O04: "reviewDrafts", C13: "reviewDrafts", O08: "qaDrafts", C06: "decisionDrafts", O09: "closureDrafts" }[screenId];
     if (!collection) return null;
-    const key = collection === "reviewDrafts" ? `${identity}:${current.selectedRequirement || "R-07"}` : identity;
+    const key = collection === "reviewDrafts" ? `${identity}:${state.selectedRequirement || "R-07"}` : identity;
     return current[collection]?.[key] ? { collection, key } : null;
   };
   const requestNavigation = run => {
     const draft = currentDraft();
-    if (draft) { setDrawer(null); setNavigationIntent({ run, draft }); } else run();
+    if (!draft) { run(); return; }
+    // Record links may select their destination before requesting navigation.
+    const keys = ["selected", "selectedRequirement", "selectedFinding", "selectedThread", "identityCandidate"].filter(key => stateRef.current[key] !== state[key]);
+    const destination = Object.fromEntries(keys.map(key => [key, stateRef.current[key]]));
+    if (keys.length) update(Object.fromEntries(keys.map(key => [key, state[key]])));
+    setDrawer(null);
+    setNavigationIntent({ draft, run: () => { if (keys.length) update(destination); run(); } });
   };
   const navigate = id => requestNavigation(() => commitNavigation(id));
   const switchIdentity = nextId => requestNavigation(() => {
