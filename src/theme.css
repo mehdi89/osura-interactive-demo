@@ -1,0 +1,13 @@
+:root { color-scheme: light dark; }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+.appearance-trigger { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: 44px; min-height: 44px; border: 1px solid var(--line); border-radius: 6px; }
+.appearance-settings select { width: 100%; }
+.ring { background: #edf0f6; background: light-dark(#edf0f6, #1c293d); }
+@supports not (color: light-dark(white, black)) {
+  :root, :root[data-theme] { color-scheme: light; --line: #dce3ee; --muted: #596a80; --soft: #f1edff; }
+}
+@media print {
+  :root, :root[data-theme] { color-scheme: light; }
+  .appearance-trigger { display: none; }
+}

@@ -82,6 +82,8 @@ Choose **Superadmin** in the demo-user selector, then open **Demo data** in the 
 
 Records and existing workflow changes live in React memory. Navigation and perspective switches preserve them; refresh restores the source fixtures. No localStorage or sessionStorage is used for demo state. Older browser-saved data is ignored, not deleted. **Reset demo** clears workflow progress/overrides but retains edits to the base records until refresh. Downloading is the only way to keep edited fixture records beyond the current page session.
 
+Appearance is a separate browser preference: `osura-appearance` stores only `system`, `light` or `dark`. It contains no customer, assessment, credentials or workflow data and survives refresh independently of the demo state.
+
 ## Scope and remaining boundaries
 
 `presentation.json` holds scenario/display settings, seed workflow state and static illustrative panels such as historical communications, monitoring cards and policy previews. Those panels remain reference illustrations; they are not synchronized database queries. Core registers, requirements, documents, findings and intake suggestions come from the normalized records. `examples.json` deliberately retains frozen historical display snapshots rather than joining mutable current records into them.

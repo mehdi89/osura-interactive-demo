@@ -31,6 +31,7 @@ import {
   X,
   ChevronDown,
   Eye,
+  SunMoon,
 } from "lucide-react";
 const Icons = {
   Circle,
@@ -63,6 +64,7 @@ const Icons = {
   X,
   ChevronDown,
   Eye,
+  SunMoon,
 };
 import {
   createState,
@@ -84,12 +86,14 @@ import "./visual-system.css";
 import "./customer-layouts.css";
 import "./case-layouts.css";
 import "./operations-layouts.css";
+import "./theme.css";
 import DataEditor from "./DataEditor.jsx";
 import RoleAdmin, { AuditTrail } from "./RoleAdmin.jsx";
 import WorkspaceSearch from "./WorkspaceSearch.jsx";
 import { customerView, patchCustomerView } from "./customer-session.mjs";
 import { sessionUser, scopeWorkspace, actionEntry } from "./access.mjs";
 import { createModelValidator, projectWorkspace } from "./data-model.mjs";
+import { APPEARANCE_KEY, readAppearance, resolveTheme } from "./appearance.mjs";
 
 const Icon = ({ name, size = 16, ...props }) => {
   const Component = Icons[name] || Icons.Circle;
@@ -245,6 +249,20 @@ function Demo({ initialModel, presentation, examples, schema, catalog, validate 
 
 function App({ data: baseData, catalog, model, schema, validate, onDataChange, user, identity, onSwitch, auditLog, onAudit }) {
   const initialModel = React.useRef(model);
+  const [appearance, setAppearance] = useState(() => readAppearance());
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      const theme = resolveTheme(appearance, media.matches);
+      document.documentElement.dataset.theme = theme;
+      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0b1220" : "#6e56f8");
+    };
+    apply();
+    try { localStorage.setItem(APPEARANCE_KEY, appearance); } catch {}
+    if (appearance !== "system") return;
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [appearance]);
   const [customerFilter, setCustomerFilter] = useState("all");
   const scopedData = scopeWorkspace(baseData, user, user?.role === "analyst" ? customerFilter : "all");
   let data = scopedData;
@@ -512,6 +530,8 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
     screen,
     setDrawer,
     startTour,
+    appearance,
+    setAppearance,
   };
   const text = (value) =>
     value
@@ -587,7 +607,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
             Object.assign(profileMenu.current.style, { bottom: `${window.innerHeight - rect.top + 8}px`, width: `${rect.width - 16}px`, maxHeight: `${Math.max(120, rect.top - 16)}px` });
           }}><span className="avatar">{role === "customer" ? data.workspace.initials : "OS"}</span><span><b>{user?.name || "Inactive account"}</b><small>{role === "superadmin" ? "Superadmin" : role === "analyst" ? `Analyst${user.canQA ? " · Independent QA" : ""}` : "Customer Decision Owner"}</small></span><Icon name="ChevronUp" size={16}/></button>
           <div ref={profileMenu} id="profile-options" className="profile-options" popover="auto" aria-label="Account options">
-            {[["notifications", "Bell", "Notifications"], ["account", "UserRound", "Account"], ["password", "LockKeyhole", "Change password"], ["billing", "CreditCard", "Billing"], ["logout", "LogOut", "Log out"]].map(([kind, icon, label]) => <button key={kind} onClick={() => openAccountPanel(kind)}><Icon name={icon} size={16}/>{label}</button>)}
+            {[["notifications", "Bell", "Notifications"], ["account", "UserRound", "Account"], ["appearance", "SunMoon", "Appearance"], ["password", "LockKeyhole", "Change password"], ["billing", "CreditCard", "Billing"], ["logout", "LogOut", "Log out"]].map(([kind, icon, label]) => <button key={kind} onClick={() => openAccountPanel(kind)}><Icon name={icon} size={16}/>{label}</button>)}
           </div>
         </aside>
       )}
@@ -629,6 +649,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
                 Private invitation · {data.workspace.name}
               </span>
             ) : null}
+            {isSupplier && <button className="appearance-trigger" aria-label="Appearance" title="Appearance" onClick={() => setDrawer("appearance")}><Icon name="SunMoon"/></button>}
           </div>
         </header>
         <main key={screen.id} data-screen={screen.id}>
@@ -915,7 +936,7 @@ function Ring({ data }) {
         style={{
           background: stops.length
             ? `conic-gradient(${stops.join(",")})`
-            : "#edf0f6",
+            : "light-dark(#edf0f6, #1c293d)",
         }}
       >
         <div>
@@ -3290,6 +3311,7 @@ function dialogTitle(kind) {
       settings: "Demo settings",
       workspace: "Current access",
       notifications: "Your notifications",
+      appearance: "Appearance",
       account: "Your account",
       password: "Change password",
       billing: "Billing",
@@ -3343,12 +3365,18 @@ function PasswordPreview() {
   }}><Label title="New example password"><input name="newPassword" type="password" required minLength={12} autoComplete="off" onChange={e => e.currentTarget.form.elements.namedItem("confirmPassword").setCustomValidity("")}/><small>Use at least 12 characters.</small></Label><Label title="Confirm example password"><input name="confirmPassword" type="password" required minLength={12} autoComplete="off" onChange={e => e.currentTarget.setCustomValidity("")}/></Label><div className="form-actions"><Button primary type="submit">Preview password change</Button></div></form>}</>;
 }
 
+function AppearanceSettings({ value, onChange }) {
+  const supportsDark = typeof CSS === "undefined" || CSS.supports("color", "light-dark(white, black)");
+  return <div className="appearance-settings"><Label title="Color theme"><select aria-label="Color theme" value={value} onChange={e => onChange(e.target.value)}><option value="system">System default</option><option value="light">Light</option><option value="dark" disabled={!supportsDark}>Dark</option></select></Label><p>{supportsDark ? "Your display preference is saved on this browser." : "This browser uses Light mode. Update your browser to use Dark mode."}</p></div>;
+}
+
 function Drawer(c) {
   const { kind, data, state, navigate, notify, setDrawer } = c;
   const [query, setQuery] = useState("");
   const [value, setValue] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState(data.defaults.conditionDue);
+  if (kind === "appearance") return <AppearanceSettings value={c.appearance} onChange={c.setAppearance}/>;
   if (kind === "account") return <><Fields items={[["Name", c.user.name], ["Email", c.user.email], ["Role", c.user.role === "superadmin" ? "Superadmin" : c.user.role === "analyst" ? "Analyst" : "Customer Decision Owner"], ["Organisation", c.user.workspaceName || "Osura team"]]}/><Button icon="LockKeyhole" onClick={() => setDrawer("password")}>Change password</Button></>;
   if (kind === "password") return <PasswordPreview/>;
   if (kind === "billing") return <><Fields items={[["Organisation", c.user.role === "customer" ? data.workspace.name : "Osura team"], ["Subscription", "No subscription connected"], ["Payment method", "None connected"]]}/><Note>{c.user.role === "customer" ? "No invoices or charges are created in this demo." : "Customer billing is managed by each customer's account. No customer billing records are available here."}</Note></>;
@@ -3426,6 +3454,7 @@ function Drawer(c) {
           Interactive UI preview · synthetic data · session memory (resets on refresh) · no
           live AI, email, authentication or production integrations.
         </Note>
+        <AppearanceSettings value={c.appearance} onChange={c.setAppearance}/>
         <h3>Current access</h3><p>{c.user?.name} · {c.user?.role}. Customers see their own company. Analysts filter assigned customers in the top bar. The demo toolbar selects a different simulated identity.</p>
         <Fields
           items={[

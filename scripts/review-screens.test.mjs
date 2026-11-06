@@ -257,12 +257,16 @@ test("all workspace roles use the bottom profile menu and only analysts have a t
     const html = renderApp({ superadmin: "A01", analyst: "O01", customer: "C01" }[user.role], { data: base, user, identity: id });
     assert.doesNotMatch(html, /class="workspace |aria-label="Customer workspace"/);
     assert.match(html, /class="profile" popoverTarget="profile-options" aria-label="Account menu"/i);
-    for (const action of ["Notifications", "Account", "Change password", "Billing", "Log out"]) assert.ok(html.includes(`</svg>${action}</button>`));
+    for (const action of ["Notifications", "Account", "Appearance", "Change password", "Billing", "Log out"]) assert.ok(html.includes(`</svg>${action}</button>`));
     const header = html.match(/<header[\s\S]*?<\/header>/)[0];
     assert.doesNotMatch(header, /SYNTHETIC DESIGN EXAMPLE|aria-label="Notifications"|class="avatar"/);
     if (user.role === "analyst") assert.match(html, /aria-label="Customer filter"/);
     else assert.doesNotMatch(html, /aria-label="Customer filter"/);
   }
+  const supplier = { id: "supplier-contact", actorId: "supplier-contact", name: "CedarCloud contact", role: "supplier", active: true, workspaceIds: ["northstar"] };
+  const portal = renderApp("S01", { data: base, user: supplier, identity: supplier.id });
+  assert.match(portal, /aria-label="Appearance"/);
+  assert.doesNotMatch(portal, /aria-label="Account menu"/);
 });
 
 test("account and billing panels keep each customer scope and password preview claims no credential change", async () => {
@@ -351,4 +355,14 @@ test("engagement dates visibly distinguish overdue, today, future and unschedule
   assert.equal(formatDue("09 Nov 2026", now), "09 Nov 2026");
   assert.equal(formatDue("Pending review", now), "Pending review");
   assert.equal(formatDue(undefined, now), "Not scheduled");
+});
+
+test("appearance explains the light fallback when paired theme colors are unsupported", () => {
+  const previous = globalThis.CSS;
+  try {
+    globalThis.CSS = { supports: () => false };
+    const html = render(Drawer, { ...context(), kind: "appearance", appearance: "system", setAppearance() {} });
+    assert.match(html, /This browser uses Light mode/);
+    assert.match(html, /<option value="dark" disabled="">Dark<\/option>/);
+  } finally { globalThis.CSS = previous; }
 });
