@@ -23,4 +23,11 @@ The client selected the workspace dashboard on https://www.osura.io/#platform an
 
 ## Release
 
-The target remains the separate https://osura-v2.dev.fems.education demo. Deployment evidence is appended after the live release is verified. The original demo and production applications are outside this release.
+Deployed to https://osura-v2.dev.fems.education from source commit `bb8c605ccaa34eb9755c75d1818c8959709dd851` on `feat/osura-v2-decisions`.
+
+- Coolify service `ebmzph9q24sckudcsrr8y0eh`, activity **52**, finished with exit code **0**. The running image is `osura-interactive-demo:bb8c605ccaa3` and its container is healthy. The release bundle is retained at `/data/osura-demo/releases/bb8c605ccaa3`.
+- The live module is `assets/index-CaSXniEA.js`; the stylesheet is `assets/index-Du4Qn3hm.css`. All **13** deployed files match the local build by SHA-256, including seed JSON, schema, wordmark, fonts and licences. Data/schema responses retain `Cache-Control: no-store`.
+- Live browser checks confirmed the navy sidebar, loaded Manrope font and official wordmark, plus 17 initially blank intake selectors grouped 5/5/7. Eight representative customer, analyst, QA, supplier and admin routes passed **32** additional checks at 1440px and 390px in both themes: no horizontal overflow, checked text-contrast failures or missing/duplicate primary headings. The profile Appearance control switched to Dark and Light explicitly, then returned to System and followed the operating-system preference.
+- The original demo remains healthy on image `osura-interactive-demo:72b26d3`. No production application or original-demo deployment was changed.
+
+The demo still uses synthetic data and session-only assessment state. This release does not make the public demo selector real authentication or tenant security.

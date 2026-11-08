@@ -26,4 +26,6 @@ The guide describes base asset impact and notes that other questionnaire inputs 
 
 ## Release status
 
-Implemented in the current working tree. No deployment or production methodology acceptance is implied. The separate original and v2 live demos were not changed by these source edits.
+Deployed to https://osura-v2.dev.fems.education with the client-theme release from source commit `bb8c605ccaa34eb9755c75d1818c8959709dd851`. Coolify activity **52** finished with exit code **0**, and the v2 container is healthy on image `osura-interactive-demo:bb8c605ccaa3`. All 13 public files match the verified build by SHA-256. Live intake verification confirmed all 17 blank selectors and their 5/5/7 category groups.
+
+The original demo was not redeployed. This remains a synthetic interactive prototype; deployment does not imply production methodology acceptance. See [the client-theme release evidence](client-visual-theme-2026-11-08.md#release).
