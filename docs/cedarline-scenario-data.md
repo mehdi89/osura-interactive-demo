@@ -70,7 +70,7 @@ The only added control is Scenario and its pick/load dialog. Existing entity nam
 
 ## Branch and checks
 
-The completed theme/CTP/review baseline was fast-forwarded to remote `main` at `221408c3823d850895d24c0b2a28e96dab7637d8`. Scenario work is isolated on `feat/cedarline-scenario-pack` and has not been merged to main or manually deployed to Coolify.
+The completed theme/CTP/review baseline was fast-forwarded to remote `main` at `221408c3823d850895d24c0b2a28e96dab7637d8`. Scenario work is isolated on `feat/cedarline-scenario-pack` and has not been merged to main. Its v2 deployment is recorded below.
 
 - All 102 tests pass, including every original regression test, import validation/rejection, all 36 existing screens rendered with Cedarline, source counts and all 11 asset hashes.
 - The build and default database-reference validation pass. The CSS asset remains `index-Du4Qn3hm.css`, identical to the merged baseline.
@@ -78,3 +78,15 @@ The completed theme/CTP/review baseline was fast-forwarded to remote `main` at `
 - Independent source review found a remaining hardcoded closure service label; it now reads the selected scenario's service, with the original default wording preserved. The screen regression check covers both uppercase and lowercase old labels.
 - All 36 Cedarline routes passed 144 browser layout/theme cases at 1440px and 390px in Light and Dark, with no document/workspace horizontal overflow or checked text-contrast failures. Evidence: `/tmp/osura-scenario-checks/layout-audit.json`.
 - At 390px in Dark mode, the picker stayed within the viewport with keyboard focus inside the dialog, no horizontal overflow and a successful restore of the default scenario.
+
+## Live release · 9 November 2026
+
+Deployed to https://osura-v2.dev.fems.education from source commit `19d4103f9a54622b0f11f1bfea9d7f5b5fa13e3f` on `feat/cedarline-scenario-pack`.
+
+- Coolify service `ebmzph9q24sckudcsrr8y0eh`, activity **53**, finished with exit code **0**. Container `web-ebmzph9q24sckudcsrr8y0eh` is healthy on image `osura-interactive-demo:19d4103f9a54`. The build bundle is retained at `/data/osura-demo/releases/19d4103f9a54`.
+- Live JavaScript is `assets/index-Q7dH5GK3.js`; CSS remains `assets/index-Du4Qn3hm.css`. All **25** deployed files match the verified build by SHA-256, including the scenario JSON and 11 source assets. Data/schema/associated-source responses retain `Cache-Control: no-store`.
+- Live checks passed built-in Cedarline selection, restoration of CedarCloud, rejection of an invalid local file without replacing active data, and loading the real Cedarline JSON file. C04 retains 17 blank CTP selectors; C06 retains blank outcome/rationale with the QA gate blocking recording. C07 shows all 14 controls and the watermarked historical deferral with source QA absent and no current signed decision.
+- Nine representative customer, analyst, QA, supplier and admin screens passed **36** further live layout/theme checks at 1440px and 390px in Light and Dark, with no document/workspace horizontal overflow or checked text-contrast failures. Live evidence is in `/tmp/osura-scenario-checks/live-*.json`. Full workflow journeys were not repeated during deployment; the release uses the preceding 102-test/144-case verification.
+- The original demo remains healthy on image `osura-interactive-demo:72b26d3`. It was not redeployed. No production application was changed.
+
+The existing session limit remains: loading a scenario resets the current tab's demo actions; refreshing restores CedarCloud. The source case does not imply production authentication, an actual QA sign-off, supplier approval or accepted risk.
