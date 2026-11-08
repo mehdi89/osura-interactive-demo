@@ -96,11 +96,13 @@ import "./case-layouts.css";
 import "./operations-layouts.css";
 import "./theme.css";
 import DataEditor from "./DataEditor.jsx";
+import ScenarioPicker from "./ScenarioPicker.jsx";
 import RoleAdmin, { AuditTrail } from "./RoleAdmin.jsx";
 import WorkspaceSearch from "./WorkspaceSearch.jsx";
 import { customerView, patchCustomerView } from "./customer-session.mjs";
 import { sessionUser, scopeWorkspace, actionEntry } from "./access.mjs";
 import { createModelValidator, projectWorkspace } from "./data-model.mjs";
+import { createScenarioValidator } from "./scenarios.mjs";
 import { APPEARANCE_KEY, readAppearance, resolveTheme } from "./appearance.mjs";
 import { IMPACT_CHOICES, IMPACT_GROUPS, summarizeImpact, firstMissingImpact, snapshotImpact } from "./ctp.mjs";
 
@@ -216,6 +218,9 @@ function formatDue(value, now = new Date()) {
   return `${formatDate(value)}${due < today ? " · Overdue" : ""}`;
 }
 
+const referenceCase = data => data.demoReference || data.allEngagements.find(row => row.id === "cedar") || data.referencePack?.engagement || { supplier: "CedarCloud", service: "Payment event processing", client: "Northstar Payments", owner: "A. Morgan" };
+const preparedRecommendation = data => data.defaults.recommendation || "Approve with conditions";
+
 function projectRequirementEvidence(requirement, state, data) {
   const receipt = state.supplierReceipts?.[data.request.items[requirement.id === "R-07" ? 0 : requirement.id === "IAM-04" ? 1 : -1]];
   const upload = (state.uploads || []).filter(doc => doc.requirement === requirement.id || !doc.requirement)
@@ -246,17 +251,32 @@ function projectRequirementEvidence(requirement, state, data) {
   };
 }
 
-function Demo({ initialModel, presentation, examples, schema, catalog, validate }) {
+function ScenarioHost({ initialModel, presentation, examples, schema, catalog }) {
+  const defaults = React.useMemo(() => ({ format: "osura-demo-scenario", version: 1, id: "cedarcloud-reference", name: "CedarCloud reference", description: "The original Osura walkthrough and synthetic customer portfolios.", workspace: initialModel, presentation, examples }), []);
+  const validateScenario = React.useMemo(() => createScenarioValidator(schema, defaults), [schema, defaults]);
+  const [scenario, setScenario] = useState(defaults);
+  const [revision, setRevision] = useState(0);
+  const validate = React.useMemo(() => createModelValidator(schema, scenario.presentation), [schema, scenario]);
+  const load = candidate => {
+    const next = validateScenario(candidate);
+    location.hash = "C01";
+    setScenario(next);
+    setRevision(value => value + 1);
+  };
+  return <Demo key={revision} initialModel={scenario.workspace} presentation={scenario.presentation} examples={scenario.examples} {...{ schema, catalog, validate, scenario, validateScenario }} defaultScenario={defaults} onScenarioLoad={load}/>;
+}
+
+function Demo({ initialModel, presentation, examples, schema, catalog, validate, scenario, validateScenario, defaultScenario, onScenarioLoad }) {
   const [model, setModel] = useState(initialModel);
   const [identity, setIdentity] = useState("customer-morgan");
   const [auditLog, setAuditLog] = useState([]);
   const onAudit = entries => setAuditLog(old => [...old, ...structuredClone([entries].flat()).filter(row => !old.some(item => item.id === row.id))]);
-  const user = identity === "supplier-contact" ? { id: identity, actorId: identity, name: "CedarCloud contact", role: "supplier", active: true, workspaceIds: ["northstar"] } : sessionUser(model, identity);
+  const user = identity === "supplier-contact" ? { id: identity, actorId: identity, name: `${model.suppliers.find(row => row.id === "cedarcloud").name} contact`, role: "supplier", active: true, workspaceIds: ["northstar"] } : sessionUser(model, identity);
   const data = React.useMemo(() => projectWorkspace(model, presentation, examples), [model]);
-  return <App data={data} {...{ catalog, model, schema, validate, user, identity, auditLog, onAudit }} onSwitch={setIdentity} onDataChange={setModel} />;
+  return <App data={data} {...{ catalog, model, schema, validate, user, identity, auditLog, onAudit, scenario, validateScenario, defaultScenario, onScenarioLoad }} onSwitch={setIdentity} onDataChange={setModel} />;
 }
 
-function App({ data: baseData, catalog, model, schema, validate, onDataChange, user, identity, onSwitch, auditLog, onAudit }) {
+function App({ data: baseData, catalog, model, schema, validate, onDataChange, user, identity, onSwitch, auditLog, onAudit, scenario, validateScenario, defaultScenario, onScenarioLoad }) {
   const initialModel = React.useRef(model);
   const [appearance, setAppearance] = useState(() => readAppearance());
   useEffect(() => {
@@ -283,6 +303,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   const currentCondition = state.decision?.condition;
   data = {
     ...scopedData,
+    demoReference: { ...referenceCase(baseData), owner: baseData.workspaceProfiles?.northstar?.decisionOwner || referenceCase(baseData).owner },
     findings: scopedData.findings
       .filter((f) => !(state.decision && !currentCondition && f.id === "F-01"))
       .map((f) =>
@@ -498,7 +519,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
     return () => clearTimeout(timer);
   }, [toast]);
   useEffect(() => {
-    document.title = signedOut ? "Demo session ended · Osura" : `${screen.id === "S02" && state.supplierItem === data.request.items[1] ? "Upload access review evidence" : screen.title.replace("{supplier}", screen.id === "C03" ? viewState.intake.supplier : engagement.supplier)} · Osura`;
+    document.title = signedOut ? "Demo session ended · Osura" : `${screen.id === "S02" && state.supplierItem === data.request.items[1] ? "Upload access review evidence" : text(screen.title)} · Osura`;
   }, [screen, engagement, signedOut]);
   useEffect(() => {
     const handler = (e) => {
@@ -551,7 +572,11 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
           : engagement.supplier,
       )
       .replaceAll("{service}", engagement.service)
-      .replaceAll("{customer}", screen.id === "O11" ? customerScope : engagement.client || customerScope);
+      .replaceAll("{customer}", screen.id === "O11" ? customerScope : engagement.client || customerScope)
+      .replaceAll("CedarCloud", () => referenceCase(data).supplier)
+      .replaceAll("Payment event processing", () => referenceCase(data).service)
+      .replaceAll("payment event processing", () => referenceCase(data).service.toLowerCase())
+      .replaceAll("Northstar Payments", () => referenceCase(data).client);
   const isSupplier = role === "supplier";
   const caseScreens = [
     "C06",
@@ -692,7 +717,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
           {denied ? <Card title="Access unavailable"><p>This page is outside this demo user’s role or the account is inactive.</p><Button onClick={()=>navigate(role === "superadmin" ? "A01" : role === "analyst" ? "O01" : role === "supplier" ? "S01" : "C01")}>Return to my view</Button></Card>
             : role === "superadmin" ? <RoleAdmin model={model} user={user} validate={validate} auditLog={auditLog} onSave={(next,entry)=>{onDataChange(next);onAudit(entry);}}/>
             : engagement.id === "none" && role !== "supplier" ? <Card title="No customer data to show"><p>No customers are assigned, or the current filter has no engagements. Ask your superadmin to update access.</p></Card>
-            : role === "analyst" && !data.engagements.some(row=>row.id === "cedar") && ["O10","O13"].includes(screen.id) ? <Card title="Customer-specific reference"><p>This prepared programme belongs to Northstar Payments. Choose an assigned customer with a prepared programme.</p></Card>
+            : role === "analyst" && !data.engagements.some(row=>row.id === "cedar") && ["O10","O13"].includes(screen.id) ? <Card title="Customer-specific reference"><p>This prepared programme belongs to {referenceCase(data).client}. Choose an assigned customer with a prepared programme.</p></Card>
             : <Page {...ctx} />}
 
           <footer>
@@ -709,7 +734,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
         <b title="All changes reset on refresh">Demo · until refresh</b>
         <select aria-label="Demo user" value={identity} onChange={e => switchIdentity(e.target.value)}>
           {model.users.map(row=><option key={row.id} value={row.id} disabled={!row.active}>{row.role === "superadmin" ? "Superadmin" : row.role === "analyst" ? "Analyst" : "Customer"} · {sessionUser(model,row.id).name}{!row.active ? " (inactive)" : ""}</option>)}
-          <option value="supplier-contact">Supplier · CedarCloud contact</option>
+          <option value="supplier-contact">Supplier · {referenceCase(data).supplier} contact</option>
         </select>
         <button onClick={() => setDrawer("screens")}>
           <Icon name="PanelsTopLeft" size={13} />
@@ -717,14 +742,15 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
           <span className="toolbar-extra"> · My screens</span>
         </button>
         {role === "superadmin" && <button onClick={() => setDrawer("data")}><Icon name="Folder" size={14} /> Demo data</button>}
+        {onScenarioLoad && <button onClick={() => requestNavigation(() => setDrawer("scenario"))}><Icon name="Layers" size={14}/>Scenario</button>}
         <button onClick={startTour}><Icon name="ArrowRight" size={14}/>Guided example</button>
         <button aria-label="Reset demo" onClick={() => setDrawer("reset")}>
           <Icon name="RotateCcw" size={14} />
         </button>
       </div>
       {drawer && (
-        <Dialog title={drawer === "data" ? "Demo data · session editor" : drawer === "audit" ? "Activity & accountability" : dialogTitle(drawer)} wide={drawer === "data"} onClose={() => setDrawer(null)}>
-          {drawer === "data" && role === "superadmin" ? <DataEditor model={model} schema={schema} validate={validate} onChange={next=>{
+        <Dialog title={drawer === "scenario" ? "Pick or load a demo scenario" : drawer === "data" ? "Demo data · session editor" : drawer === "audit" ? "Activity & accountability" : dialogTitle(drawer)} wide={drawer === "data"} onClose={() => setDrawer(null)}>
+          {drawer === "scenario" ? <ScenarioPicker current={scenario} defaultScenario={defaultScenario} validate={validateScenario} onLoad={onScenarioLoad}/> : drawer === "data" && role === "superadmin" ? <DataEditor model={model} schema={schema} validate={validate} onChange={next=>{
             if (["documentVersions", "requirementReviews", "evidenceCitations"].some(key => JSON.stringify(next[key]) !== JSON.stringify(model[key]))) {
               update({ pendingReviews: Object.fromEntries(baseData.requirements.map(row => [row.id, true])), conclusion: "Needs review", qa: "Evidence re-review required" });
             }
@@ -1179,7 +1205,7 @@ function Overview(c) {
         <div className="next-action-content">
           <div>
             <Badge>{nextAction?.engagement === "cedar" ? "Your decision is needed" : nextAction ? nextAction.status : "No customer action required"}</Badge>
-            <h2 id="next-action-heading">{nextAction?.engagement === "cedar" ? "CedarCloud needs your decision" : nextAction?.title || "Your reviews are with the assurance team"}</h2>
+            <h2 id="next-action-heading">{nextAction?.engagement === "cedar" ? `${cedar.supplier} needs your decision` : nextAction?.title || "Your reviews are with the assurance team"}</h2>
             <p>{nextAction?.engagement === "cedar" ? `${cedar.service} · The review and independent QA are complete. Review the recommendation and choose your own outcome.` : nextAction?.detail || (cedar ? `${status.label}. Next owner: ${status.nextOwner}.` : "No prepared review currently needs your decision in this customer workspace.")}</p>
             {nextAction?.engagement === "cedar" && <div className="review-checks"><span><Icon name="Check" size={16}/> Source review complete</span><span><Icon name="Check" size={16}/> Independent QA complete</span></div>}
             {nextAction && <small>Next owner: {nextAction.engagement === "cedar" ? status.nextOwner : "Customer business owner"}</small>}
@@ -1200,7 +1226,7 @@ function Overview(c) {
         <Card title="Choose how to explore" className="explore-choices">
           <div className="explore-choice">
             <span className="explore-icon"><Icon name="Eye" size={22}/></span>
-            <div><h3>See the complete story</h3><p>Explore a prepared example from evidence review to an owned customer decision. Your current work stays in this session.</p><Button icon="ArrowRight" disabled={!cedar} onClick={() => c.startTour()}>Explore the prepared example</Button>{!cedar && <small className="cell-sub">Use Guided example in the demo bar for the full walkthrough. It switches to A. Morgan · Northstar Payments.</small>}</div>
+            <div><h3>See the complete story</h3><p>Explore a prepared example from evidence review to an owned customer decision. Your current work stays in this session.</p><Button icon="ArrowRight" disabled={!cedar} onClick={() => c.startTour()}>Explore the prepared example</Button>{!cedar && <small className="cell-sub">Use Guided example in the demo bar for the full walkthrough. It switches to {referenceCase(data).owner} · {referenceCase(data).client}.</small>}</div>
           </div>
           <div className="explore-choice">
             <span className="explore-icon"><Icon name="Building2" size={22}/></span>
@@ -1654,9 +1680,9 @@ function SecondaryCase(c) {
     <div className="op-form-layout"><Card title="What happens next"><ol className="op-numbered-timeline"><li><b>Osura reviews your business context</b><p>Next owner: assigned Osura analyst. Your submitted facts and intended service stay attached to this request.</p></li><li><b>Any missing facts stay with this request</b><p>Unknown answers remain unresolved. This prototype does not send a notification or promise a response time.</p></li><li><b>The review scope is confirmed</b><p>No risk classification, evidence conclusion or customer approval has been invented.</p></li></ol><div className="op-form-footer"><Button onClick={()=>document.getElementById("submitted-request-details")?.scrollIntoView({behavior:"smooth"})} primary>View my request</Button><Button onClick={()=>navigate(screen.role==="analyst"?"O01":"C01")}>Return to my overview</Button></div></Card>
     <Card title="Submitted details" className="op-submitted-details"><div id="submitted-request-details"><Fields items={[["Supplier",engagement.supplier],["Service",engagement.service],["Customer",engagement.client],["Business context",`${Object.keys(engagement.answers||{}).length} answers recorded`],["Documents",engagement.attachments?.map(f=>f.name).join(", ")||"No documents attached"],["Reference",engagement.receipt]]}/><details className="op-help"><summary>View submitted business facts</summary><Fields items={Object.entries(engagement.answers||{}).map(([i,a])=>[`Business fact ${Number(i)+1}`,a])}/></details><Button small icon="Download" onClick={()=>downloadJSON(engagement.receipt,engagement)}>Download this receipt</Button><Note>Receipt and submitted facts are kept until refresh. Download a copy before leaving this session.</Note></div></Card></div>
     {engagement.businessImpact && <Card title="Submitted CTP business impact"><p>{engagement.businessImpact.source}</p><ImpactAnswers questions={engagement.businessImpact.questions} answers={Object.fromEntries(engagement.businessImpact.questions.map(question => [question.id, question.answer]))}/><Note>The receipt preserves the question wording and answers submitted for this service. Its final CTP inherent-risk tier remains Pending triage.</Note></Card>}
-    {data.engagements.some(row=>row.id==="cedar")&&<Card title="Want to see the complete journey?" className="op-example-invitation"><div><h3>Explore the separate CedarCloud example</h3><p>See evidence review, a customer decision and ongoing assurance. This changes the example, never the status of your request.</p></div><Button onClick={()=>{update({selected:"cedar"});navigate(screen.role==="analyst"?"O02":"C09");}}>Explore the prepared example →</Button></Card>}
+    {data.engagements.some(row=>row.id==="cedar")&&<Card title="Want to see the complete journey?" className="op-example-invitation"><div><h3>Explore the separate {referenceCase(data).supplier} example</h3><p>See evidence review, a customer decision and ongoing assurance. This changes the example, never the status of your request.</p></div><Button onClick={()=>{update({selected:"cedar"});navigate(screen.role==="analyst"?"O02":"C09");}}>Explore the prepared example →</Button></Card>}
   </div>;
-  return <><div className="supplier-banner"><Entity name={engagement.supplier} service={engagement.service}/><Badge>CTP inherent risk: {engagement.risk}</Badge><Badge>{engagement.stage}</Badge></div><div className="op-form-layout"><Card title="Service-scoped portfolio preview"><Fields items={[["Customer",engagement.client],["Supplier",engagement.supplier],["Service",engagement.service],["Current stage",engagement.stage],["Owner",engagement.owner],["Assessment plan",engagement.plan],["Next date",formatDue(engagement.due)]]}/><Note>This record has its own supplier, service and review state. CedarCloud evidence and decisions are never used for this service.</Note><Button onClick={()=>navigate(screen.role==="analyst"?"O01":"C15")}>Return to {screen.role==="analyst"?"assigned work":"assessment register"}</Button></Card><Card title="A separate prepared walkthrough"><p>The full source-review and customer-decision journey is prepared for CedarCloud’s payment event processing service.</p>{data.engagements.some(row=>row.id==="cedar")?<Button onClick={()=>{update({selected:"cedar"});navigate(screen.role==="analyst"?"O02":"C09");}}>View CedarCloud example →</Button>:<Note>No full walkthrough is prepared for the current customer selection.</Note>}</Card></div></>;
+  return <><div className="supplier-banner"><Entity name={engagement.supplier} service={engagement.service}/><Badge>CTP inherent risk: {engagement.risk}</Badge><Badge>{engagement.stage}</Badge></div><div className="op-form-layout"><Card title="Service-scoped portfolio preview"><Fields items={[["Customer",engagement.client],["Supplier",engagement.supplier],["Service",engagement.service],["Current stage",engagement.stage],["Owner",engagement.owner],["Assessment plan",engagement.plan],["Next date",formatDue(engagement.due)]]}/><Note>This record has its own supplier, service and review state. {referenceCase(data).supplier} evidence and decisions are never used for this service.</Note><Button onClick={()=>navigate(screen.role==="analyst"?"O01":"C15")}>Return to {screen.role==="analyst"?"assigned work":"assessment register"}</Button></Card><Card title="A separate prepared walkthrough"><p>The full source-review and customer-decision journey is prepared for {referenceCase(data).supplier}’s {referenceCase(data).service.toLowerCase()} service.</p>{data.engagements.some(row=>row.id==="cedar")?<Button onClick={()=>{update({selected:"cedar"});navigate(screen.role==="analyst"?"O02":"C09");}}>View {referenceCase(data).supplier} example →</Button>:<Note>No full walkthrough is prepared for the current customer selection.</Note>}</Card></div></>;
 }
 
 function Assessment(c) {
@@ -1749,7 +1775,7 @@ function Assessment(c) {
       {state.intakeSubmitted && customer && (
         <Note>
           Request {state.intakeReceipt} received for {state.intake.supplier} ·{" "}
-          {state.intake.use || state.intake.purpose}. Draft data lasts until refresh. The CedarCloud reference case below is a separate
+          {state.intake.use || state.intake.purpose}. Draft data lasts until refresh. The {referenceCase(data).supplier} reference case below is a separate
           prepared walkthrough.
         </Note>
       )}
@@ -1950,7 +1976,7 @@ function EvidenceReview(c) {
   const currentConclusion = state.pendingReviews?.[requirement.id] ? "Needs review" : requirement.id === "R-07" ? state.conclusion : savedReview?.conclusion || requirement.conclusion;
   const sourceDocument = requirement.sourceDocument || [...data.documents].reverse().find(doc => doc.requirement === requirement.id);
   const draftKey = `${c.user.id}:${requirement.id}`;
-  const draft = state.reviewDrafts?.[draftKey] || { judgement: requirement.id === "R-07" ? state.judgement : savedReview?.judgement || "", conclusion: currentConclusion, reason: savedReview?.reason || "", recommendation: savedReview?.recommendation || "Approve with conditions" };
+  const draft = state.reviewDrafts?.[draftKey] || { judgement: requirement.id === "R-07" ? state.judgement : savedReview?.judgement || "", conclusion: currentConclusion, reason: savedReview?.reason || "", recommendation: savedReview?.recommendation || preparedRecommendation(data) };
   const { judgement, conclusion, reason, recommendation } = draft;
   const dirty = Boolean(state.reviewDrafts?.[draftKey]);
   const [showProposal, setShowProposal] = useState(false);
@@ -2049,7 +2075,7 @@ function Decision(c) {
       navigate(choice === "Return for clarification" ? "C09" : "C07");
     } catch (error) { setConfirming(false); setError(error.message); }
   };
-  const recommendation = state.reviews?.["R-07"]?.recommendation || "Approve with conditions";
+  const recommendation = state.reviews?.["R-07"]?.recommendation || preparedRecommendation(data);
   const leadRequirement = data.requirements.find(row => row.id === "R-07");
   if (c.user?.role !== "customer") return <div className="case-workspace"><Scope {...c} /><Card title="Customer decision · read only"><Fields items={[["Customer", engagement.client], ["Suggested outcome", recommendation], ["Recommended by", state.reviews?.["R-07"]?.actor || "Prepared fixture"], ["QA outcome", state.qa], ["QA reviewer", state.qaReview?.actor || "Not recorded"], ["Customer decision", state.decision?.outcome || "Not recorded"], ["Decision by", state.decision?.actor || "Customer Decision Owner"]]} /><Note>Only the designated customer Decision Owner can record the final outcome. Analyst and superadmin roles cannot sign for the customer.</Note><Button onClick={() => setDrawer("audit")}>View review history</Button></Card></div>;
   return <div className="case-workspace decision-workspace">
@@ -2937,7 +2963,7 @@ function Closure(c) {
           <div className="list-row">
             <div>
               <b>Requirement</b>
-              <p>Exercise must cover payment event processing</p>
+              <p>Exercise must cover {referenceCase(c.data).service.toLowerCase()}</p>
             </div>
             <Badge>Material</Badge>
           </div>
@@ -3110,7 +3136,7 @@ function Programme(c) {
             <Card title="Impact of plan selection">
               <Fields
                 items={[
-                  ["New CedarCloud review", "Enhanced v3"],
+                  [`New ${referenceCase(data).supplier} review`, "Enhanced v3"],
                   ["New Harbor Analytics review", "Standard v2"],
                   ["Historical decisions", "Unaffected"],
                   ["Control assessment", "Per service and published policy"],
@@ -3290,9 +3316,9 @@ function SupplierPortal(c) {
       navigate("S03");
     } catch (err) { setReviewing(false); showError(err.message); }
   };
-  const progress = <Card title="Your two requested items"><ol className="op-item-progress">{data.request.items.map((name,i) => <li key={name} className={name===item?"is-current":""}><button type="button" onClick={()=>openItem(name)}><span className="op-step-number">{state.supplierReceipts?.[name]?"✓":i+1}</span><span><b>{name}</b><small>{name===item?"Current item · ":""}{state.supplierReceipts?.[name]?`Received · ${state.supplierReceipts[name].reference}`:state.supplierDrafts?.[name]?"Draft · not submitted":"Not submitted"}</small></span></button><Badge>{state.supplierReceipts?.[name]?"Received":state.supplierDrafts?.[name]?"Draft":"Required"}</Badge></li>)}</ol><Fields items={[["Customer",data.workspace.name],["Service","Payment event processing"],["Due",formatDate(data.request.due)],["Request",data.request.reference]]}/><div className="op-context-note"><h3>Delivery is not verification</h3><p>The assurance team reviews each response. A receipt never marks a control Supported or approves a supplier.</p></div></Card>;
+  const progress = <Card title="Your two requested items"><ol className="op-item-progress">{data.request.items.map((name,i) => <li key={name} className={name===item?"is-current":""}><button type="button" onClick={()=>openItem(name)}><span className="op-step-number">{state.supplierReceipts?.[name]?"✓":i+1}</span><span><b>{name}</b><small>{name===item?"Current item · ":""}{state.supplierReceipts?.[name]?`Received · ${state.supplierReceipts[name].reference}`:state.supplierDrafts?.[name]?"Draft · not submitted":"Not submitted"}</small></span></button><Badge>{state.supplierReceipts?.[name]?"Received":state.supplierDrafts?.[name]?"Draft":"Required"}</Badge></li>)}</ol><Fields items={[["Customer",data.workspace.name],["Service",referenceCase(data).service],["Due",formatDate(data.request.due)],["Request",data.request.reference]]}/><div className="op-context-note"><h3>Delivery is not verification</h3><p>The assurance team reviews each response. A receipt never marks a control Supported or approves a supplier.</p></div></Card>;
   const versionHistory = <Card title="Version and receipt history">{history.length ? <ol className="op-numbered-timeline">{history.map((row,i)=><li key={row.reference}><button type="button" className="op-history-choice" onClick={()=>setVersion(row.reference)}><b>{row.reference} · version {row.version || i+1}</b><p>{row.fileName || (row.responseType==="cannot-provide"?"Evidence unavailable · explanation received":"Alternative response")} · {formatDate(row.at)}</p><Badge>{row.reference===actualReceipt?.reference?"Latest received":"Retained · read only"}</Badge></button>{row.changeReason&&<p>What changed: {row.changeReason}</p>}</li>)}</ol>:<p>No response has been submitted for this item.</p>}<Note>Original receipts stay unchanged. Each revision is one new version of the same requested item, never another completed requirement.</Note></Card>;
-  if (screen.id === "S01") return <div className="op-supplier-portal"><section className="op-request-banner"><div><div className="eyebrow">SCOPED SUPPLIER REQUEST</div><h2>Two items. One clear request.</h2><p>Provide the requested proof or explain what is available instead.</p></div><div className="op-progress-total"><strong>{data.request.items.length-remainingItems.length}<small> / {data.request.items.length}</small></strong><span>items responded to</span></div></section><div className="op-form-layout"><Card title="Items to provide">{data.request.items.map((name,i)=><article className="op-request-item" key={name}><div className="op-file-icon"><Icon name={state.supplierReceipts?.[name]?"CircleCheck":"FileText"} size={24}/></div><div><small>ITEM {i+1}</small><h3>{name}</h3><p>{i===0?"A dated exercise covering payment event processing. An evidenced test log may be offered as an alternative.":"A recent scoped privileged access review. A dated access export may be offered as an alternative."}</p><Badge>{state.supplierReceipts?.[name]?"Received · awaiting review":"Response required"}</Badge></div><Button small onClick={()=>openItem(name)}>{state.supplierReceipts?.[name]?"View submitted response":"Provide this item"} →</Button></article>)}<Note>Drafts and receipts stay in this session until refresh. File contents are never uploaded.</Note></Card>{progress}</div></div>;
+  if (screen.id === "S01") return <div className="op-supplier-portal"><section className="op-request-banner"><div><div className="eyebrow">SCOPED SUPPLIER REQUEST</div><h2>Two items. One clear request.</h2><p>Provide the requested proof or explain what is available instead.</p></div><div className="op-progress-total"><strong>{data.request.items.length-remainingItems.length}<small> / {data.request.items.length}</small></strong><span>items responded to</span></div></section><div className="op-form-layout"><Card title="Items to provide">{data.request.items.map((name,i)=><article className="op-request-item" key={name}><div className="op-file-icon"><Icon name={state.supplierReceipts?.[name]?"CircleCheck":"FileText"} size={24}/></div><div><small>ITEM {i+1}</small><h3>{name}</h3><p>{data.defaults.requestItemDescriptions?.[i] || (i===0?"A dated exercise covering payment event processing. An evidenced test log may be offered as an alternative.":"A recent scoped privileged access review. A dated access export may be offered as an alternative.")}</p><Badge>{state.supplierReceipts?.[name]?"Received · awaiting review":"Response required"}</Badge></div><Button small onClick={()=>openItem(name)}>{state.supplierReceipts?.[name]?"View submitted response":"Provide this item"} →</Button></article>)}<Note>Drafts and receipts stay in this session until refresh. File contents are never uploaded.</Note></Card>{progress}</div></div>;
   if (screen.id === "S03" && !receipt) return <div className="op-form-layout"><Card title="No receipt for this item"><h2>{item}</h2><p>This item has not been submitted in this session. Another item’s receipt does not confirm this response.</p><Button primary onClick={()=>navigate("S02")}>Provide this item</Button></Card>{progress}</div>;
   if (screen.id === "S03" || (actualReceipt && !revising)) return <div className="op-supplier-portal">
     <section className="op-success-hero"><span className="op-success-mark"><Icon name="Check" size={30}/></span><div><div className="eyebrow">SUPPLIER RECEIPT · {receipt.reference}</div><h2>{receipt.supersedes?"Revised response received":"This item has been recorded"}</h2><p>{item}</p><small>Your response is awaiting independent review. It has not been marked verified.</small></div><Badge>{receipt.reference===actualReceipt.reference?"Pending review":"Retained version"}</Badge></section>
@@ -3300,7 +3326,7 @@ function SupplierPortal(c) {
   return <div className="op-supplier-portal"><div className="op-form-layout"><form id="supplier-form" onSubmit={prepare} noValidate><Card title={reviewing?"Review your response before submitting":revising?"Submit a revised response":item}>
     {revising&&<Note>The original {actualReceipt.reference} stays unchanged. This creates a new version for independent review.</Note>}
     {error&&<div ref={errorSummary} tabIndex={-1} className="op-error-summary" role="alert" aria-labelledby="supplier-error-title"><b id="supplier-error-title">Response not submitted</b><p>{error}</p>{Object.keys(issues).length>0&&<ul>{Object.entries(issues).map(([key,message])=><li key={key}><Link onClick={()=>focusField(key)}>{message}</Link></li>)}</ul>}</div>}
-    {reviewing?<><Fields items={[["Requested item",item],["Service","Payment event processing"],["Response type",supplierResponseLabels[responseType]],["Document",draft.fileName || "No file · explanation only"],["Coverage",responseType==="cannot-provide"?"Not assessed · evidence unavailable":draft.scope],["Answer",draft.answer],...(revising?[["Original receipt",actualReceipt.reference],["What changed",draft.changeReason]]:[]) ]}/><Note>Confirming records this response only in the current session. It does not verify evidence or send an external message.</Note><div className="op-form-footer"><Button onClick={()=>setReviewing(false)}>Keep editing</Button><Button primary onClick={submit}>{revising?"Submit revised response":"Submit this item"} →</Button></div></>:<>
+    {reviewing?<><Fields items={[["Requested item",item],["Service",referenceCase(data).service],["Response type",supplierResponseLabels[responseType]],["Document",draft.fileName || "No file · explanation only"],["Coverage",responseType==="cannot-provide"?"Not assessed · evidence unavailable":draft.scope],["Answer",draft.answer],...(revising?[["Original receipt",actualReceipt.reference],["What changed",draft.changeReason]]:[]) ]}/><Note>Confirming records this response only in the current session. It does not verify evidence or send an external message.</Note><div className="op-form-footer"><Button onClick={()=>setReviewing(false)}>Keep editing</Button><Button primary onClick={submit}>{revising?"Submit revised response":"Submit this item"} →</Button></div></>:<>
       <fieldset className="op-radio-group"><legend>How will you respond?</legend><div className="op-response-types">{[["evidence","Provide requested evidence"],["alternative","Offer an alternative or scoped question"],["cannot-provide","I cannot provide this evidence"]].map(([value,label])=><label className={`op-radio-row ${responseType===value?"is-selected":""}`} key={value}><input type="radio" name="response-type" checked={responseType===value} onChange={()=>edit({responseType:value,...(value==="cannot-provide"?{fileName:"",scope:""}:{})})}/><span>{label}</span></label>)}</div></fieldset>
       {responseType!=="cannot-provide"&&<div className="field"><span>Evidence document · {responseType==="evidence"?"required":"optional alternative"}</span><label className={`op-upload ${issues.fileName?"has-error":""}`}><Icon name="Upload" size={28}/><b>{draft.fileName?"Choose a replacement document":"Choose a document"}</b><small>PDF, DOCX or TXT. Only the filename and your answer are saved.</small><input id="supplier-file" type="file" accept=".pdf,.docx,.txt" aria-label="Evidence document" aria-required={responseType==="evidence"} aria-invalid={Boolean(issues.fileName)} aria-describedby={issues.fileName?"supplier-file-error":undefined} onChange={e=>{const file=e.target.files?.[0];if(file&&!/\.(pdf|docx|txt)$/i.test(file.name)){edit({fileName:""});setIssues(old=>({...old,fileName:"Choose a PDF, DOCX or TXT file."}));showError("Choose a supported file before reviewing this item.");return;}if(file)edit({fileName:file.name});}}/></label>{draft.fileName&&<div className="op-large-file"><Icon name="FileText" size={22}/><div><b>{draft.fileName}</b><small>Selected · metadata only · not yet submitted</small></div><Button small onClick={()=>edit({fileName:""})}>Remove</Button></div>}{issues.fileName&&<p id="supplier-file-error" className="op-field-error">{issues.fileName}</p>}</div>}
       <Label title={responseType==="cannot-provide"?"Why is the evidence unavailable? · required":responseType==="alternative"?"Describe the alternative or scoped question · required":"What service does the evidence cover? · required"} hint={responseType==="cannot-provide"?"Explain why this item is unavailable and what can be provided or clarified instead.":"Describe the exact service, date, data and known limits."}><textarea id="supplier-answer" aria-required="true" aria-describedby={issues.answer?"supplier-answer-error":undefined} value={draft.answer} onChange={e=>edit({answer:e.target.value})} aria-invalid={Boolean(issues.answer)} placeholder={responseType==="evidence"?"Describe the exercised service, environment and any remaining limits.":"Explain what is unavailable and what can be provided or clarified instead."}/></Label>{issues.answer&&<p id="supplier-answer-error" className="op-field-error">{issues.answer}</p>}
@@ -3540,7 +3566,7 @@ function Drawer(c) {
   }
   if (kind === "notifications") {
     const items = [
-          ...data.notifications.map(row => /decision/i.test(row[0]) ? [workflowStatus(state).label, `CedarCloud · Next owner: ${workflowStatus(state).nextOwner}`, workflowStatus(state).ready ? "Ready" : "Review"] : row),
+          ...data.notifications.map(row => /decision/i.test(row[0]) ? [workflowStatus(state).label, `${referenceCase(data).supplier} · Next owner: ${workflowStatus(state).nextOwner}`, workflowStatus(state).ready ? "Ready" : "Review"] : row),
           ...state.events.map((e) => [
             e.message,
             formatDate(e.at),
@@ -3587,7 +3613,7 @@ function Drawer(c) {
           ]}
         />
         <Note>
-          This is a separate correspondence reference. It contains no CedarCloud
+          This is a separate correspondence reference. It contains no {referenceCase(data).supplier}
           evidence or receipts.
         </Note>
       </>
@@ -3624,12 +3650,12 @@ function Drawer(c) {
         <Badge>Historical reference</Badge>
         <h3>{kind.split(":")[1]}</h3>
         <p>
-          This is a published record in the reference design. Use the CedarCloud
+          This is a published record in the reference design. Use the {referenceCase(data).supplier}
           walkthrough to create, open and export a signed demo pack from your
           own saved actions.
         </p>
         <Button primary onClick={() => navigate("C06")}>
-          Open CedarCloud walkthrough
+          Open {referenceCase(data).supplier} walkthrough
         </Button>
       </>
     );
@@ -3693,11 +3719,11 @@ function Drawer(c) {
                 ]
               : kind === "memo"
                 ? [
-                    ["Recommendation", state.reviews?.["R-07"]?.recommendation || "Prepared: Approve with conditions"],
+                    ["Recommendation", state.reviews?.["R-07"]?.recommendation || `Prepared: ${preparedRecommendation(data)}`],
                     ["Recommended by", state.reviews?.["R-07"]?.actor || "Prepared fixture"],
                     [
                       "Material issue",
-                      "Recovery exercise scope remains partial",
+                      data.defaults.materialIssue || "Recovery exercise scope remains partial",
                     ],
                     ["QA", state.qa],
                     ["Decision authority", data.workspace.name],
@@ -3706,7 +3732,7 @@ function Drawer(c) {
                     ["Methodology", data.workspace.policy],
                     ["Customer overlay", data.workspace.overlay],
                     [
-                      "CedarCloud",
+                      referenceCase(data).supplier,
                       "Enhanced v3 · scoped resilience · independent QA",
                     ],
                     ["Harbor Analytics", "Standard v2 · baseline evidence"],
@@ -3865,7 +3891,7 @@ Promise.all(
     validate(initialModel);
     if (!catalog.screens?.length) throw new Error("Invalid screen catalog");
     createRoot(document.getElementById("root")).render(
-      <Demo {...{ initialModel, presentation, examples, schema, catalog, validate }} />,
+      <ScenarioHost {...{ initialModel, presentation, examples, schema, catalog }} />,
     );
   })
   .catch((error) => {

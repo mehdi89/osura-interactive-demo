@@ -403,3 +403,26 @@ test("appearance explains the light fallback when paired theme colors are unsupp
     assert.match(html, /<option value="dark" disabled="">Dark<\/option>/);
   } finally { globalThis.CSS = previous; }
 });
+
+test("Cedarline renders through every existing role screen without old supplier labels or a new live outcome", async () => {
+  const pack = await readJSON("scenarios/cedarline");
+  const base = projectWorkspace(pack.workspace, pack.presentation, pack.examples);
+  for (const screen of [...catalog.screens, { id: "A01", role: "superadmin" }]) {
+    const identity = { customer: "customer-morgan", analyst: "analyst-01", supplier: "supplier-contact", superadmin: "superadmin" }[screen.role];
+    const actor = screen.role === "supplier" ? { id: identity, actorId: identity, name: "Cedarline Analytics Ltd contact", role: "supplier", active: true, workspaceIds: ["northstar"] } : sessionUser(pack.workspace, identity);
+    const html = renderApp(screen.id, { data: base, model: pack.workspace, user: actor, identity });
+    const legacyLabel = html.match(/.{0,50}(?:CedarCloud|Northstar Payments|Payment event processing).{0,70}/i);
+    assert.equal(legacyLabel?.[0], undefined, `${screen.id}: ${legacyLabel?.[0]}`);
+    assert.doesNotMatch(html, /Demo could not load|Access unavailable/, screen.id);
+    if (screen.id === "C06") {
+      assert.match(html, /Return for clarification/);
+      assert.doesNotMatch(html, /value="Defer|value="Hold|checked=""/);
+      assert.match(html, /disabled=""/);
+    }
+    if (screen.id === "C07") {
+      assert.match(html, /DEFERRED — NOT APPROVED/);
+      assert.match(html, /PREPARED REFERENCE EXAMPLE/);
+      assert.doesNotMatch(html, /CUSTOMER DECISION RECORDED/);
+    }
+  }
+});
