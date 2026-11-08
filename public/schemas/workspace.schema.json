@@ -866,9 +866,11 @@
         "impact": {
           "type": "string",
           "enum": [
+            "N/A",
             "Low",
             "Medium",
-            "High"
+            "High",
+            "Unknown"
           ]
         }
       },

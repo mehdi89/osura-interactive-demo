@@ -1,5 +1,6 @@
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import { hasImpactQuestionSet } from "./ctp.mjs";
 
 export function createModelValidator(schema, presentation) {
   const ajv = new Ajv({ allErrors: true, strict: true });
@@ -61,6 +62,10 @@ export function createModelValidator(schema, presentation) {
       if (lookup.requirements.get(row.requirementId).policyVersionId !== lookup.engagements.get(row.engagementId).corePolicyVersionId)
         throw new Error(`${row.id}: requirement must match the pinned core policy version`);
     }
+    for (const row of data.biaAnswers) {
+      if (lookup.biaQuestions.get(row.questionId).policyVersionId !== lookup.engagements.get(row.engagementId).corePolicyVersionId)
+        throw new Error(`${row.id}: business impact question must match the pinned core policy version`);
+    }
     // The existing walkthrough has fixed control/packet slots; protect those until it is generalized.
     const s = presentation.scenario;
     const pinned = (table, id) => {
@@ -68,6 +73,8 @@ export function createModelValidator(schema, presentation) {
       return lookup[table].get(id);
     };
     const walkthrough = pinned("engagements", s.walkthroughEngagementId);
+    if (!hasImpactQuestionSet(data.biaQuestions.filter(question => question.policyVersionId === walkthrough.corePolicyVersionId)))
+      throw new Error("The CTP guide requires 17 questions in 5/5/7 groups for the pinned core policy.");
     pinned("workspaces", s.workspaceId);
     const service = pinned("services", "cedarcloud-payment-event-processing");
     if (walkthrough.serviceId !== service.id || service.supplierId !== "cedarcloud")
@@ -117,6 +124,7 @@ export function projectWorkspace(model, presentation, examples) {
   };
   const walkthrough = get("engagements", s.walkthroughEngagementId);
   const request = get("supplierRequests", s.requestId);
+  const biaQuestions = model.biaQuestions.filter(row => row.policyVersionId === walkthrough.corePolicyVersionId);
   const workspaceProfiles = Object.fromEntries(model.workspaces.map(workspace => {
     const engagement = model.engagements.find(row => row.workspaceId === workspace.id);
     return [workspace.id, { id: workspace.id, name: workspace.name, initials: workspace.name.split(/\s+/).map(word => word[0]).slice(0, 2).join(""), date: displayDate(s.displayDate, true),
@@ -150,8 +158,10 @@ export function projectWorkspace(model, presentation, examples) {
       return { id: row.id, engagementId: row.engagementId, workspaceId: get("engagements", row.engagementId).workspaceId, client: engagement.client, supplier: engagement.supplier, service: s.findingServiceLabels[row.id] || engagement.service, issue: row.issue,
         control: row.requirementId, severity: row.severity, owner: name("actors", row.ownerId), state: row.state, due: displayDate(row.due), evidence: row.evidence }; }),
     triage: model.triageAnswers.filter(row => row.engagementId === walkthrough.id).map(row => ({ id: row.questionId, label: get("triageQuestions", row.questionId).label, value: row.value ? "Yes" : "No" })),
+    biaQuestions: structuredClone(biaQuestions),
     bia: Object.fromEntries(["Confidentiality", "Integrity", "Availability"].map(dimension => [dimension,
-      model.biaAnswers.filter(row => row.engagementId === walkthrough.id && get("biaQuestions", row.questionId).dimension === dimension).map(row => [get("biaQuestions", row.questionId).label, row.impact])])),
+      biaQuestions.filter(row => row.dimension === dimension).map(question => [question.label,
+        model.biaAnswers.find(row => row.engagementId === walkthrough.id && row.questionId === question.id)?.impact || "Not answered"])])),
     request: { reference: request.id, recipient: request.recipient, due: request.due, message: request.message,
       items: model.requestItems.filter(row => row.requestId === request.id).sort((a,b) => a.position-b.position).map(row => row.label) },
     initialState: { ...copy.initialState, requestStatus: request.status, conclusion: requirements.find(row => row.id === "R-07").conclusion },

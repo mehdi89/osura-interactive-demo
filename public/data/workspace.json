@@ -729,226 +729,123 @@
       "id": "confidentiality-1",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Confidentiality",
-      "label": "Customer confidential information",
+      "label": "Unauthorised disclosure of Confidential or Intellectual data (Accidental)",
       "canonicalCode": null
     },
     {
       "id": "confidentiality-2",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Confidentiality",
-      "label": "Employee confidential information",
+      "label": "Unauthorised disclosure of Confidential or Intellectual data (Deliberate)",
       "canonicalCode": null
     },
     {
       "id": "confidentiality-3",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Confidentiality",
-      "label": "Publicly available data",
+      "label": "Unauthorised disclosure of Confidential or Intellectual data to the public (Deliberate)",
       "canonicalCode": null
     },
     {
       "id": "confidentiality-4",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Confidentiality",
-      "label": "Commercially sensitive information",
+      "label": "Unauthorised disclosure of Confidential or Intellectual data to the public (Accidental)",
       "canonicalCode": null
     },
     {
       "id": "confidentiality-5",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Confidentiality",
-      "label": "Financial information",
+      "label": "Legal or Compliance Implications due to disclosure e.g. TISAX",
       "canonicalCode": null
     },
     {
       "id": "integrity-1",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Integrity",
-      "label": "Third-party incorrect output",
+      "label": "Unauthorised modification by 3rd Parties staff (Accidental)",
       "canonicalCode": null
     },
     {
       "id": "integrity-2",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Integrity",
-      "label": "Processing change and error",
+      "label": "Unauthorised modification by staff (Deliberate)",
       "canonicalCode": null
     },
     {
       "id": "integrity-3",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Integrity",
-      "label": "Fraud exposure / misuse",
+      "label": "Unauthorised modification by member of the public e.g. ransomware or Malware",
       "canonicalCode": null
     },
     {
       "id": "integrity-4",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Integrity",
-      "label": "Customer transaction integrity",
+      "label": "Corruption of communications (email or calls)",
       "canonicalCode": null
     },
     {
       "id": "integrity-5",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Integrity",
-      "label": "Incorrect data / decisions",
+      "label": "Legal Implications due to modification",
       "canonicalCode": null
     },
     {
       "id": "availability-1",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Availability",
-      "label": "Outage for 1 hour",
+      "label": "Impact on business if service unavailable for 1 Hr",
       "canonicalCode": null
     },
     {
       "id": "availability-2",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Availability",
-      "label": "Outage for 4 hours",
+      "label": "Impact on business if service unavailable for 4 Hrs",
       "canonicalCode": null
     },
     {
       "id": "availability-3",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Availability",
-      "label": "Outage for 1 day",
+      "label": "Impact on business if service unavailable for 1 Day",
       "canonicalCode": null
     },
     {
       "id": "availability-4",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Availability",
-      "label": "Outage for 2–3 days",
+      "label": "Impact on business if service unavailable for 2-3 Days",
       "canonicalCode": null
     },
     {
       "id": "availability-5",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Availability",
-      "label": "Outage for 1 week",
+      "label": "Impact on business if service unavailable for 1 Week",
       "canonicalCode": null
     },
     {
       "id": "availability-6",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Availability",
-      "label": "Outage for 1 month",
+      "label": "Impact on business if service unavailable for 1 Month",
       "canonicalCode": null
     },
     {
       "id": "availability-7",
       "policyVersionId": "ctp-core-v1",
       "dimension": "Availability",
-      "label": "Permanent service loss",
+      "label": "Impact on business if service is a Complete Loss",
       "canonicalCode": null
     }
   ],
-  "biaAnswers": [
-    {
-      "id": "cedar-confidentiality-1",
-      "engagementId": "cedar",
-      "questionId": "confidentiality-1",
-      "impact": "High"
-    },
-    {
-      "id": "cedar-confidentiality-2",
-      "engagementId": "cedar",
-      "questionId": "confidentiality-2",
-      "impact": "Medium"
-    },
-    {
-      "id": "cedar-confidentiality-3",
-      "engagementId": "cedar",
-      "questionId": "confidentiality-3",
-      "impact": "Low"
-    },
-    {
-      "id": "cedar-confidentiality-4",
-      "engagementId": "cedar",
-      "questionId": "confidentiality-4",
-      "impact": "Medium"
-    },
-    {
-      "id": "cedar-confidentiality-5",
-      "engagementId": "cedar",
-      "questionId": "confidentiality-5",
-      "impact": "Medium"
-    },
-    {
-      "id": "cedar-integrity-1",
-      "engagementId": "cedar",
-      "questionId": "integrity-1",
-      "impact": "Medium"
-    },
-    {
-      "id": "cedar-integrity-2",
-      "engagementId": "cedar",
-      "questionId": "integrity-2",
-      "impact": "High"
-    },
-    {
-      "id": "cedar-integrity-3",
-      "engagementId": "cedar",
-      "questionId": "integrity-3",
-      "impact": "High"
-    },
-    {
-      "id": "cedar-integrity-4",
-      "engagementId": "cedar",
-      "questionId": "integrity-4",
-      "impact": "Medium"
-    },
-    {
-      "id": "cedar-integrity-5",
-      "engagementId": "cedar",
-      "questionId": "integrity-5",
-      "impact": "Medium"
-    },
-    {
-      "id": "cedar-availability-1",
-      "engagementId": "cedar",
-      "questionId": "availability-1",
-      "impact": "Low"
-    },
-    {
-      "id": "cedar-availability-2",
-      "engagementId": "cedar",
-      "questionId": "availability-2",
-      "impact": "Medium"
-    },
-    {
-      "id": "cedar-availability-3",
-      "engagementId": "cedar",
-      "questionId": "availability-3",
-      "impact": "High"
-    },
-    {
-      "id": "cedar-availability-4",
-      "engagementId": "cedar",
-      "questionId": "availability-4",
-      "impact": "High"
-    },
-    {
-      "id": "cedar-availability-5",
-      "engagementId": "cedar",
-      "questionId": "availability-5",
-      "impact": "High"
-    },
-    {
-      "id": "cedar-availability-6",
-      "engagementId": "cedar",
-      "questionId": "availability-6",
-      "impact": "High"
-    },
-    {
-      "id": "cedar-availability-7",
-      "engagementId": "cedar",
-      "questionId": "availability-7",
-      "impact": "High"
-    }
-  ],
+  "biaAnswers": [],
   "supplierRequests": [
     {
       "id": "CC-2026-104",

@@ -4,15 +4,15 @@ import { customerView, patchCustomerView } from "../src/customer-session.mjs";
 
 const northstar = { role: "customer", workspaceId: "northstar" };
 const ridgeway = { role: "customer", workspaceId: "ridgeway" };
-const freshIntake = { supplier: "", domain: "", use: "", product: "", purpose: "", answers: {}, attachments: [] };
+const freshIntake = { supplier: "", domain: "", use: "", product: "", purpose: "", answers: {}, businessImpactAnswers: {}, attachments: [] };
 const data = workspaceId => ({ schemaVersion: 2, intake: freshIntake,
   initialState: { selected: workspaceId === "northstar" ? "cedar" : "clearbridge", qa: "", qaNote: "", judgement: "", conclusion: "", decision: null, signedPack: null, supplierReceipts: {}, events: [] },
   engagements: [{ id: workspaceId === "northstar" ? "cedar" : "clearbridge", workspaceId }],
 });
 
 test("customer intake drafts, receipts, errors and register filters survive switching independently", () => {
-  const northstarDraft = { ...freshIntake, supplier: "Northstar supplier", purpose: "Northstar use" };
-  const ridgewayDraft = { ...freshIntake, supplier: "Ridgeway supplier", purpose: "Ridgeway use" };
+  const northstarDraft = { ...freshIntake, supplier: "Northstar supplier", purpose: "Northstar use", businessImpactAnswers: { "confidentiality-1": "High" } };
+  const ridgewayDraft = { ...freshIntake, supplier: "Ridgeway supplier", purpose: "Ridgeway use", businessImpactAnswers: { "confidentiality-1": "N/A" } };
   let state = { schemaVersion: 2, intake: { ...freshIntake, supplier: "Unscoped legacy draft" } };
   assert.deepEqual(customerView(state, data("northstar"), northstar).intake, freshIntake);
   state = { ...state, ...patchCustomerView(state, { intake: northstarDraft, intakeSubmitted: true, intakeReceipt: "NS-01", intakeIssue: null, registerViews: { C14: { search: "Northstar" } } }, northstar) };
@@ -24,6 +24,8 @@ test("customer intake drafts, receipts, errors and register filters survive swit
   const ridge = customerView(state, data("ridgeway"), ridgeway);
   assert.equal(north.intake, northstarDraft);
   assert.equal(north.intakeReceipt, "NS-01");
+  assert.equal(north.intake.businessImpactAnswers["confidentiality-1"], "High");
+  assert.equal(ridge.intake.businessImpactAnswers["confidentiality-1"], "N/A");
   assert.equal(north.intakeSubmitted, true);
   assert.equal(north.intakeIssue, null);
   assert.equal(north.registerViews.C14.search, "Northstar");

@@ -27,6 +27,29 @@ test("duplicate ids, dangling references and duplicate composite keys are blocke
   assert.throws(() => validate(composite), /must be unique/);
 });
 
+test("business-impact answers allow N/A and Unknown but retain the engagement's question policy pin", () => {
+  const model = copy();
+  model.biaAnswers.push({ id: "new-impact", engagementId: "cedar", questionId: model.biaQuestions[0].id, impact: "N/A" });
+  validate(model);
+  assert.equal(projectWorkspace(model, presentation, examples).bia.Confidentiality[0][1], "N/A");
+  model.biaAnswers[0].impact = "Unknown";
+  validate(model);
+  model.biaAnswers[0].impact = "Invented";
+  assert.throws(() => validate(model), /allowed values/);
+  model.biaAnswers[0].impact = "Low";
+  model.biaQuestions[0].policyVersionId = "enhanced-v3";
+  assert.throws(() => validate(model), /pinned core policy/);
+});
+
+test("published CTP question groups cannot lose a question in the data editor", () => {
+  const reduced = copy();
+  reduced.biaQuestions.pop();
+  assert.throws(() => validate(reduced), /17 questions/);
+  const regrouped = copy();
+  regrouped.biaQuestions[0].dimension = "Integrity";
+  assert.throws(() => validate(regrouped), /5\/5\/7/);
+});
+
 test("version kinds, independent QA and evidence scope/page bounds are enforced", () => {
   const version = copy(); version.engagements[0].corePolicyVersionId = "enhanced-v3";
   assert.throws(() => validate(version), /core version/);

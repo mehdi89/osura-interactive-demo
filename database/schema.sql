@@ -123,7 +123,7 @@ CREATE TABLE "biaAnswers" (
   "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
   "engagementId" text NOT NULL CHECK (length("engagementId") >= 1 AND "engagementId" ~ '\S'),
   "questionId" text NOT NULL CHECK (length("questionId") >= 1 AND "questionId" ~ '\S'),
-  "impact" text NOT NULL CHECK ("impact" IN ('Low', 'Medium', 'High')),
+  "impact" text NOT NULL CHECK ("impact" IN ('N/A', 'Low', 'Medium', 'High', 'Unknown')),
   UNIQUE ("engagementId", "questionId")
 );
 CREATE TABLE "supplierRequests" (

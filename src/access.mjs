@@ -54,7 +54,7 @@ export function scopeWorkspace(base, user, customerFilter = "all") {
     ...(!cedarVisible ? {
       request: { reference: null, recipient: "", due: null, message: "", items: [] }, referencePack: null, referenceReceipt: null,
       initialState: { ...base.initialState, selected: rows[0]?.id || null, judgement: "", conclusion: "", requestStatus: "", qa: "", qaNote: "" },
-      intake: { supplier: "", domain: "", use: "", product: "", purpose: "", answers: {}, attachments: [] },
+      intake: { supplier: "", domain: "", use: "", product: "", purpose: "", answers: {}, businessImpactAnswers: {}, attachments: [] },
       defaults: { ...base.defaults, conditionOwner: workspace.decisionOwner, conditionDue: "", conditionEvidence: "", rationale: "", supplierTeam: "" },
       sourceHistory: [], relationshipHistory: [], policyConsequences: [], programmeTabs: {}, triage: [], bia: {},
     } : {}),

@@ -1,6 +1,6 @@
 # Demo data model
 
-The demo now separates record data from its schema. `public/data/workspace.json` has 133 synthetic records in 19 collections. `public/schemas/workspace.schema.json` describes them using JSON Schema Draft 2020-12. `src/data-model.mjs` validates records and joins them into the existing screen format. The migration was compared with the original complete JSON projection: all original values and row ordering match.
+The demo now separates record data from its schema. `public/data/workspace.json` has 116 synthetic records in 19 collections. `public/schemas/workspace.schema.json` describes them using JSON Schema Draft 2020-12. `src/data-model.mjs` validates records and joins them into the existing screen format. The migration was compared with the original complete JSON projection: all original values and row ordering match.
 
 Two customer identities are seeded: `customer-morgan` for Northstar Payments and `customer-singh` for Ridgeway Finance. Each remains restricted to one workspace. Ridgeway's Clearbridge Data and Kite Legal records use T. Singh as their customer Decision Owner and remain portfolio previews. Derived `workspaceProfiles` keep customer names, initials, decision owners and pinned policy metadata separate; an absent overlay or case reviewer stays unconfigured rather than inheriting Northstar's prepared walkthrough values.
 
@@ -44,7 +44,7 @@ erDiagram
 | evidenceCitations | A review's document version and page range. An unavailable excerpt is `null`, not invented. |
 | findings | Scoped issue, requirement, owner, severity, state and deadline. Fixture “Open condition” is an illustrative finding state; it is not proof of a recorded customer decision. |
 | triageQuestions / triageAnswers | Question definitions separate from engagement-specific boolean answers. |
-| biaQuestions / biaAnswers | Fixture question definitions separate from impact answers. `canonicalCode` is deliberately `null`: mapping these labels to the approved CTP questionnaire needs confirmation. |
+| biaQuestions / biaAnswers | The supplied 17 CTP business-impact questions (5 Confidentiality, 5 Integrity, 7 Availability), separate from service-scoped answers. Wording is verbatim from the supplied guide. `canonicalCode` remains `null` because the guide supplies question ordinals, not technical codes. N/A, Low, Medium, High and unresolved Unknown are valid values. Old sample answers were cleared because they answered different questions. |
 | supplierRequests / requestItems | Scoped local request packet, recipient/deadline and ordered requirement-linked requested items. No outbound delivery is implied. |
 
 Every row has an immutable-in-editor string `id`. References use IDs, not display names. Dates are `YYYY-MM-DD`; timestamps in frozen examples use ISO datetime strings. Nullable fields are explicitly present as `null`. IDs remain compatible with the original walkthrough (`cedar`, `R-07`, etc.).
@@ -93,3 +93,12 @@ Command-centre handoff fixtures use `[title, detail, owner, workspaceId, engagem
 Existing intake submissions, uploads, QA actions, decisions, conditions and receipts continue in the existing workflow state machine (`src/state.mjs` and `src/main.jsx`). They persist for this page session, and signed packs retain their separate JSON download. They are not yet round-tripped into the normalized fixture collections or included in the base-data export. A production model must introduce assessment revisions, signed analyst/QA history, customer decisions/conditions, immutable pack storage, responses, durable audit storage, real authentication/memberships and server-enforced tenant authorization. Basic user/assignment records and session audit attribution now exist; see roles-and-accountability.md. These require backend behavior, not merely additional JSON fields.
 
 This work changes the data foundation and session tools. It does not implement the pending business/QA/UI proposals, calculate CTP risk, send email, authenticate users or store uploaded file contents. Treat all records and version labels as synthetic demo fixtures.
+
+
+## Supplied CTP business impact questions · 8 November 2026
+
+`src/ctp.mjs` implements only the guide's base asset-impact calculation: N/A=0, Low=1, Medium=3, High=5; take each category's maximum, then the highest category maximum. Blank, invalid and Unknown answers never become zero or a completed result. The validator retains the full 17-question, 5/5/7 structure and requires answers to reference the engagement's pinned question-policy version.
+
+C04 keeps the four existing service-scope questions separate from the 17 impact questions. All impact answers start blank; Unknown can be submitted for analyst clarification. Drafts live inside each customer's intake and survive ordinary navigation. A changed supplier or service scope clears the prior scope facts and impact answers for reconfirmation. C05 shows all answers and their base-impact summary. The request receipt snapshots question IDs, wording, category, answers and source attribution; later question edits cannot rename a submitted answer. Receipt JSON includes this snapshot.
+
+The O12 reference view shows the new questions with Not answered rather than reusing answers to the old fixture labels. Existing synthetic inherent-risk tiers and workflow gates are unchanged. The guide notes that separate questionnaire inputs can affect full CTP calculations, so the base-impact summary is not a new final CTP risk engine. New requests stay Pending triage. See [implementation and verification](ctp-questions-2026-11-08.md).

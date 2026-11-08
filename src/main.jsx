@@ -32,6 +32,10 @@ import {
   ChevronDown,
   Eye,
   SunMoon,
+  ChevronUp,
+  UserRound,
+  CreditCard,
+  LogOut,
 } from "lucide-react";
 const Icons = {
   Circle,
@@ -65,6 +69,10 @@ const Icons = {
   ChevronDown,
   Eye,
   SunMoon,
+  ChevronUp,
+  UserRound,
+  CreditCard,
+  LogOut,
 };
 import {
   createState,
@@ -94,6 +102,7 @@ import { customerView, patchCustomerView } from "./customer-session.mjs";
 import { sessionUser, scopeWorkspace, actionEntry } from "./access.mjs";
 import { createModelValidator, projectWorkspace } from "./data-model.mjs";
 import { APPEARANCE_KEY, readAppearance, resolveTheme } from "./appearance.mjs";
+import { IMPACT_CHOICES, IMPACT_GROUPS, summarizeImpact, firstMissingImpact, snapshotImpact } from "./ctp.mjs";
 
 const Icon = ({ name, size = 16, ...props }) => {
   const Component = Icons[name] || Icons.Circle;
@@ -255,7 +264,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
     const apply = () => {
       const theme = resolveTheme(appearance, media.matches);
       document.documentElement.dataset.theme = theme;
-      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0b1220" : "#6e56f8");
+      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#111827" : "#1d2639");
     };
     apply();
     try { localStorage.setItem(APPEARANCE_KEY, appearance); } catch {}
@@ -371,7 +380,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   }, [mobileNav]);
   const baseScreen = screenId === "A01" ? { id: "A01", role: "superadmin", title: "Team & customer access", label: "Administration", subtitle: "Manage analysts, customer assignments and accountability.", nav: "A01" }
     : catalog.screens.find((s) => s.id === screenId) || catalog.screens[0];
-  const visualTitles = { C01: ["Know which supplier decisions need you.", "Osura reviews supplier evidence and prepares a clear recommendation. Your team makes the final decision."], C14: ["Find suppliers by the service you actually use", "Approval belongs to a service, not every use of the supplier."], C15: ["Supplier reviews", "See the next owner, review state and exact service scope."], O16: ["Supplier and service directory", "Find the right supplier, service and customer before opening a record."], C06: ["Make your customer decision", "Review Osura’s advice, then record the outcome your organisation accepts."], O04: ["Review evidence and its limits", "Read the source, record your judgement, then compare the prepared proposal."], O07: ["Findings and accountable responses", "Every material issue has a requirement, owner, due date and closure proof."], O14: ["Delivery status you can trust", "Local outbox activity is separate from confirmed supplier delivery."], O15: ["Keep supplier assurance current", "See which obligation is due, who owns it and the evidence needed next."] };
+  const visualTitles = { C01: ["Supplier portfolio", "Osura reviews supplier evidence and prepares a clear recommendation. Your team makes the final decision."], C14: ["Supplier register", "Approval belongs to a service, not every use of the supplier."], C15: ["Assessment register", "See the next owner, review state and exact service scope."], O16: ["Supplier directory", "Find the right supplier, service and customer before opening a record."], C06: ["Make your customer decision", "Review Osura’s advice, then record the outcome your organisation accepts."], O04: ["Evidence review", "Read the source, record your judgement, then compare the prepared proposal."], O07: ["Findings and actions", "Every material issue has a requirement, owner, due date and closure proof."], O14: ["Supplier communications", "Local outbox activity is separate from confirmed supplier delivery."], O15: ["Monitoring and reassessment", "See which obligation is due, who owns it and the evidence needed next."] };
   const screen = { ...baseScreen, ...(visualTitles[baseScreen.id] ? { title: visualTitles[baseScreen.id][0], subtitle: visualTitles[baseScreen.id][1] } : {}), ...(baseScreen.id === "C06" ? { label: workflowStatus(state).label } : {}) };
   if (screen.id === "O06" && !state.supplierReceipt) {
     screen.title = "Supplier response preview · no session response";
@@ -564,16 +573,14 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   const action = secondaryCase || ["O07", "O15", "C08", "C05"].includes(screen.id) || (role === "analyst" && screen.id === "C06") ? null : (
     primaryAction(screen.id, ctx)
   );
-  if (signedOut) return <div className="session-ended"><span className="logo">O</span><h1>Demo session ended</h1><p>Your workspace is hidden. Saved demo work remains in this tab until refresh.</p><Note>This is a simulated logout; no authenticated session is connected.</Note><Button primary onClick={() => setSignedOut(false)}>Resume as {user?.name}</Button></div>;
+  if (signedOut) return <div className="session-ended"><span className="session-brand"><img className="brand-wordmark" src="/brand/osura-wordmark.png" alt="Osura" width="148" height="53" /></span><h1>Demo session ended</h1><p>Your workspace is hidden. Saved demo work remains in this tab until refresh.</p><Note>This is a simulated logout; no authenticated session is connected.</Note><Button primary onClick={() => setSignedOut(false)}>Resume as {user?.name}</Button></div>;
   return (
     <>
       {!isSupplier && (
         <aside ref={sidebarRef} className={`sidebar ${mobileNav ? "expanded" : ""}`} role={mobileNav ? "dialog" : undefined} aria-modal={mobileNav || undefined} aria-label={mobileNav ? "Workspace navigation" : undefined}>
           <button className="mobile-nav-close" aria-label="Close navigation" onClick={closeMobileNav}><Icon name="X" /> Close navigation</button>
           <a href={`#${role === "superadmin" ? "A01" : role === "analyst" ? "O01" : "C01"}`} className="brand" onClick={e => { e.preventDefault(); navigate(role === "superadmin" ? "A01" : role === "analyst" ? "O01" : "C01"); }}>
-            <span className="logo">O</span>
-            <b>Osura</b>
-            <small>ASSURANCE</small>
+            <img className="brand-wordmark" src="/brand/osura-wordmark.png" alt="Osura" width="148" height="53" />
           </a>
           <div className="nav-label">
             {role === "customer" ? "YOUR WORKSPACE" : "DELIVERY WORKSPACE"}
@@ -616,7 +623,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
         <header className="topbar">
           {isSupplier ? (
             <div className="portal-brand">
-              <b>OSURA</b>
+              <img className="brand-wordmark" src="/brand/osura-wordmark.png" alt="Osura" width="124" height="44" />
               <small>SECURE SUPPLIER REQUEST</small>
             </div>
           ) : (
@@ -936,7 +943,7 @@ function Ring({ data }) {
         style={{
           background: stops.length
             ? `conic-gradient(${stops.join(",")})`
-            : "light-dark(#edf0f6, #1c293d)",
+            : "var(--surface-subtle)",
         }}
       >
         <div>
@@ -1181,6 +1188,14 @@ function Overview(c) {
             : cedar && <Button icon="ArrowRight" onClick={() => { c.update({ selected: cedar.id }); navigate(state.decision ? "C07" : "C09"); }}>{state.decision ? "Open recorded decision" : "View review status"}</Button>}
         </div>
       </section>
+      <section className="quiet-metrics overview-summary" aria-label="Portfolio summary">
+        <button onClick={() => navigate("C14")}><strong>{new Set(data.engagements.map(row => row.supplier)).size}</strong><span>Suppliers</span><small>View supplier services</small></button>
+        <button onClick={() => navigate("C15")}><strong>{data.engagements.filter(row => !["Active", "Rejected"].includes(row.stage)).length}</strong><span>Open reviews</span><small>View assessment register</small></button>
+        <button onClick={() => navigate("C16")}><strong>{cedar && status.ready ? 1 : 0}</strong><span>Decision needed</span><small>{cedar && status.ready ? 1 : 0} decision ready · view reports</small></button>
+      </section>
+
+      <EngagementTable {...c} rows={data.engagements.slice(0, 6)} title="Your service reviews" action={<Link onClick={() => navigate("C14")}>Full supplier register →</Link>}/>
+      {customerActions.length > 1 && <Card title="Other actions for your team"><div className="customer-action-list">{customerActions.slice(1).map(action => <div className="action-row" key={action.engagement}><div><b>{action.title}</b><p>{action.detail}</p></div><Badge>{action.status}</Badge><Button onClick={() => openAction(action)} icon="ArrowRight">{action.action}</Button></div>)}</div></Card>}
       <div className="overview-explore-grid">
         <Card title="Choose how to explore" className="explore-choices">
           <div className="explore-choice">
@@ -1192,18 +1207,13 @@ function Overview(c) {
             <div><h3>Try your own request</h3><p>Add your business context. Your request remains pending analyst triage in this demo.</p><Button icon="ArrowRight" onClick={() => navigate("C02")}>Start a supplier request</Button></div>
           </div>
         </Card>
-        <Card title="Your programme at a glance" className="programme-glance">
-          <div className="quiet-metrics">
-            <button onClick={() => navigate("C14")}><strong>{new Set(data.engagements.map(row => row.supplier)).size}</strong><span>Suppliers</span><small>View supplier services</small></button>
-            <button onClick={() => navigate("C15")}><strong>{data.engagements.filter(row => !["Active", "Rejected"].includes(row.stage)).length}</strong><span>Open reviews</span><small>View assessment register</small></button>
-            <button onClick={() => navigate("C16")}><strong>{cedar && status.ready ? 1 : 0}</strong><span>Decision needed</span><small>{cedar && status.ready ? 1 : 0} decision ready · view reports</small></button>
-          </div>
+        <Card title="CTP and monitoring" className="programme-glance">
+
           <div className="risk-explainer"><b>What does “CTP inherent risk” mean?</b><p>The service’s exposure before assurance work. It is separate from evidence support, QA readiness and your decision.</p><small>Values are prepared fixtures under the pinned CTP method. This prototype does not calculate risk.</small></div>
           <Link onClick={() => navigate("C08")}>Monitoring plan →</Link>
         </Card>
       </div>
-      {customerActions.length > 1 && <Card title="Other actions for your team"><div className="customer-action-list">{customerActions.slice(1).map(action => <div className="action-row" key={action.engagement}><div><b>{action.title}</b><p>{action.detail}</p></div><Badge>{action.status}</Badge><Button onClick={() => openAction(action)} icon="ArrowRight">{action.action}</Button></div>)}</div></Card>}
-      <EngagementTable {...c} rows={data.engagements.slice(0, 6)} title="Your service reviews" action={<Link onClick={() => navigate("C14")}>Full supplier register →</Link>}/>
+
     </div>
   );
 }
@@ -1437,6 +1447,20 @@ function SupplierRecord(c) {
     </div>
   </div>;
 }
+function ImpactSummary({ questions, answers }) {
+  const summary = summarizeImpact(questions, answers);
+  return <div className="op-impact-summary" aria-live="polite">
+    <h3>Base asset impact: {summary.label}{summary.score !== null ? ` (${summary.score})` : ""}</h3>
+    <Fields items={summary.categories.map(category => [category.dimension, category.complete ? `${category.score} · highest impact` : "Incomplete · answer every question"])} />
+    <p>N/A = 0 · Low = 1 · Medium = 3 · High = 5. We take the highest impact in each category, then the highest category score. Blank and Unknown answers are not scored.</p>
+    <Note>This is business impact, not a supplier-control result or the final CTP inherent-risk tier. Other questionnaire inputs can affect the full CTP calculation.</Note>
+  </div>;
+}
+
+function ImpactAnswers({ questions, answers }) {
+  return <><ImpactSummary questions={questions} answers={answers} /><div className="bia-grid">{Object.entries(IMPACT_GROUPS).map(([dimension, help]) => <div key={dimension}><h3>{dimension}<small>{questions.filter(question => question.dimension === dimension).length} questions</small></h3><p>{help}</p>{questions.filter(question => question.dimension === dimension).map(question => <div className="bia-row" key={question.id}><span>{questions.indexOf(question) + 1}. {question.label}</span><Badge>{answers[question.id] || "Not answered"}</Badge></div>)}</div>)}</div></>;
+}
+
 function Intake(c) {
   const { data, state, update, navigate, notify } = c;
   const intake = state.intake;
@@ -1454,7 +1478,9 @@ function Intake(c) {
   const edit = (patch) => {
     setError("");
     setMissingQuestion(null);
-    update({ intake: { ...intake, ...patch }, intakeSubmitted: false, intakeIssue: null });
+    const scopeChanged = ["supplier", "domain", "use", "purpose", "product"].some(key => Object.hasOwn(patch, key) && patch[key] !== intake[key]);
+    if (scopeChanged && Object.keys(intake.businessImpactAnswers || {}).length) notify("Service scope changed. Confirm the business facts and impact answers again.");
+    update({ intake: { ...intake, ...patch, ...(scopeChanged ? { answers: {}, businessImpactAnswers: {} } : {}) }, intakeSubmitted: false, intakeIssue: null });
   };
   const questions = [
     "Will the supplier process personal or payment data?",
@@ -1462,6 +1488,10 @@ function Intake(c) {
     "Could an outage interrupt a critical customer journey?",
     "Could the service be replaced within one business day?",
   ];
+  const impactQuestions = data.biaQuestions;
+  const impactAnswers = intake.businessImpactAnswers || {};
+  const missingImpact = firstMissingImpact(impactQuestions, impactAnswers);
+  const impactCount = impactQuestions.filter(question => IMPACT_CHOICES.includes(impactAnswers[question.id])).length;
   const fail = (message, target) => {
     setError(message);
     requestAnimationFrame(() => document.getElementById(target)?.focus());
@@ -1481,6 +1511,12 @@ function Intake(c) {
       fail(`Answer question ${missing + 1}: ${questions[missing]} Unknown is a valid answer.`, `intake-question-${missing}`);
       return;
     }
+    if (step === 2 && missingImpact) {
+      const target = `intake-impact-${missingImpact.id}`;
+      setMissingQuestion(target);
+      fail(`Answer the business-impact question: ${missingImpact.label} Choose Unknown if you need to check.`, target);
+      return;
+    }
     navigate(["C02", "C03", "C04", "C05"][step + 1]);
   };
   const submit = (e) => {
@@ -1498,6 +1534,8 @@ function Intake(c) {
         ? { screen: "C03", target: "intake-purpose", message: "Select an intended use or describe your purpose before submitting." }
         : missing !== -1
           ? { screen: "C04", target: `intake-question-${missing}`, question: missing, message: `Answer question ${missing + 1}: ${questions[missing]} Unknown is a valid answer.` }
+          : missingImpact
+            ? { screen: "C04", target: `intake-impact-${missingImpact.id}`, question: `intake-impact-${missingImpact.id}`, message: `Answer the business-impact question: ${missingImpact.label} Choose Unknown if you need to check.` }
           : null;
     if (incomplete) {
       update({ intakeIssue: incomplete });
@@ -1513,6 +1551,7 @@ function Intake(c) {
       due: "Pending review", plan: "To be confirmed", client: data.workspace.name,
       workspaceId: c.user.workspaceId, receipt,
       answers: { ...intake.answers }, attachments: structuredClone(intake.attachments),
+      businessImpact: snapshotImpact(impactQuestions, impactAnswers),
     };
     const entry = actionEntry({ ...data, engagements: [...data.engagements, request], activeEngagementId: id, assessmentVersion: `${id}-intake` }, "Customer intake submitted", "Submitted business facts for analyst triage.");
     update({ intakeSubmitted: true, intakeReceipt: receipt, selected: id,
@@ -1525,9 +1564,9 @@ function Intake(c) {
       <div className="stepper intake-steps">{["Supplier", "Intended use", "Business context", "Review"].map((label, i) => <button key={label} aria-current={i === step ? "step" : undefined} className={i === step ? "current" : i < step ? "done" : ""} disabled={i > step} onClick={() => navigate(["C02", "C03", "C04", "C05"][i])}><span>{i < step ? "✓" : i + 1}</span>{label}</button>)}</div>
       <form id="intake-form" onSubmit={submit}>
         <div className="op-form-layout">
-          <Card title={["Find the supplier for this review", `Tell us how you will use ${intake.supplier || "this supplier"}`, "A few facts about this service", "Review your supplier request"][step]}>
-            <p className="op-intro">{["Confirm the legal entity before choosing a service.", "Choose one service for this review. A different use can have a different risk profile.", "We ask for facts your organisation can confirm, not a long questionnaire.", "Check the exact scope and facts that the analyst will receive."][step]}</p>
-            {error && <div className="op-error-summary" role="alert"><b>One answer to complete</b><p>{error}</p><Link onClick={() => document.getElementById(missingQuestion !== null ? `intake-question-${missingQuestion}` : step === 0 ? "intake-supplier" : "intake-purpose")?.focus()}>Go to the missing {missingQuestion !== null ? "question" : "field"} →</Link></div>}
+          <Card title={["Find the supplier for this review", `Tell us how you will use ${intake.supplier || "this supplier"}`, "Business context and CTP impact", "Review your supplier request"][step]}>
+            <p className="op-intro">{["Confirm the legal entity before choosing a service.", "Choose one service for this review. A different use can have a different risk profile.", "Confirm the service facts, then answer the 17 CTP business-impact questions. These assess impact, not whether the supplier passed a security audit.", "Check the exact scope and facts that the analyst will receive."][step]}</p>
+            {error && <div className="op-error-summary" role="alert"><b>One answer to complete</b><p>{error}</p><Link onClick={() => document.getElementById(missingQuestion !== null ? typeof missingQuestion === "string" ? missingQuestion : `intake-question-${missingQuestion}` : step === 0 ? "intake-supplier" : "intake-purpose")?.focus()}>Go to the missing {missingQuestion !== null ? "question" : "field"} →</Link></div>}
             {step === 0 && <>
               <Label title="Supplier name or domain · required"><input id="intake-supplier" value={query} onChange={e => { setQuery(e.target.value); setError(""); }} placeholder="Search supplier name or company domain" /></Label>
               <div className="op-supplier-matches">{matches.map(row => <button type="button" className="op-choice-card" key={row.name} onClick={() => { edit({supplier:row.name,domain:row.domain,use:"",purpose:"",product:""});navigate("C03"); }}><Entity name={row.name} service={row.domain}/><span>Use this supplier <Icon name="ArrowRight" size={15}/></span></button>)}</div>
@@ -1539,16 +1578,29 @@ function Intake(c) {
               <Label title="Describe another service or add scope context" hint="Name the activity and the information or systems involved."><textarea id="intake-purpose" value={intake.purpose} onChange={e=>edit({purpose:e.target.value})} placeholder="Describe how your organisation will use the service"/></Label>
               <Label title="Product or service line · optional"><input value={intake.product} onChange={e=>edit({product:e.target.value})} placeholder="For example Marketing Hub"/></Label>
             </>}
+            {step === 2 && <h3>Service context · four scope questions</h3>}
             {step === 2 && questions.map((q,i) => <fieldset className={`op-business-question ${missingQuestion===i?"has-error":""}`} key={q} id={`intake-question-${i}`} tabIndex={-1} aria-invalid={missingQuestion===i||undefined}><legend>{i+1}. {q} <small>required</small></legend><p>{["Include customer records, staff information and transaction details.","Include a live customer database, payment integration or employee identity system.","Consider the customer journey that depends on this specific service.","Include the time needed to migrate data, reconnect systems and train people."][i]} Unknown is a valid answer.</p><div className="op-radio-stack">{["Yes","No","Unknown"].map(answer=><label className={`op-radio-row ${intake.answers[i]===answer?"is-selected":""}`} key={answer}><input type="radio" name={`business-fact-${i}`} checked={intake.answers[i]===answer} onChange={()=>edit({answers:{...intake.answers,[i]:answer}})}/><span>{answer}</span></label>)}</div>{missingQuestion===i&&<p className="op-field-error">Select Yes, No or Unknown to continue.</p>}</fieldset>)}
+            {step === 2 && <section aria-label="CTP business impact questions">
+              <h3>CTP business impact · 17 questions</h3>
+              <p>For each scenario, choose the impact on your business. N/A means not applicable. Choose Unknown if you need to check; it remains unresolved for analyst triage.</p>
+              {Object.entries(IMPACT_GROUPS).map(([dimension, help]) => <fieldset className="op-impact-group" key={dimension}><legend>{dimension} · {impactQuestions.filter(question => question.dimension === dimension).length} questions</legend><p>{help}</p>{impactQuestions.filter(question => question.dimension === dimension).map(question => <div className="op-impact-question" key={question.id}>
+                <Label title={`${impactQuestions.indexOf(question) + 1}. ${question.label} · required`}><select required id={`intake-impact-${question.id}`} value={impactAnswers[question.id] || ""} aria-invalid={missingQuestion === `intake-impact-${question.id}` || undefined} aria-describedby={missingQuestion === `intake-impact-${question.id}` ? `impact-error-${question.id}` : undefined} onChange={event => edit({ businessImpactAnswers: { ...impactAnswers, [question.id]: event.target.value } })}><option value="">Choose impact</option>{IMPACT_CHOICES.map(answer => <option key={answer} value={answer}>{answer}</option>)}</select></Label>
+                {missingQuestion === `intake-impact-${question.id}` && <p className="op-field-error" id={`impact-error-${question.id}`}>Choose N/A, Low, Medium, High or Unknown.</p>}
+              </div>)}</fieldset>)}
+              <ImpactSummary questions={impactQuestions} answers={impactAnswers} />
+            </section>}
             {step === 3 && <>
               <Fields items={[["Supplier",intake.supplier],["Service",intake.use==="Another service"?intake.purpose:intake.use||intake.purpose],["Product",intake.product||"Not specified"],["Business owner",data.workspace.decisionOwner],...questions.map((q,i)=>[q,intake.answers[i]||"Not answered"]) ]}/>
               {Object.values(intake.answers).includes("Unknown")&&<Note warning>Unresolved facts: {questions.filter((_,i)=>intake.answers[i]==="Unknown").join("; ")}. These remain for analyst triage.</Note>}
+              <h3>CTP business impact · submitted answers</h3>
+              <ImpactAnswers questions={impactQuestions} answers={impactAnswers} />
+              {impactQuestions.some(question => impactAnswers[question.id] === "Unknown") && <Note warning>Unresolved impact questions remain for analyst triage: {impactQuestions.filter(question => impactAnswers[question.id] === "Unknown").map(question => question.label).join("; ")}.</Note>}
               <Link onClick={()=>navigate("C04")}>Edit business context →</Link>
               <div className="op-section-rule"><h3>Supporting documents</h3><p>Optional scope descriptions or existing supplier documents.</p><UploadList files={intake.attachments} onChange={attachments=>edit({attachments})}/></div>
             </>}
             {step>0&&<div className="op-form-footer"><span className="op-save-state"><Icon name="Check" size={14}/> Draft kept in this session · until refresh</span><div><Button onClick={()=>navigate(["C02","C03","C04"][step-1])}>Back</Button>{step===3?<Button primary type="submit" icon="ArrowRight">Submit request</Button>:<Button primary icon="ArrowRight" onClick={next}>{step===2?"Continue to review":"Continue to business context"}</Button>}</div></div>}
           </Card>
-          <aside className="op-context-rail"><Card title="This request"><Fields items={[["Supplier",intake.supplier||"Not selected"],["Domain",intake.domain||"Not confirmed"],["Service",intake.use==="Another service"?intake.purpose||"Describe the service":intake.use||intake.purpose||"Not selected"],["Business facts",`${Object.keys(intake.answers).length} of ${questions.length} answered`],["Documents",`${intake.attachments.length} attached`]]}/><div className="op-context-note"><h3>Why we ask</h3><p>Different uses of the same supplier can create different risks. Your answers determine the relevant review scope; they do not approve the supplier.</p></div><details className="op-help"><summary>What if I do not know an answer?</summary><p>Choose Unknown. It stays unresolved for an analyst to clarify and is never treated as No or inferred from public research.</p></details></Card><Card title="What happens to these facts?"><p>An assigned analyst confirms scope under the approved programme. Independent QA challenges the recommendation. Your Decision Owner signs the outcome.</p><Note>No risk tier is calculated here. CTP methodology and customer authority remain unchanged.</Note></Card></aside>
+          <aside className="op-context-rail"><Card title="This request"><Fields items={[["Supplier",intake.supplier||"Not selected"],["Domain",intake.domain||"Not confirmed"],["Service",intake.use==="Another service"?intake.purpose||"Describe the service":intake.use||intake.purpose||"Not selected"],["Business facts",`${questions.filter((_, i) => ["Yes", "No", "Unknown"].includes(intake.answers[i])).length} of ${questions.length} answered`],["CTP impact",`${impactCount} of ${impactQuestions.length} answered`],["Documents",`${intake.attachments.length} attached`]]}/><div className="op-context-note"><h3>Why we ask</h3><p>Different uses of the same supplier can create different risks. Your answers determine the relevant review scope; they do not approve the supplier.</p></div><details className="op-help"><summary>What if I do not know an answer?</summary><p>Choose Unknown. It stays unresolved for an analyst to clarify and is never treated as No or inferred from public research.</p></details></Card><Card title="What happens to these facts?"><p>An assigned analyst confirms scope under the approved programme. Independent QA challenges the recommendation. Your Decision Owner signs the outcome.</p><Note>The base-impact summary does not set a final CTP inherent-risk tier or approve the supplier. Customer authority remains unchanged.</Note></Card></aside>
         </div>
       </form>
     </div>
@@ -1601,6 +1653,7 @@ function SecondaryCase(c) {
     <section className="op-success-hero"><span className="op-success-mark"><Icon name="Check" size={30}/></span><div><div className="eyebrow">REQUEST CONFIRMATION · {engagement.receipt}</div><h2>Your supplier request was received</h2><p>{engagement.supplier} · {engagement.service}</p><small>No supplier decision has been made. Your request is waiting for analyst triage.</small></div><Badge>Awaiting triage</Badge></section>
     <div className="op-form-layout"><Card title="What happens next"><ol className="op-numbered-timeline"><li><b>Osura reviews your business context</b><p>Next owner: assigned Osura analyst. Your submitted facts and intended service stay attached to this request.</p></li><li><b>Any missing facts stay with this request</b><p>Unknown answers remain unresolved. This prototype does not send a notification or promise a response time.</p></li><li><b>The review scope is confirmed</b><p>No risk classification, evidence conclusion or customer approval has been invented.</p></li></ol><div className="op-form-footer"><Button onClick={()=>document.getElementById("submitted-request-details")?.scrollIntoView({behavior:"smooth"})} primary>View my request</Button><Button onClick={()=>navigate(screen.role==="analyst"?"O01":"C01")}>Return to my overview</Button></div></Card>
     <Card title="Submitted details" className="op-submitted-details"><div id="submitted-request-details"><Fields items={[["Supplier",engagement.supplier],["Service",engagement.service],["Customer",engagement.client],["Business context",`${Object.keys(engagement.answers||{}).length} answers recorded`],["Documents",engagement.attachments?.map(f=>f.name).join(", ")||"No documents attached"],["Reference",engagement.receipt]]}/><details className="op-help"><summary>View submitted business facts</summary><Fields items={Object.entries(engagement.answers||{}).map(([i,a])=>[`Business fact ${Number(i)+1}`,a])}/></details><Button small icon="Download" onClick={()=>downloadJSON(engagement.receipt,engagement)}>Download this receipt</Button><Note>Receipt and submitted facts are kept until refresh. Download a copy before leaving this session.</Note></div></Card></div>
+    {engagement.businessImpact && <Card title="Submitted CTP business impact"><p>{engagement.businessImpact.source}</p><ImpactAnswers questions={engagement.businessImpact.questions} answers={Object.fromEntries(engagement.businessImpact.questions.map(question => [question.id, question.answer]))}/><Note>The receipt preserves the question wording and answers submitted for this service. Its final CTP inherent-risk tier remains Pending triage.</Note></Card>}
     {data.engagements.some(row=>row.id==="cedar")&&<Card title="Want to see the complete journey?" className="op-example-invitation"><div><h3>Explore the separate CedarCloud example</h3><p>See evidence review, a customer decision and ongoing assurance. This changes the example, never the status of your request.</p></div><Button onClick={()=>{update({selected:"cedar"});navigate(screen.role==="analyst"?"O02":"C09");}}>Explore the prepared example →</Button></Card>}
   </div>;
   return <><div className="supplier-banner"><Entity name={engagement.supplier} service={engagement.service}/><Badge>CTP inherent risk: {engagement.risk}</Badge><Badge>{engagement.stage}</Badge></div><div className="op-form-layout"><Card title="Service-scoped portfolio preview"><Fields items={[["Customer",engagement.client],["Supplier",engagement.supplier],["Service",engagement.service],["Current stage",engagement.stage],["Owner",engagement.owner],["Assessment plan",engagement.plan],["Next date",formatDue(engagement.due)]]}/><Note>This record has its own supplier, service and review state. CedarCloud evidence and decisions are never used for this service.</Note><Button onClick={()=>navigate(screen.role==="analyst"?"O01":"C15")}>Return to {screen.role==="analyst"?"assigned work":"assessment register"}</Button></Card><Card title="A separate prepared walkthrough"><p>The full source-review and customer-decision journey is prepared for CedarCloud’s payment event processing service.</p>{data.engagements.some(row=>row.id==="cedar")?<Button onClick={()=>{update({selected:"cedar"});navigate(screen.role==="analyst"?"O02":"C09");}}>View CedarCloud example →</Button>:<Note>No full walkthrough is prepared for the current customer selection.</Note>}</Card></div></>;
@@ -1633,7 +1686,7 @@ function Assessment(c) {
   return (
     <>
       <Scope {...c} />
-      <div className="case-task-heading"><div><span className="case-kicker">CURRENT REVIEW</span><h2>{state.decision ? "Your customer outcome is preserved" : status.ready ? "Your review is ready for a decision" : "Customer decision is paused"}</h2><p>{state.decision ? "The original evidence and customer outcome remain frozen in the Decision Pack." : status.ready ? "Osura’s review and independent QA are ready. The customer chooses the final outcome." : "The current review needs more work before the customer can decide."}</p></div><Badge>CTP inherent risk: {engagement.risk}</Badge></div>
+      <div className="case-task-heading"><div><span className="case-kicker">CURRENT REVIEW</span><h1>{state.decision ? "Your customer outcome is preserved" : status.ready ? "Your review is ready for a decision" : "Customer decision is paused"}</h1><p>{state.decision ? "The original evidence and customer outcome remain frozen in the Decision Pack." : status.ready ? "Osura’s review and independent QA are ready. The customer chooses the final outcome." : "The current review needs more work before the customer can decide."}</p></div><Badge>CTP inherent risk: {engagement.risk}</Badge></div>
       <div className={`case-readiness ${status.ready || state.decision ? "ready" : "warning"}`}><Icon name={status.ready || state.decision ? "CircleCheck" : "TriangleAlert"} /><div><b>{status.label}</b><p>{pending ? "New evidence requires an analyst review. Independent QA must then confirm the updated recommendation." : needsRevision ? "Address the independent QA challenge with a substantive analyst revision before QA can accept the recommendation." : `Next owner: ${status.nextOwner}. ${customer && !status.ready && !state.decision ? "Osura is reviewing the recommendation. Your decision action becomes available when review is ready." : "The next action follows the current review state."}`}</p></div></div>
       <div className="case-gates">{gateCards.map(([label, detail, gateState]) => <div className={`case-gate ${gateState}`} key={label}><span><Icon name={gateState === "done" ? "CircleCheck" : gateState === "action" ? "Circle" : "Clock"} />{label}</span><b>{detail}</b></div>)}</div>
       {state.clarification && !state.decision && <div className="outcome-receipt clarification"><Icon name="MessageSquare" /><div><span className="case-kicker">RETURNED FOR CLARIFICATION</span><h2>Osura needs to clarify the recommendation</h2><p>{state.clarification.rationale}</p><Fields items={[["Next owner", "Osura analyst"], ["Signed pack", "Not created"], ["Customer outcome", "Neither approved nor rejected"]]} /></div></div>}
@@ -1931,7 +1984,7 @@ function EvidenceReview(c) {
   };
   return <div className="case-workspace evidence-workspace">
     <Scope {...c} />
-    <div className="case-task-heading"><div><span className="case-kicker">{customer ? "EVIDENCE TRANSPARENCY" : `REQUIREMENT ${requirement.id}`}</span><h2>{customer ? "Understand the evidence and its limits" : `Review ${requirement.name.toLowerCase()}`}</h2><p>Read the source, record your judgement, then compare the prepared proposal.</p></div>
+    <div className="case-task-heading"><div><span className="case-kicker">{customer ? "EVIDENCE TRANSPARENCY" : `REQUIREMENT ${requirement.id}`}</span><h1>{customer ? "Understand the evidence and its limits" : `Review ${requirement.name.toLowerCase()}`}</h1><p>Read the source, record your judgement, then compare the prepared proposal.</p></div>
       <Label title="Requirement"><select value={requirement.id} onChange={e => selectRequirement(e.target.value)}>{data.requirements.map(r => <option key={r.id} value={r.id}>{r.id} · {r.name}</option>)}</select></Label>
     </div>
     <Tabs tabs={customer ? ["Evidence conclusions", "Documents", "Questions", "Activity"] : ["Evidence viewer", "Source record", "Version history", "Supplier response"]} value={tab} onChange={setTab} />
@@ -2001,7 +2054,7 @@ function Decision(c) {
   if (c.user?.role !== "customer") return <div className="case-workspace"><Scope {...c} /><Card title="Customer decision · read only"><Fields items={[["Customer", engagement.client], ["Suggested outcome", recommendation], ["Recommended by", state.reviews?.["R-07"]?.actor || "Prepared fixture"], ["QA outcome", state.qa], ["QA reviewer", state.qaReview?.actor || "Not recorded"], ["Customer decision", state.decision?.outcome || "Not recorded"], ["Decision by", state.decision?.actor || "Customer Decision Owner"]]} /><Note>Only the designated customer Decision Owner can record the final outcome. Analyst and superadmin roles cannot sign for the customer.</Note><Button onClick={() => setDrawer("audit")}>View review history</Button></Card></div>;
   return <div className="case-workspace decision-workspace">
     <Scope {...c} />
-    <div className="case-task-heading"><div><span className="case-kicker">CUSTOMER AUTHORITY</span><h2>{state.decision ? "Your customer outcome is recorded" : "Make your customer decision"}</h2><p>Osura prepares the recommendation. Your organisation decides whether to proceed.</p></div><Badge>CTP inherent risk: {engagement.risk}</Badge></div>
+    <div className="case-task-heading"><div><span className="case-kicker">CUSTOMER AUTHORITY</span><h1>{state.decision ? "Your customer outcome is recorded" : "Make your customer decision"}</h1><p>Osura prepares the recommendation. Your organisation decides whether to proceed.</p></div><Badge>CTP inherent risk: {engagement.risk}</Badge></div>
     {!status.ready && !state.decision && <div className="case-readiness warning"><Icon name="TriangleAlert" /><div><b>Customer decision is paused</b><p>{status.label}. Next owner: {status.nextOwner}. Your outcome becomes available after the review is ready.</p></div><Button onClick={() => navigate("C09")}>View the review status</Button></div>}
     <div className="stepper assessment-steps decision-stepper">{["Intake", "CTP & scope", "Evidence & follow-up", "QA", "Decision"].map((label, i) => <span key={label} aria-current={i === status.step ? "step" : undefined} className={i < status.step ? "done" : i === status.step ? "current" : ""}>{i < status.step ? "✓ " : ""}{label}</span>)}</div>
     <div className="case-two-pane decision-task-grid">
@@ -2153,7 +2206,7 @@ function Pack(c) {
         {pack.decision.outcome === "Reject" && <p>The service is rejected. No active-assurance success route is offered.</p>}
       </div></div>}
       {preview && <>
-        <div className="case-task-heading"><div><span className="case-kicker">CURRENT REVIEW AND PREPARED EXAMPLE</span><h2>An example is not your current record</h2><p>A prepared pack shows the reporting format. It does not assert that this service has been approved or signed.</p></div></div>
+        <div className="case-task-heading"><div><span className="case-kicker">CURRENT REVIEW AND PREPARED EXAMPLE</span><h1>An example is not your current record</h1><p>A prepared pack shows the reporting format. It does not assert that this service has been approved or signed.</p></div></div>
         <div className="case-two-pane prepared-pack-entry"><Card title="Continue the actual current review"><Badge>Your current review</Badge><h3>No customer decision has been recorded</h3><Fields items={[["Customer outcome", "Awaiting an explicit choice"], ["Current signed pack", "None"], ["Approval conditions", "Available after an applicable customer decision"]]} /><Button primary onClick={() => navigate("C06")}>Review the current recommendation</Button></Card><Card title="Explore a clearly separate example" className="prepared-example-card"><Badge>Prepared example · not your decision</Badge><div className="prepared-example-cover"><span>PREPARED REFERENCE EXAMPLE</span><h3>Illustrative Decision Pack</h3><p>Shows what a completed record will look like. Your current review and request status stay unchanged.</p></div><Button onClick={() => document.getElementById("prepared-pack-document")?.scrollIntoView({ behavior: "smooth" })}>View watermarked example ↓</Button><p className="case-session-note">Example exports carry the same watermark and sample provenance.</p></Card></div>
         <div className="case-callout"><b>Prepared example below · not your current customer record</b><p>Return to the current recommendation to record your own decision. This separate example does not change the case history.</p><Link onClick={() => navigate("C06")}>Return to the current review →</Link></div>
       </>}
@@ -2178,7 +2231,7 @@ function Pack(c) {
               <div className="accent-line" />
               {preview && <Note warning>PREPARED REFERENCE EXAMPLE · this is not a decision made in this session.</Note>}
               <div className="eyebrow">SUPPLIER RISK ASSESSMENT</div>
-              <h1>{pack.engagement.supplier}</h1>
+              <h2 className="pack-supplier-title">{pack.engagement.supplier}</h2>
               <p>
                 {pack.engagement.service} · {pack.workspace?.name || pack.engagement.client}
               </p>
@@ -2314,9 +2367,8 @@ function Operations(c) {
   const reset = () => {setSearch("");setFilter("All");setStage("All");};
   const openCase = row => {c.update({selected:row.id});navigate("O02");};
   return <div className="op-work-page">
-    <section className="op-section-heading"><div><div className="eyebrow">OSURA OPERATIONS · ASSIGNED WORK</div><h2>Focus on the next accountable action</h2><p>Exceptions, evidence and customer handoffs across your assigned customers.</p></div><Button onClick={()=>navigate("O11")}>View customer portfolios →</Button></section>
     <div className="op-metric-strip"><div><strong>{open.length}</strong><span>Open service reviews</span></div><div><strong>{open.filter(row=>row.stage==="Evidence").length}</strong><span>Evidence to review</span></div><div><strong>{open.filter(row=>row.stage==="QA").length}</strong><span>Independent QA</span></div><div><strong>{open.filter(row=>row.stage==="Decision").length}</strong><span>Customer decisions</span></div></div>
-    <div className="op-work-layout"><Card title="My work" className="op-work-queue"><div className="op-search-bar"><Icon name="Search"/><input aria-label="Search assigned work" placeholder="Search customer, supplier or scoped service" value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="op-inline-filters"><label>CTP inherent risk<select value={filter} onChange={e=>setFilter(e.target.value)}>{["All","Critical","High","Medium","Low"].map(v=><option key={v}>{v}</option>)}</select></label><label>Current stage<select value={stage} onChange={e=>setStage(e.target.value)}>{["All",...new Set(open.map(row=>row.stage))].map(v=><option key={v}>{v}</option>)}</select></label><Button small onClick={reset}>Clear filters</Button></div><div className="op-filter-summary">{rows.length} results · {filter==="All"?"All risk tiers":`${filter} CTP inherent risk`} · {stage==="All"?"All review stages":stage}{search&&` · “${search}”`}</div>
+    <div className="op-work-layout"><Card title="My work" className="op-work-queue" action={<Link onClick={()=>navigate("O11")}>View customer portfolios →</Link>}><div className="op-search-bar"><Icon name="Search"/><input aria-label="Search assigned work" placeholder="Search customer, supplier or scoped service" value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="op-inline-filters"><label>CTP inherent risk<select value={filter} onChange={e=>setFilter(e.target.value)}>{["All","Critical","High","Medium","Low"].map(v=><option key={v}>{v}</option>)}</select></label><label>Current stage<select value={stage} onChange={e=>setStage(e.target.value)}>{["All",...new Set(open.map(row=>row.stage))].map(v=><option key={v}>{v}</option>)}</select></label><Button small onClick={reset}>Clear filters</Button></div><div className="op-filter-summary">{rows.length} results · {filter==="All"?"All risk tiers":`${filter} CTP inherent risk`} · {stage==="All"?"All review stages":stage}{search&&` · “${search}”`}</div>
       {rows.length?<div className="op-queue-list">{rows.map(row=><article key={row.id} className="op-work-row"><div><small>{row.client}</small><h3>{row.supplier}</h3><p>{row.service}</p><div className="badges"><Badge>{row.risk}</Badge><Badge>{row.stage}</Badge></div></div><div className="op-work-attention"><b>{row.id==="cedar"?workflowStatus(state).label:data.operationsAttention[row.id]||"New request awaiting analyst triage"}</b><p>{row.id==="cedar"?"Next owner":"Business owner"}: {row.id==="cedar"?workflowStatus(state).nextOwner:row.owner}</p><small>Due {formatDue(row.due)}</small></div><Button small onClick={()=>openCase(row)}>Open case →</Button></article>)}</div>:<div className="op-empty"><Icon name="Search" size={32}/><h3>No work matches these filters</h3><p>There are no matching records for {filter} risk and {stage} stage{search?` containing “${search}”`:""}. This does not mean all programme work is complete.</p><div><Button primary onClick={reset}>Clear filters</Button><Button onClick={reset}>Return to my assigned work</Button></div></div>}
     </Card><aside className="op-context-rail"><Card title="Delivery and handoffs"><div className="op-context-note"><h3>Waiting is a real state</h3><p>Supplier response, internal QA and customer decisions have different owners. A queued message is never a delivery receipt.</p></div>{data.operationsHandoffs.map(([,detail,owner,,id],i)=>{
       const row=data.engagements.find(e=>e.id===id);
@@ -2330,20 +2382,21 @@ function Operations(c) {
 
 function Impact(c) {
   const { data, engagement, navigate } = c;
+  const questions = data.biaQuestions;
+  const answers = Object.fromEntries(questions.map(question => [question.id, (data.bia[question.dimension] || []).find(([label]) => label === question.label)?.[1]]));
+  const summary = summarizeImpact(questions, answers);
   return (
     <>
       <Scope {...c} />
       <Card>
         <div className="eyebrow">INHERENT RISK / CTP CORE V1</div>
-        <h1 className="risk-heading">{engagement.risk}</h1>
+        <h2 className="risk-heading">{engagement.risk}</h2>
         <p className="muted">
           As shown in the approved reference fixture. This UI preview does not
           recalculate CTP methodology.
         </p>
         <div className="badges">
-          <Badge>Confidentiality: High</Badge>
-          <Badge>Integrity: High</Badge>
-          <Badge>Availability: High</Badge>
+          {summary.categories.map(category => <Badge key={category.dimension}>{category.dimension}: {category.complete ? category.score : "Not answered"}</Badge>)}
         </div>
       </Card>
       <div className="grid wide-left">
@@ -2393,23 +2446,9 @@ function Impact(c) {
           </Link>
         </Card>
       </div>
-      <Card title="Business impact assessment · 17 answers">
-        <div className="bia-grid">
-          {Object.entries(data.bia).map(([title, answers]) => (
-            <div key={title}>
-              <h3>
-                {title}
-                <small>{answers.length} questions</small>
-              </h3>
-              {answers.map(([question, value]) => (
-                <div className="bia-row" key={question}>
-                  <span>{question}</span>
-                  <Badge>{value}</Badge>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
+      <Card title="CTP business impact · 17 questions">
+        <p>These are the supplied CTP questions, grouped as five Confidentiality, five Integrity and seven Availability scenarios. No impact answers have been recorded for this prepared case. A new supplier request captures service-specific answers.</p>
+        <ImpactAnswers questions={questions} answers={answers} />
       </Card>
     </>
   );
@@ -2715,7 +2754,7 @@ function Quality(c) {
   return (
     <>
       <Scope {...c} />
-      <div className="case-task-heading"><div><span className="case-kicker">INDEPENDENT CHALLENGE</span><h2>Is the recommendation ready for the customer?</h2><p>Challenge the evidence and reasoning. QA confirms review readiness; the customer decides whether to proceed.</p></div></div>
+      <div className="case-task-heading"><div><span className="case-kicker">INDEPENDENT CHALLENGE</span><h1>Is the recommendation ready for the customer?</h1><p>Challenge the evidence and reasoning. QA confirms review readiness; the customer decides whether to proceed.</p></div></div>
       <div className={`case-readiness ${status.ready ? "ready" : "warning"}`}><Icon name={status.ready ? "CircleCheck" : "TriangleAlert"} /><div><b>{status.label}</b><p>Next owner: {status.nextOwner}. {status.stage === "Evidence" ? "The analyst must address the current evidence or QA challenge before QA can pass." : status.ready || state.decision ? "The recorded QA outcome remains available for inspection." : canChallenge ? "Record your independent challenge and a reasoned QA outcome." : "A different analyst with independent QA permission must record the challenge."}</p></div><Button onClick={() => c.navigate("O04")}>Inspect the analyst review</Button></div>
       <div className="case-gates">{[["Intake & scope", "Recorded"], ["Evidence review", status.stage === "Evidence" ? "Action needed" : "Current sources reviewed"], ["Independent QA", state.qa], ["Customer decision", state.decision ? "Recorded" : status.ready ? "Ready" : "Blocked"]].map(([label, detail], index) => <div className={`case-gate ${index === 0 || (index === 1 && status.stage !== "Evidence") || (index === 2 && status.ready) ? "done" : index === 2 ? "action" : "waiting"}`} key={label}><span><Icon name={index === 0 ? "CircleCheck" : "Circle"} />{label}</span><b>{detail}</b></div>)}</div>
       <Note>QA readiness: {status.label}. Next owner: {status.nextOwner}. Drafts stay in this session until refresh.</Note>
@@ -2869,7 +2908,7 @@ function Closure(c) {
   return (
     <>
       <Scope {...c} />
-      <div className="case-task-heading"><div><span className="case-kicker">EVIDENCE-BACKED FOLLOW-UP</span><h2>{state.conditionClosed ? "The condition has been closed" : "Review the condition and its proof"}</h2><p>Verify the evidence against the exact customer obligation. The original decision remains unchanged.</p></div></div>
+      <div className="case-task-heading"><div><span className="case-kicker">EVIDENCE-BACKED FOLLOW-UP</span><h1>{state.conditionClosed ? "The condition has been closed" : "Review the condition and its proof"}</h1><p>Verify the evidence against the exact customer obligation. The original decision remains unchanged.</p></div></div>
       <div className={`case-readiness ${eligible || state.conditionClosed ? "ready" : "warning"}`}><Icon name={eligible || state.conditionClosed ? "CircleCheck" : "TriangleAlert"} /><div><b>{state.conditionClosed ? "Closure recorded" : eligible ? "New evidence is ready for closure review" : "Closure is waiting on newer reviewed evidence"}</b><p>{state.conditionClosed ? state.closureReason : `Next owner: ${eligible ? "Assigned analyst" : condition?.owner || "Customer Decision Owner"}. ${eligible ? "Confirm whether the reviewed source fulfils the obligation." : "Evidence must be received after the signed customer decision and independently assessed as Supported."}`}</p></div></div>
       {!eligible && !state.conditionClosed && <Note warning>Closure preview only. Record a conditional customer decision, then receive and independently review newer evidence before verifying closure. Evidence received before the decision cannot close its condition.</Note>}
       <div className="case-two-pane closure-task-grid">

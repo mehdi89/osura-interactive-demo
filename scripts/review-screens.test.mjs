@@ -8,22 +8,59 @@ import { build } from "esbuild";
 import { sessionUser, scopeWorkspace } from "../src/access.mjs";
 import { projectWorkspace } from "../src/data-model.mjs";
 import { createState, recordDecision } from "../src/state.mjs";
+import { snapshotImpact } from "../src/ctp.mjs";
 
 // Render the actual screen functions without starting the browser-only app bootstrap.
 const source = await readFile(new URL("../src/main.jsx", import.meta.url), "utf8");
 const bundled = await build({
-  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { App, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm, Operations, Quality, Monitoring, SupplierPortal, formatDue };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
+  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { App, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm, Operations, Quality, Monitoring, SupplierPortal, Intake, Impact, SecondaryCase, formatDue };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
   bundle: true, platform: "node", format: "cjs", packages: "external", loader: { ".css": "empty" }, write: false,
 });
 const module = { exports: {} };
 new Function("require", "module", "exports", bundled.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports);
-const { App, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm, Operations, Quality, Monitoring, SupplierPortal, formatDue } = module.exports;
+const { App, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm, Operations, Quality, Monitoring, SupplierPortal, Intake, Impact, SecondaryCase, formatDue } = module.exports;
 const readJSON = async name => JSON.parse(await readFile(new URL(`../public/data/${name}.json`, import.meta.url)));
 const model = await readJSON("workspace");
 const user = sessionUser(model, "customer-morgan");
 const data = scopeWorkspace(projectWorkspace(model, await readJSON("presentation"), await readJSON("examples")), user);
 const context = (patch = {}) => ({ data, user, state: createState(data), engagement: data.engagements.find(row => row.id === "cedar"), screen: { role: "customer" }, update() {}, navigate() {}, notify() {}, setDrawer() {}, ...patch });
 const render = (Component, props) => renderToStaticMarkup(React.createElement(Component, props));
+
+test("intake offers all 17 verbatim impact questions with blank defaults and an unresolved choice", () => {
+  const c = context({ screen: { id: "C04", role: "customer" } });
+  const html = render(Intake, c);
+  assert.equal((html.match(/id="intake-impact-/g) || []).length, 17);
+  assert.equal((html.match(/<option value="" selected="">Choose impact/g) || []).length, 17);
+  assert.equal((html.match(/<option value="N\/A">N\/A/g) || []).length, 17);
+  assert.equal((html.match(/<option value="Unknown">Unknown/g) || []).length, 17);
+  assert.match(html, /Base asset impact: Incomplete/);
+  for (const question of data.biaQuestions) assert.ok(html.includes(question.label));
+  assert.match(html, /four scope questions/);
+});
+
+test("review and request receipt preserve official impact answers without assigning a risk tier", () => {
+  const c = context({ screen: { id: "C05", role: "customer" } });
+  const answers = Object.fromEntries(data.biaQuestions.map(question => [question.id, "N/A"]));
+  c.state.intake.businessImpactAnswers = answers;
+  assert.match(render(Intake, c), /Base asset impact: N\/A \(0\)/);
+  const businessImpact = snapshotImpact(data.biaQuestions, answers);
+  c.engagement = { ...c.engagement, id: "new-intake", risk: "Pending triage", receipt: "TEST-17", businessImpact };
+  c.data = { ...c.data, biaQuestions: data.biaQuestions.map(question => ({ ...question, label: "Later changed question" })) };
+  const receipt = render(SecondaryCase, c);
+  assert.match(receipt, /Submitted CTP business impact/);
+  assert.match(receipt, /Base asset impact: N\/A \(0\)/);
+  assert.match(receipt, /Pending triage/);
+  assert.ok(receipt.includes(businessImpact.questions[0].label));
+  assert.doesNotMatch(receipt, /Later changed question/);
+});
+
+test("CTP review shows the supplied questions without inheriting old sample impact answers", () => {
+  const html = render(Impact, context({ screen: { id: "O12", role: "analyst" } }));
+  assert.match(html, /Base asset impact: Incomplete/);
+  assert.match(html, /Confidentiality: Not answered/);
+  assert.doesNotMatch(html, /Confidentiality: High|Integrity: High|Availability: High/);
+  for (const question of data.biaQuestions) assert.ok(html.includes(question.label));
+});
 
 test("customer outcome starts blank with one deliberate review action and read-only proposed obligation", () => {
   const html = render(Decision, context());
