@@ -18,10 +18,12 @@ Customer, Analyst and Superadmin open Notifications, Account, Change password, B
 
 1. Select **Superadmin · Sam Taylor** in the demo bar. Add an analyst and assign Northstar, Ridgeway or both. Use Edit to change assignments, active status or QA permission. Empty assignments mean an empty work list. No invitation email is sent.
 2. Select the analyst. Their work list contains all assigned customers together. Narrow it with **Customer**; customer names remain visible on cross-customer records.
-3. As **Analyst · Osura analyst 01**, open Evidence → source verification, enter independent reasoning and select the suggested customer outcome. Save the recommendation.
+3. For the prepared CedarCloud example, open its case from **My work**, then Evidence → source verification, enter independent reasoning and select the suggested customer outcome. Save the recommendation.
 4. Attempt QA as the same analyst: lack of permission or self-review blocks it. As **Analyst · QA reviewer 02**, record independent QA with rationale.
 5. As **Customer · A. Morgan**, open the customer decision. The memo identifies the recommender and QA reviewer. Record the customer outcome and inspect the frozen Decision Pack.
 6. Open **Activity & accountability**, inspect details or download activity JSON. Superadmin also sees before/after analyst access changes.
+
+New requests start in the customer intake form. As the assigned analyst, review intake, ask for clarification if needed, confirm scope and manual CTP classification, and add/review service-specific source versions. Record a recommendation, use **Demo user** to choose an independent QA analyst, then switch to the customer Decision Owner to review and confirm an outcome. Role switching preserves the same request when the next user has access. If no independent reviewer is assigned (Ridgeway has none in the default seed), Superadmin must assign an active analyst with QA permission who did not author this assessment. No permissions are widened automatically.
 
 ## What is tracked
 
@@ -35,13 +37,14 @@ History is append-only through the session UI. Resetting the walkthrough retains
 
 - `src/access.mjs`: session identity, assigned-customer scoping, action checks, immutable action metadata and analyst administration.
 - `src/RoleAdmin.jsx`: superadmin team/access forms and scoped activity viewer/export.
-- `src/state.mjs`: recommendation, QA and customer-decision guards and attribution.
+- `src/state.mjs`: prepared CedarCloud recommendation, QA and customer-decision guards and attribution.
+- `src/request-workflow.mjs`, `src/RequestAssessment.jsx`: isolated new-request scope, evidence versions/reviews, recommendation, independent QA, deliberate customer decision, immutable pack and condition closure. Customer clarification returns to the analyst; analyst questions return to the customer. Changes before signing invalidate QA. Signed packs remain frozen through new condition evidence and closure.
 - `src/main.jsx`: static company/team labels, demo identities, customer filter, read-only decision view and route-role guards.
 - `src/data-model.mjs`: derives customer-specific workspace metadata; Ridgeway has no configured overlay, assigned case reviewer or prepared QA release. Scoped Ridgeway views exclude CedarCloud's example packs, source histories and supplier request.
 - `public/data/workspace.json`: synthetic users and customer assignments join the existing relational seed model. Schema and generated PostgreSQL reference include both tables.
 
 ## Prototype boundary
 
-This is a client-side simulation, not production authorization: the public JSON contains all synthetic seed records and the presentation bar can impersonate any active demo user. No real authentication, backend access checks, invitations, durable audit database or production tenant isolation is implemented. Never put real customer data in these files. The complete source-to-decision workflow remains CedarCloud; other assigned engagements are scoped portfolio previews. Static policy panels remain labelled reference fixtures.
+This is a client-side simulation, not production authorization: the public JSON contains all synthetic seed records and the presentation bar can impersonate any active demo user. No real authentication, backend access checks, invitations, durable audit database or production tenant isolation is implemented. Never put real customer data in these files. CedarCloud remains the prepared source-to-decision example; newly submitted requests have their own complete manual workflow. Other seeded engagements remain scoped portfolio previews. Static policy panels remain labelled reference fixtures.
 
 A real backend must establish the signed-in identity, enforce customer assignments on every query/mutation, preserve immutable assessment/evidence revisions and persist audit events server-side. The generated SQL is a reference, not a deployed database or production migration.

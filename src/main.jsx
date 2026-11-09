@@ -98,6 +98,8 @@ import "./theme.css";
 import DataEditor from "./DataEditor.jsx";
 import RoleAdmin, { AuditTrail } from "./RoleAdmin.jsx";
 import WorkspaceSearch from "./WorkspaceSearch.jsx";
+import RequestAssessment from "./RequestAssessment.jsx";
+import { requestAssessment, requestProgress } from "./request-workflow.mjs";
 import { customerView, patchCustomerView } from "./customer-session.mjs";
 import { sessionUser, scopeWorkspace, actionEntry } from "./access.mjs";
 import { createModelValidator, projectWorkspace } from "./data-model.mjs";
@@ -340,6 +342,9 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
     ].map((e) => ({
       ...e,
       owner: state.owners?.[e.id] || e.owner,
+      ...(e.receipt ? { stage: requestProgress(requestAssessment(state, e)).stage,
+        risk: requestAssessment(state, e).scope?.risk || e.risk,
+        plan: requestAssessment(state, e).scope?.plan || e.plan } : {}),
       ...(e.id === "cedar"
         ? { stage: workflowStatus(state).stage }
         : {}),
@@ -388,8 +393,8 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   }
   const role = user?.role || "customer";
   const denied = !user?.active || (screen.role !== role && !(role === "analyst" && ["C06","C07","C13"].includes(screen.id)));
-  const allowedNames = new Set(model.workspaces.filter(row => user?.workspaceIds.includes(row.id) && (role !== "analyst" || customerFilter === "all" || row.id === customerFilter)).map(row => row.name));
-  data.engagements = data.engagements.filter(row => allowedNames.has(row.client));
+  const allowedWorkspaces = new Set(model.workspaces.filter(row => user?.workspaceIds.includes(row.id) && (role !== "analyst" || customerFilter === "all" || row.id === customerFilter)).map(row => row.id));
+  data.engagements = data.engagements.filter(row => allowedWorkspaces.has(row.workspaceId));
   const engagement =
     data.engagements.find((e) => e.id === state.selected) ||
     data.directory.find((e) => e.id === state.selected) ||
@@ -397,7 +402,11 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   const customerScope = role === "analyst" ? model.workspaces.find(row => row.id === customerFilter)?.name || "Assigned customers" : data.workspace.name;
   if (screen.id === "O11") screen.label = `${customerScope} service health`;
   if (screen.id === "C08") screen.title = state.decision?.outcome === "Reject" ? "Monitoring · rejected service history" : state.decision ? "Monitoring · ongoing assurance" : "Monitoring · assurance preview";
-  if (!["cedar", "none"].includes(engagement.id) && ["C06", "C08", "C09"].includes(screen.id)) {
+  if (engagement.receipt && ["C06", "C07", "C08", "C09", "C13", "O02", "O03", "O04", "O05", "O06", "O08", "O09", "O12"].includes(screen.id)) {
+    screen.label = "Assessment journey";
+    screen.title = `${engagement.supplier} · assessment`;
+    screen.subtitle = `${engagement.client} · ${engagement.service}`;
+  } else if (!["cedar", "none"].includes(engagement.id) && ["C06", "C08", "C09"].includes(screen.id)) {
     screen.label = { C06: "Customer decision preview", C08: "Monitoring", C09: "Assessment progress" }[screen.id];
     screen.title = `${engagement.supplier} · ${engagement.stage} preview`;
     screen.subtitle = `${engagement.client} · ${engagement.service}. Current stage: ${engagement.stage}. The full workflow is not prepared for this service.`;
@@ -449,9 +458,11 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   const switchIdentity = nextId => requestNavigation(() => {
     const nextUser = sessionUser(model, nextId);
     const nextRole = nextId === "supplier-contact" ? "supplier" : nextUser?.role;
-    const selected = nextRole === "customer" ? baseData.allEngagements.find(row => row.workspaceId === nextUser.workspaceId)?.id : "cedar";
+    const currentEngagement = [...baseData.allEngagements, ...(stateRef.current.extraEngagements || [])].find(row => row.id === stateRef.current.selected);
+    const retainRequest = currentEngagement?.receipt && nextUser?.active && ["customer", "analyst"].includes(nextRole) && nextUser.workspaceIds.includes(currentEngagement.workspaceId);
+    const selected = retainRequest ? currentEngagement.id : nextRole === "customer" ? baseData.allEngagements.find(row => row.workspaceId === nextUser.workspaceId)?.id : "cedar";
     onSwitch(nextId); setCustomerFilter("all"); setTourStep(null);
-    commitNavigation({ customer: "C01", analyst: "O01", superadmin: "A01", supplier: "S01" }[nextRole] || "C01");
+    commitNavigation(retainRequest ? nextRole === "customer" ? "C09" : "O02" : { customer: "C01", analyst: "O01", superadmin: "A01", supplier: "S01" }[nextRole] || "C01");
     update({ selected, returnTo: null });
   });
   const tour = [
@@ -531,6 +542,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
       extraFindings: (state.extraFindings || []).filter(row=>data.engagements.some(item=>item.workspaceId === row.workspaceId)),
     },
     user,
+    demoUsers: model.users.map(row => sessionUser(model, row.id)),
     update,
     event,
     navigate,
@@ -586,11 +598,11 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
             {role === "customer" ? "YOUR WORKSPACE" : "DELIVERY WORKSPACE"}
           </div>
           <nav aria-label="Main navigation">
-            {(role === "superadmin" ? [["A01", "Team & access", "ShieldCheck"]] : catalog.navigation[role] || []).map(([id, label, icon]) => (
+            {(role === "superadmin" ? [["A01", "Team & access", "ShieldCheck"]] : role === "analyst" ? (catalog.navigation[role] || []).filter(([id]) => !["O02", "O03", "O08"].includes(id)) : catalog.navigation[role] || []).map(([id, label, icon]) => (
               <a
                 key={id}
                 href={`#${id}`}
-                className={screen.nav === id ? "selected" : ""}
+                className={screen.nav === id || role === "analyst" && id === "O01" && ["O02", "O03", "O04", "O05", "O06", "O08", "O09", "O12"].includes(screen.id) ? "selected" : ""}
                 onClick={e => { e.preventDefault(); navigate(id); }}
               >
                 <Icon name={icon} />
@@ -665,6 +677,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
             <div className="tour-actions"><Button small disabled={tourStep === 0} onClick={() => showTourStep(tourStep - 1)}>Previous</Button><Button small primary onClick={() => tourStep === tour.length - 1 ? setTourStep(null) : showTourStep(tourStep + 1)}>{tourStep === tour.length - 1 ? "Finish guide" : "Next handoff"}</Button><button aria-label="Close guided example" onClick={() => setTourStep(null)}><Icon name="X" /></button></div>
           </section>}
           {state.returnTo && catalog.screens.some(row => row.id === state.returnTo.route && row.role === role) && state.returnTo.route !== screen.id && <Link onClick={() => { const back = state.returnTo; update({ selected: back.selected, returnTo: null }); navigate(back.route); }}>← Back to {state.returnTo.label}</Link>}
+          {engagement.receipt && !caseScreens.includes(screen.id) && <Link onClick={() => navigate(role === "analyst" ? "O02" : "C09")}>Return to {engagement.supplier} assessment →</Link>}
           <div className="page-heading">
             <div>
               <div className="eyebrow">
@@ -1111,6 +1124,8 @@ function Requirements({ data, navigate, update, state, customer = false }) {
 
 function Page(c) {
   const { screen } = c;
+  if (c.engagement.receipt && ["C06", "C07", "C08", "C09", "C13", "O02", "O03", "O04", "O05", "O06", "O08", "O09", "O12"].includes(screen.id))
+    return <RequestAssessment key={`${c.engagement.id}:${screen.id}`} {...c} ui={{ Card, Button, Badge, Note, Fields, ImpactAnswers, downloadJSON }} />;
   if (
     c.state.selected !== "cedar" &&
     [
@@ -1160,7 +1175,11 @@ function Overview(c) {
   const { data, navigate, state, setDrawer } = c;
   const status = workflowStatus(state);
   const cedar = data.engagements.find(row => row.id === "cedar");
-  const customerActions = data.overviewActions.filter(action => action.engagement === "cedar" ? status.ready : !state.owners?.[action.engagement]);
+  const requestActions = data.engagements.filter(row => row.receipt && !requestAssessment(state, row).decision).map(row => {
+    const progress = requestProgress(requestAssessment(state, row));
+    return { engagement: row.id, title: `${row.supplier} · ${progress.label}`, detail: `${row.service}. Next owner: ${progress.nextOwner}.`, status: progress.label, nextOwner: progress.nextOwner, action: "Open assessment", route: "C09" };
+  });
+  const customerActions = [...requestActions, ...data.overviewActions.filter(action => action.engagement === "cedar" ? status.ready : !state.owners?.[action.engagement])];
   const nextAction = customerActions[0];
   const openAction = (action) => {
     c.update({ selected: action.engagement });
@@ -1182,7 +1201,7 @@ function Overview(c) {
             <h2 id="next-action-heading">{nextAction?.engagement === "cedar" ? "CedarCloud needs your decision" : nextAction?.title || "Your reviews are with the assurance team"}</h2>
             <p>{nextAction?.engagement === "cedar" ? `${cedar.service} · The review and independent QA are complete. Review the recommendation and choose your own outcome.` : nextAction?.detail || (cedar ? `${status.label}. Next owner: ${status.nextOwner}.` : "No prepared review currently needs your decision in this customer workspace.")}</p>
             {nextAction?.engagement === "cedar" && <div className="review-checks"><span><Icon name="Check" size={16}/> Source review complete</span><span><Icon name="Check" size={16}/> Independent QA complete</span></div>}
-            {nextAction && <small>Next owner: {nextAction.engagement === "cedar" ? status.nextOwner : "Customer business owner"}</small>}
+            {nextAction && <small>Next owner: {nextAction.nextOwner || (nextAction.engagement === "cedar" ? status.nextOwner : "Customer business owner")}</small>}
           </div>
           {nextAction ? <Button primary icon="ArrowRight" onClick={() => openAction(nextAction)}>{nextAction.engagement === "cedar" ? "Review the recommendation" : nextAction.action}</Button>
             : cedar && <Button icon="ArrowRight" onClick={() => { c.update({ selected: cedar.id }); navigate(state.decision ? "C07" : "C09"); }}>{state.decision ? "Open recorded decision" : "View review status"}</Button>}
@@ -1191,7 +1210,7 @@ function Overview(c) {
       <section className="quiet-metrics overview-summary" aria-label="Portfolio summary">
         <button onClick={() => navigate("C14")}><strong>{new Set(data.engagements.map(row => row.supplier)).size}</strong><span>Suppliers</span><small>View supplier services</small></button>
         <button onClick={() => navigate("C15")}><strong>{data.engagements.filter(row => !["Active", "Rejected"].includes(row.stage)).length}</strong><span>Open reviews</span><small>View assessment register</small></button>
-        <button onClick={() => navigate("C16")}><strong>{cedar && status.ready ? 1 : 0}</strong><span>Decision needed</span><small>{cedar && status.ready ? 1 : 0} decision ready · view reports</small></button>
+        <button onClick={() => navigate("C16")}><strong>{(cedar && status.ready ? 1 : 0) + requestActions.filter(row => row.status === "Ready for customer decision").length}</strong><span>Decision needed</span><small>{(cedar && status.ready ? 1 : 0) + requestActions.filter(row => row.status === "Ready for customer decision").length} decision ready · view reports</small></button>
       </section>
 
       <EngagementTable {...c} rows={data.engagements.slice(0, 6)} title="Your service reviews" action={<Link onClick={() => navigate("C14")}>Full supplier register →</Link>}/>
@@ -1204,7 +1223,7 @@ function Overview(c) {
           </div>
           <div className="explore-choice">
             <span className="explore-icon"><Icon name="Building2" size={22}/></span>
-            <div><h3>Try your own request</h3><p>Add your business context. Your request remains pending analyst triage in this demo.</p><Button icon="ArrowRight" onClick={() => navigate("C02")}>Start a supplier request</Button></div>
+            <div><h3>Try your own request</h3><p>Add your business context. Follow your request through analyst review, independent QA and your final decision.</p><Button icon="ArrowRight" onClick={() => navigate("C02")}>Start a supplier request</Button></div>
           </div>
         </Card>
         <Card title="CTP and monitoring" className="programme-glance">
@@ -1291,7 +1310,7 @@ function Registers(c) {
     remember({ search: "", filter: "All", stageFilter: "All", status: "All services" });
   };
   if (supplier || directory) {
-    const scopedRows = data.engagements.map(row => ({ ...row, domain: data.suppliers.find(item => item.name === row.supplier)?.domain || "" }));
+    const scopedRows = data.engagements.map(row => ({ ...row, domain: row.domain || data.suppliers.find(item => item.name === row.supplier)?.domain || "" }));
     const filterRows = filterEngagements(scopedRows, "", filter).filter(row => status === "Approved services" ? row.stage === "Active" : status === "Needs attention" ? !["Active", "Rejected"].includes(row.stage) : true);
     const matchingRows = filterEngagements(filterRows, search);
     return <div className="service-directory">
@@ -1308,9 +1327,7 @@ function Registers(c) {
       </Card>
     </div>;
   }
-  const baseRows = screen.id === "C15"
-    ? data.engagements.filter(row => tab === "Approved" ? row.stage === "Active" : !["Active", "Rejected"].includes(row.stage))
-    : data.engagements;
+  const baseRows = screen.id === "C15" && tab === "Approved" ? data.engagements.filter(row => row.stage === "Active") : data.engagements;
   const rows = filterEngagements(baseRows, search, filter).filter(row => (stageFilter === "All" || row.stage === stageFilter) && (tab !== "Needs attention" || !["Active", "Rejected"].includes(row.stage)));
   return <>
     <Stats items={[[data.engagements.filter(row => !["Active", "Rejected"].includes(row.stage)).length, "Open assessments"], [data.engagements.filter(row => row.stage === "Evidence").length, "Evidence reviews"], [data.engagements.filter(row => row.stage === "Decision").length, "Customer decisions"], [data.engagements.filter(row => ["Active", "Rejected"].includes(row.stage)).length, "Completed and pinned"]]}/>
@@ -1322,16 +1339,16 @@ function Registers(c) {
   </>;
 }
 function RiskGrid(c) {
-  const stages = ["Request", "Evidence", "Questions", "Findings", "QA", "Decision"];
+  const stages = ["Request", "Evidence", "Questions", "Findings", "QA", "Decision", ...["Intake", "Scope", "Recommendation"].filter(stage => c.data.engagements.some(row => row.stage === stage))];
   return (
-    <div className="risk-grid">
+    <div className="risk-grid" style={{ "--risk-columns": stages.length }}>
       <div className="risk-grid-row">
         <span>CTP inherent risk</span>
         {stages.map((s) => (
           <small key={s}>{s}</small>
         ))}
       </div>
-      {["Critical", "High", "Medium", "Low"].map((r) => (
+      {["Critical", "High", "Medium", "Low", ...(c.data.engagements.some(row => row.risk === "Pending triage") ? ["Pending triage"] : [])].map((r) => (
         <div className="risk-grid-row" key={r}>
           <span>
             <Badge>{r}</Badge>
@@ -1411,7 +1428,7 @@ function DirectoryDetails(c) {
       const scopes = allRows.filter(row => row.supplier === entity.supplier && row.workspaceId === entity.workspaceId);
       const other = scopes.filter(row => !matching.some(match => match.id === row.id));
       return <details className="supplier-entity-card" open key={key}>
-        <summary><div className="supplier-entity-heading"><Entity name={entity.supplier} service={`${entity.domain || "Confirmed supplier"}${c.user?.role === "analyst" ? ` · ${entity.client}` : ""}`}/><div className="entity-service-count"><b>{scopes.length} service {scopes.length === 1 ? "scope" : "scopes"}</b><span>{scopes.filter(row => row.stage === "Active").length} approved · {scopes.filter(row => row.stage !== "Active").length} not approved</span></div><Icon name="ChevronDown" size={20}/></div></summary>
+        <summary><div className="supplier-entity-heading"><Entity name={entity.supplier} service={`${entity.domain || (entity.receipt ? "Submitted supplier identity" : "Confirmed supplier")}${c.user?.role === "analyst" ? ` · ${entity.client}` : ""}`}/><div className="entity-service-count"><b>{scopes.length} service {scopes.length === 1 ? "scope" : "scopes"}</b><span>{scopes.filter(row => row.stage === "Active").length} approved · {scopes.filter(row => row.stage !== "Active").length} not approved</span></div><Icon name="ChevronDown" size={20}/></div></summary>
         <div className="supplier-scope-content">{matching.map(row => service(row))}{other.length > 0 && <div className="other-scopes"><h4>Other services from this supplier</h4><p>Shown for context. These scopes do not match the current filters and carry their own decisions.</p>{other.map(row => service(row, false))}</div>}<div className="service-scope-notice"><Icon name="ShieldCheck" size={16}/><span>Approval applies to the named service only. It does not approve every use of {entity.supplier}.</span></div></div>
       </details>;
     })}</div>
@@ -1550,6 +1567,8 @@ function Intake(c) {
       risk: "Pending triage", stage: "Intake", owner: data.workspace.analyst,
       due: "Pending review", plan: "To be confirmed", client: data.workspace.name,
       workspaceId: c.user.workspaceId, receipt,
+      domain: intake.domain,
+      decisionOwnerId: c.user.actorId, questions: [...questions],
       answers: { ...intake.answers }, attachments: structuredClone(intake.attachments),
       businessImpact: snapshotImpact(impactQuestions, impactAnswers),
     };
@@ -1649,13 +1668,7 @@ function UploadList({ files, onChange, removable = true }) {
 
 function SecondaryCase(c) {
   const { engagement, navigate, update, screen, data } = c;
-  if (engagement.receipt) return <div className="op-receipt-page">
-    <section className="op-success-hero"><span className="op-success-mark"><Icon name="Check" size={30}/></span><div><div className="eyebrow">REQUEST CONFIRMATION · {engagement.receipt}</div><h2>Your supplier request was received</h2><p>{engagement.supplier} · {engagement.service}</p><small>No supplier decision has been made. Your request is waiting for analyst triage.</small></div><Badge>Awaiting triage</Badge></section>
-    <div className="op-form-layout"><Card title="What happens next"><ol className="op-numbered-timeline"><li><b>Osura reviews your business context</b><p>Next owner: assigned Osura analyst. Your submitted facts and intended service stay attached to this request.</p></li><li><b>Any missing facts stay with this request</b><p>Unknown answers remain unresolved. This prototype does not send a notification or promise a response time.</p></li><li><b>The review scope is confirmed</b><p>No risk classification, evidence conclusion or customer approval has been invented.</p></li></ol><div className="op-form-footer"><Button onClick={()=>document.getElementById("submitted-request-details")?.scrollIntoView({behavior:"smooth"})} primary>View my request</Button><Button onClick={()=>navigate(screen.role==="analyst"?"O01":"C01")}>Return to my overview</Button></div></Card>
-    <Card title="Submitted details" className="op-submitted-details"><div id="submitted-request-details"><Fields items={[["Supplier",engagement.supplier],["Service",engagement.service],["Customer",engagement.client],["Business context",`${Object.keys(engagement.answers||{}).length} answers recorded`],["Documents",engagement.attachments?.map(f=>f.name).join(", ")||"No documents attached"],["Reference",engagement.receipt]]}/><details className="op-help"><summary>View submitted business facts</summary><Fields items={Object.entries(engagement.answers||{}).map(([i,a])=>[`Business fact ${Number(i)+1}`,a])}/></details><Button small icon="Download" onClick={()=>downloadJSON(engagement.receipt,engagement)}>Download this receipt</Button><Note>Receipt and submitted facts are kept until refresh. Download a copy before leaving this session.</Note></div></Card></div>
-    {engagement.businessImpact && <Card title="Submitted CTP business impact"><p>{engagement.businessImpact.source}</p><ImpactAnswers questions={engagement.businessImpact.questions} answers={Object.fromEntries(engagement.businessImpact.questions.map(question => [question.id, question.answer]))}/><Note>The receipt preserves the question wording and answers submitted for this service. Its final CTP inherent-risk tier remains Pending triage.</Note></Card>}
-    {data.engagements.some(row=>row.id==="cedar")&&<Card title="Want to see the complete journey?" className="op-example-invitation"><div><h3>Explore the separate CedarCloud example</h3><p>See evidence review, a customer decision and ongoing assurance. This changes the example, never the status of your request.</p></div><Button onClick={()=>{update({selected:"cedar"});navigate(screen.role==="analyst"?"O02":"C09");}}>Explore the prepared example →</Button></Card>}
-  </div>;
+  if (engagement.receipt) return <RequestAssessment key={engagement.id} {...c} ui={{ Card, Button, Badge, Note, Fields, ImpactAnswers, downloadJSON }} />;
   return <><div className="supplier-banner"><Entity name={engagement.supplier} service={engagement.service}/><Badge>CTP inherent risk: {engagement.risk}</Badge><Badge>{engagement.stage}</Badge></div><div className="op-form-layout"><Card title="Service-scoped portfolio preview"><Fields items={[["Customer",engagement.client],["Supplier",engagement.supplier],["Service",engagement.service],["Current stage",engagement.stage],["Owner",engagement.owner],["Assessment plan",engagement.plan],["Next date",formatDue(engagement.due)]]}/><Note>This record has its own supplier, service and review state. CedarCloud evidence and decisions are never used for this service.</Note><Button onClick={()=>navigate(screen.role==="analyst"?"O01":"C15")}>Return to {screen.role==="analyst"?"assigned work":"assessment register"}</Button></Card><Card title="A separate prepared walkthrough"><p>The full source-review and customer-decision journey is prepared for CedarCloud’s payment event processing service.</p>{data.engagements.some(row=>row.id==="cedar")?<Button onClick={()=>{update({selected:"cedar"});navigate(screen.role==="analyst"?"O02":"C09");}}>View CedarCloud example →</Button>:<Note>No full walkthrough is prepared for the current customer selection.</Note>}</Card></div></>;
 }
 
@@ -1923,12 +1936,18 @@ function Findings(c) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const customer = screen.role === "customer";
-  const allRows = [...data.findings, ...(state.extraFindings || [])];
+  const conditions = data.engagements.filter(row => row.receipt && requestAssessment(state, row).decision?.condition).map(row => {
+    const record = requestAssessment(state, row);
+    return { id: `condition-${row.id}`, engagementId: row.id, supplier: row.supplier, service: row.service, control: "Customer condition", severity: "Follow-up",
+      issue: record.decision.condition.evidence, owner: record.decision.condition.owner, due: record.decision.condition.due,
+      state: record.conditionClosed ? "Closed" : "Open condition", evidence: record.decision.condition.evidence };
+  });
+  const allRows = [...data.findings, ...(state.extraFindings || []), ...conditions];
   const rows = allRows.filter(row => `${row.issue} ${row.supplier} ${row.owner} ${row.control}`.toLowerCase().includes(search.toLowerCase()) && (filter === "All" || filter === "Open" && row.state !== "Closed" || filter === "Conditions" && /condition/i.test(row.state) || filter === row.state));
   const f = rows.find(row=>row.id===selectedId) || rows.find(row=>row.engagementId===state.selected) || rows[0];
   const requirement = f?.engagementId === "cedar" ? data.requirements.find(row=>row.id===f.control) : null;
   const proposed = f?.id === "F-01" && !state.decision;
-  const openEvidence = () => { c.update({ selected:f.engagementId, selectedFinding:f.id, selectedRequirement:f.control }); navigate(customer?"C13":f.id==="F-01"&&state.decision?.condition?"O09":"O04"); };
+  const openEvidence = () => { c.update({ selected:f.engagementId, selectedFinding:f.id, selectedRequirement:f.control }); navigate(conditions.some(row => row.id === f.id) ? customer ? "C07" : "O09" : customer?"C13":f.id==="F-01"&&state.decision?.condition?"O09":"O04"); };
   return <div className="op-findings-page">
     <section className="op-section-heading"><div><div className="eyebrow">ACCOUNTABLE REMEDIATION</div><h2>Make each finding actionable</h2><p>Evidence, treatment and accountability stay with the exact supplier service.</p></div>{!customer&&<Button primary icon="FileText" onClick={()=>setDrawer("finding")}>Create a finding</Button>}</section>
     <div className="op-metric-strip"><div><strong>{allRows.filter(row=>row.state!=="Closed").length}</strong><span>Open material items</span></div><div><strong>{allRows.filter(row=>row.state==="Open condition").length}</strong><span>Customer-approved conditions</span></div><div><strong>{allRows.filter(row=>row.state==="Closed").length}</strong><span>Closed with reviewed proof</span></div></div>
@@ -2091,6 +2110,13 @@ function Reports(c) {
   const cedar = data.engagements.find(row => row.id === "cedar");
   const status = workflowStatus(state);
   const reports = [
+    ...data.engagements.filter(row => row.receipt).map(row => {
+      const record = requestAssessment(state, row);
+      const progress = requestProgress(record);
+      return { engagementId: row.id, supplier: row.supplier, service: row.service, status: progress.label,
+        date: record.decision ? formatDate(record.decision.at) : "Current session", owner: record.decision?.actor || progress.nextOwner,
+        file: record.signedPack ? "Pack v1 · published" : "Draft / not signed", route: record.signedPack ? "C07" : "C09", ready: progress.action === "decision" };
+    }),
     ...(cedar ? [{
       engagementId: cedar.id,
       supplier: cedar.supplier,
@@ -2113,7 +2139,7 @@ function Reports(c) {
         (tab === "Published"
           ? r.file.includes("published")
           : tab === "Decision required"
-            ? r.engagementId === "cedar" && status.ready
+            ? r.ready || r.engagementId === "cedar" && status.ready
             : r.file.includes("Historical"))),
   );
   return (
@@ -2152,7 +2178,7 @@ function Reports(c) {
             </thead>
             <tbody>
               {reports.map((r) => (
-                <tr key={r.supplier}>
+                <tr key={r.engagementId || r.supplier}>
                   <td>
                     {r.supplier} · {r.service}
                   </td>
@@ -2173,7 +2199,7 @@ function Reports(c) {
                         navigate(r.route);
                       }}
                     >
-                      {r.route === "C06" ? "Review" : "Open pack"} →
+                      {r.route === "C06" ? "Review" : r.route === "C09" ? "Open assessment" : "Open pack"} →
                     </Link>
                   </td>
                 </tr>
@@ -2331,6 +2357,11 @@ function Monitoring(c) {
   const [filter, setFilter] = useState("All");
   const today = new Date(); today.setHours(0,0,0,0);
   const entries = [
+    ...data.engagements.filter(row => row.receipt && requestAssessment(state, row).decision?.condition).map(row => {
+      const record = requestAssessment(state, row);
+      return { id: `condition-${row.id}`, engagementId: row.id, supplier: row.supplier, activity: "Customer approval condition", owner: record.decision.condition.owner,
+        date: record.decision.condition.due, status: record.conditionClosed ? "Closed" : "Open condition", proof: record.decision.condition.evidence, route: "O09" };
+    }),
     ...data.monitoring.map((row,i)=>({...row,id:`monitor-${i}`,engagementId:row.engagementId||data.engagements.find(e=>e.supplier===row.supplier&&e.client===row.client)?.id,proof:row.activity==="Recovery condition"?state.decision?.condition?.evidence||"Prepared recovery exercise proposal":"Dated, service-scoped review record naming the reviewer, sources and conclusion"})),
     ...(state.scheduledReviews||[]).map(row=>({...row,activity:row.title,status:"Scheduled",proof:row.description})),
     ...state.events.filter(row=>row.message.includes("Material change")).map(row=>({...row,supplier:data.engagements.find(e=>e.id===row.engagementId)?.supplier||"Service change",activity:row.message,date:row.at,status:"Needs triage",owner:row.actor,proof:row.rationale})),
@@ -2369,7 +2400,7 @@ function Operations(c) {
   return <div className="op-work-page">
     <div className="op-metric-strip"><div><strong>{open.length}</strong><span>Open service reviews</span></div><div><strong>{open.filter(row=>row.stage==="Evidence").length}</strong><span>Evidence to review</span></div><div><strong>{open.filter(row=>row.stage==="QA").length}</strong><span>Independent QA</span></div><div><strong>{open.filter(row=>row.stage==="Decision").length}</strong><span>Customer decisions</span></div></div>
     <div className="op-work-layout"><Card title="My work" className="op-work-queue" action={<Link onClick={()=>navigate("O11")}>View customer portfolios →</Link>}><div className="op-search-bar"><Icon name="Search"/><input aria-label="Search assigned work" placeholder="Search customer, supplier or scoped service" value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="op-inline-filters"><label>CTP inherent risk<select value={filter} onChange={e=>setFilter(e.target.value)}>{["All","Critical","High","Medium","Low"].map(v=><option key={v}>{v}</option>)}</select></label><label>Current stage<select value={stage} onChange={e=>setStage(e.target.value)}>{["All",...new Set(open.map(row=>row.stage))].map(v=><option key={v}>{v}</option>)}</select></label><Button small onClick={reset}>Clear filters</Button></div><div className="op-filter-summary">{rows.length} results · {filter==="All"?"All risk tiers":`${filter} CTP inherent risk`} · {stage==="All"?"All review stages":stage}{search&&` · “${search}”`}</div>
-      {rows.length?<div className="op-queue-list">{rows.map(row=><article key={row.id} className="op-work-row"><div><small>{row.client}</small><h3>{row.supplier}</h3><p>{row.service}</p><div className="badges"><Badge>{row.risk}</Badge><Badge>{row.stage}</Badge></div></div><div className="op-work-attention"><b>{row.id==="cedar"?workflowStatus(state).label:data.operationsAttention[row.id]||"New request awaiting analyst triage"}</b><p>{row.id==="cedar"?"Next owner":"Business owner"}: {row.id==="cedar"?workflowStatus(state).nextOwner:row.owner}</p><small>Due {formatDue(row.due)}</small></div><Button small onClick={()=>openCase(row)}>Open case →</Button></article>)}</div>:<div className="op-empty"><Icon name="Search" size={32}/><h3>No work matches these filters</h3><p>There are no matching records for {filter} risk and {stage} stage{search?` containing “${search}”`:""}. This does not mean all programme work is complete.</p><div><Button primary onClick={reset}>Clear filters</Button><Button onClick={reset}>Return to my assigned work</Button></div></div>}
+      {rows.length?<div className="op-queue-list">{rows.map(row=><article key={row.id} className="op-work-row"><div><small>{row.client}</small><h3>{row.supplier}</h3><p>{row.service}</p><div className="badges"><Badge>{row.risk}</Badge><Badge>{row.stage}</Badge></div></div><div className="op-work-attention"><b>{row.receipt?requestProgress(requestAssessment(state,row)).label:row.id==="cedar"?workflowStatus(state).label:data.operationsAttention[row.id]||"Open the service preview"}</b><p>{row.id==="cedar"||row.receipt?"Next owner":"Business owner"}: {row.receipt?requestProgress(requestAssessment(state,row)).nextOwner:row.id==="cedar"?workflowStatus(state).nextOwner:row.owner}</p><small>Due {formatDue(row.due)}</small></div><Button small onClick={()=>openCase(row)}>Open case →</Button></article>)}</div>:<div className="op-empty"><Icon name="Search" size={32}/><h3>No work matches these filters</h3><p>There are no matching records for {filter} risk and {stage} stage{search?` containing “${search}”`:""}. This does not mean all programme work is complete.</p><div><Button primary onClick={reset}>Clear filters</Button><Button onClick={reset}>Return to my assigned work</Button></div></div>}
     </Card><aside className="op-context-rail"><Card title="Delivery and handoffs"><div className="op-context-note"><h3>Waiting is a real state</h3><p>Supplier response, internal QA and customer decisions have different owners. A queued message is never a delivery receipt.</p></div>{data.operationsHandoffs.map(([,detail,owner,,id],i)=>{
       const row=data.engagements.find(e=>e.id===id);
       if(!row)return null;
@@ -2619,17 +2650,14 @@ function Communications(c) {
   const threads = data.communications.map(row=>state.retries?.[row[0]]?[...row.slice(0,3),"Retry queued (local)","Session retry recorded",...row.slice(5)]:row[0]===data.request.reference?[...row.slice(0,3),state.requestStatus,...row.slice(4)]:row);
   const visible = threads.filter(row=>(tab==="All"||row[3].toLowerCase().includes(tab.toLowerCase()))&&row.join(" ").toLowerCase().includes(query.toLowerCase()));
   const thread = threads.find(row=>row[0]===selected)||visible[0];
-  useEffect(() => {
-    const record = thread && data.engagements.find(row => thread[1] === `${row.client} / ${row.supplier}`);
-    if (record) c.update({ selected: record.id });
-  }, [thread?.[0]]);
   const original = thread&&data.communications.find(row=>row[0]===thread[0]);
   const retry = thread&&state.retries?.[thread[0]];
   const cedar = thread?.[0]===data.request.reference;
   const retryThread = () => {
     if(!thread||state.retries?.[thread[0]])return;
     const at = new Date().toISOString();
-    const engagement = data.engagements.find(row => thread[1].includes(row.supplier));
+    const engagement = data.engagements.find(row => row.workspaceId === thread[6] && thread[1] === `${row.client} / ${row.supplier}`);
+    if (!engagement) { c.notify("No accessible assessment matches this conversation."); return; }
     const entry = actionEntry({ ...data, activeEngagementId: engagement?.id || data.activeEngagementId }, `Local retry queued: ${thread[0]}`, "Retry requested locally; delivery is not confirmed.", { packetReference: thread[0] });
     c.update({ retries: { ...state.retries, [thread[0]]: { at, actor: c.user.name } }, events: [...state.events, entry] });
     c.notify("Retry queued locally. Delivery is not confirmed; no external email was sent.");

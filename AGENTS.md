@@ -20,4 +20,4 @@ The latest client-handover corrections and live release evidence are in `docs/cl
 
 Run `npm test` and `npm run build`. After schema/seed changes, run `npm run generate:db`. Pushing `main` to `mehdi89/osura-interactive-demo` triggers Vercel production deployment; publish only when requested.
 
-Preserve CTP methodology, versioned evidence, independent QA, immutable action attribution and customer decision authority. The full walkthrough is CedarCloud; other engagements are scoped portfolio previews.
+Preserve CTP methodology, versioned evidence, independent QA, immutable action attribution and customer decision authority. CedarCloud remains the prepared walkthrough; newly submitted customer requests now have isolated intake, scope, evidence, recommendation, independent QA, customer decision and condition follow-up through `request-workflow.mjs` and `RequestAssessment.jsx`. Other seeded engagements remain scoped portfolio previews. Analysts use workspace sidebar destinations and assessment-local steps. Role handoffs preserve an accessible submitted request; browsing Communications must not change the selected assessment.

@@ -9,16 +9,17 @@ import { sessionUser, scopeWorkspace } from "../src/access.mjs";
 import { projectWorkspace } from "../src/data-model.mjs";
 import { createState, recordDecision } from "../src/state.mjs";
 import { snapshotImpact } from "../src/ctp.mjs";
+import { requestAssessment, transitionRequest } from "../src/request-workflow.mjs";
 
 // Render the actual screen functions without starting the browser-only app bootstrap.
 const source = await readFile(new URL("../src/main.jsx", import.meta.url), "utf8");
 const bundled = await build({
-  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { App, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm, Operations, Quality, Monitoring, SupplierPortal, Intake, Impact, SecondaryCase, formatDue };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
+  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { App, Page, Reports, Registers, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm, Operations, Quality, Monitoring, SupplierPortal, Intake, Impact, SecondaryCase, formatDue };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
   bundle: true, platform: "node", format: "cjs", packages: "external", loader: { ".css": "empty" }, write: false,
 });
 const module = { exports: {} };
 new Function("require", "module", "exports", bundled.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports);
-const { App, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm, Operations, Quality, Monitoring, SupplierPortal, Intake, Impact, SecondaryCase, formatDue } = module.exports;
+const { App, Page, Reports, Registers, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm, Operations, Quality, Monitoring, SupplierPortal, Intake, Impact, SecondaryCase, formatDue } = module.exports;
 const readJSON = async name => JSON.parse(await readFile(new URL(`../public/data/${name}.json`, import.meta.url)));
 const model = await readJSON("workspace");
 const user = sessionUser(model, "customer-morgan");
@@ -113,12 +114,23 @@ test("source inspection uses the current file and version rather than the origin
 
 function findElement(element, text) {
   if (!React.isValidElement(element)) return null;
-  if (element.props.children === text && typeof element.props.onClick === "function") return element;
+  const children = React.Children.toArray(element.props.children);
+  if (children.every(value => typeof value === "string" || typeof value === "number") && children.join("") === text && typeof element.props.onClick === "function") return element;
   for (const value of [element.props.action, ...React.Children.toArray(element.props.children)]) {
     const found = findElement(value, text);
     if (found) return found;
   }
   return null;
+}
+
+function openRendered(Component, props, label) {
+  return render(() => {
+    const tree = Component(props);
+    const action = findElement(tree, label);
+    assert.ok(action, `Missing action: ${label}`);
+    action.props.onClick();
+    return tree;
+  });
 }
 
 test("assurance navigation accepts click events and preserves the signed engagement", () => {
@@ -133,6 +145,159 @@ test("assurance navigation accepts click events and preserves the signed engagem
   findElement(Pack(c), "Continue to active assurance →").props.onClick({ type: "click" });
   assert.equal(routes.at(-1), "C08");
   assert.equal(patches.at(-1).selected, c.state.signedPack.engagement.id);
+});
+
+const request = {
+  id: "request-zapier", supplier: "Zapier", service: "Customer record synchronisation", receipt: "REQ-ZAPIER",
+  workspaceId: "northstar", client: "Northstar Payments", decisionOwnerId: user.actorId,
+  risk: "Pending triage", stage: "Intake", owner: "Assigned analyst", plan: "To be confirmed", due: "Pending review",
+  answers: { 0: "Yes", 1: "Unknown" }, attachments: [],
+  businessImpact: snapshotImpact(data.biaQuestions, Object.fromEntries(data.biaQuestions.map(question => [question.id, "N/A"]))),
+};
+function requestContext(identity = "analyst-01", screenId = "O02", state = createState(data)) {
+  const actingUser = sessionUser(model, identity);
+  return context({ user: actingUser, engagement: request, state: { ...state, selected: request.id }, screen: { id: screenId, role: screenId.startsWith("O") ? "analyst" : "customer" },
+    data: { ...data, access: actingUser, engagements: [request], activeEngagementId: request.id, documents: [], requirements: [], monitoring: [], findings: [], historicalReports: [] } });
+}
+function requestAction(state, action, values, identity = "analyst-01") {
+  const c = requestContext(identity, "O02", state);
+  const patch = transitionRequest(c.state, c.data, request.id, action, values);
+  return { ...state, ...patch, events: [...(state.events || []), ...patch.events] };
+}
+function recommendedRequest() {
+  let state = requestAction(createState(data), "scope", { service: request.service, risk: "High", plan: "Scoped manual review", rationale: "Classification follows the confirmed customer context and CTP method." });
+  state = requestAction(state, "evidence", { name: "Zapier_Service_Report_2026.pdf", source: "Customer-supplied service assurance report", version: "2026-v1", notes: "Covers the customer record synchronisation service." });
+  const evidenceId = requestAssessment(state, request).evidence[0].id;
+  state = requestAction(state, "review", { evidenceId, conclusion: "Partially supported", rationale: "Service coverage is confirmed; recovery proof remains an explicit limitation." });
+  return requestAction(state, "recommend", { outcome: "Approve with conditions", rationale: "Require a dated recovery exercise for the reviewed service." });
+}
+function readyRequest() {
+  return requestAction(recommendedRequest(), "qa", { outcome: "Passed", rationale: "Independently checked the source version, limitations and recovery condition." }, "analyst-02");
+}
+
+test("new request case routes show actionable triage and prerequisites instead of repeating the receipt", () => {
+  const intake = render(Page, requestContext());
+  assert.match(intake, /Confirm scope and begin assessment/);
+  assert.match(intake, /Next owner: Assigned analyst/);
+  assert.match(intake, /Applicable review plan/);
+  assert.match(intake, /CTP inherent-risk tier/);
+  for (const route of ["O02", "O03", "O08"]) {
+    const html = render(Page, requestContext("analyst-01", route));
+    assert.match(html, /Zapier/);
+    assert.doesNotMatch(html, /Your supplier request was received|CedarCloud|CedarCloud_BCP|Explore the prepared example/);
+    if (route === "O03") assert.match(html, /Confirm intake and scope before adding evidence/);
+    if (route === "O08") assert.match(html, /recommendation and complete evidence reviews are required first/);
+  }
+});
+
+test("request handoffs keep QA available after rework and reserve decision forms for the customer", () => {
+  let state = requestAction(recommendedRequest(), "qa", { outcome: "Rework requested", rationale: "Name the specific recovery proof needed." }, "analyst-02");
+  state = requestAction(state, "recommend", { outcome: "Approve with conditions", rationale: "A dated contracted-service recovery exercise is the explicit closure proof." });
+  const qa = render(Page, requestContext("analyst-02", "O08", state));
+  assert.match(qa, /<form[^>]*class="request-flow-form"/);
+  assert.match(qa, />Record independent QA<\/button>/);
+  assert.doesNotMatch(render(Page, requestContext("analyst-01", "O08", state)), />Record independent QA<\/button>/);
+  state = requestAction(state, "qa", { outcome: "Passed", rationale: "The revised condition resolves the independent challenge." }, "analyst-02");
+  const analyst = render(Page, requestContext("analyst-01", "C06", state));
+  assert.match(analyst, /analysts can read this decision page but cannot sign/);
+  assert.doesNotMatch(analyst, /<form|Review customer decision/);
+  const customer = render(Page, requestContext("customer-morgan", "C06", state));
+  assert.match(customer, /Your decision rationale/);
+  assert.match(customer, /<textarea[^>]*required=""[^>]*><\/textarea>/);
+  assert.match(customer, />Review customer decision<\/button>/);
+  assert.doesNotMatch(customer, />Confirm customer decision<\/button>/);
+});
+
+test("customer request for clarification returns the next action to the analyst with the customer's rationale", () => {
+  const state = requestAction(readyRequest(), "decision", { outcome: "Return for clarification", rationale: "Explain who owns the outstanding recovery obligation." }, "customer-morgan");
+  const html = render(Page, requestContext("analyst-01", "O02", state));
+  assert.match(html, /Next owner: Assigned analyst/);
+  assert.match(html, /Customer requested clarification: Explain who owns the outstanding recovery obligation/);
+  assert.match(html, />Save recommendation and send to QA<\/button>/);
+  assert.doesNotMatch(html, /Send reply to analyst|Download frozen decision record/);
+});
+
+test("signed request reports and monitoring open the same service's frozen record and condition", () => {
+  const state = requestAction(readyRequest(), "decision", { outcome: "Approve with conditions", rationale: "Accept subject to the named recovery obligation.", condition: { owner: "Zapier service owner", due: "2026-12-01", evidence: "Dated recovery test for customer record synchronisation" } }, "customer-morgan");
+  const routes = [], patches = [];
+  const c = requestContext("customer-morgan", "C16", state);
+  c.navigate = route => routes.push(route);
+  c.update = patch => patches.push(patch);
+  assert.match(openRendered(Reports, c, "Open pack →"), /Pack v1 · published/);
+  assert.equal(routes.at(-1), "C07");
+  assert.equal(patches.at(-1).selected, request.id);
+  const pack = render(Page, requestContext("customer-morgan", "C07", state));
+  assert.match(pack, /Zapier_Service_Report_2026.pdf · 2026-v1/);
+  assert.match(pack, /Download frozen decision record/);
+  assert.match(pack, /Zapier service owner/);
+  const analyst = { ...requestContext("analyst-01", "O15", state), navigate: c.navigate, update: c.update };
+  assert.match(openRendered(Monitoring, analyst, "View Zapier review →"), /Dated recovery test for customer record synchronisation/);
+  assert.equal(routes.at(-1), "O09");
+  assert.equal(patches.at(-1).selected, request.id);
+});
+
+test("request forms show only the current user's service drafts", () => {
+  const state = { ...createState(data), requestDrafts: {
+    [request.id]: { "analyst-01": { scope: { rationale: "PRIVATE OTHER USER DRAFT" } }, "customer-morgan": { decision: { rationale: "MY CUSTOMER DECISION DRAFT" } } },
+    "other-request": { "customer-morgan": { decision: { rationale: "PRIVATE OTHER SERVICE DRAFT" } } },
+  } };
+  const ready = { ...readyRequest(), requestDrafts: state.requestDrafts };
+  const customer = render(Page, requestContext("customer-morgan", "C06", ready));
+  assert.match(customer, /MY CUSTOMER DECISION DRAFT/);
+  assert.doesNotMatch(customer, /PRIVATE OTHER USER DRAFT|PRIVATE OTHER SERVICE DRAFT/);
+});
+
+test("risk grid accounts for pending triage and each new request review stage", () => {
+  const c = requestContext();
+  c.data = { ...c.data, engagements: [request, { ...request, id: "clarifying-request", stage: "Scope" }, { ...request, id: "recommended-request", stage: "Recommendation", risk: "High" }] };
+  const html = render(RiskGrid, c);
+  for (const cell of ["Pending triage Intake: 1 reviews", "Pending triage Scope: 1 reviews", "High Recommendation: 1 reviews"]) {
+    assert.ok(html.includes(`aria-label="${cell}"`), `Missing live grid count: ${cell}`);
+  }
+  for (const stage of ["Intake", "Scope", "Recommendation"]) assert.ok(html.includes(`<small>${stage}</small>`));
+});
+
+test("new signed conditions appear in findings and open their service's customer or analyst follow-up", () => {
+  const state = requestAction(readyRequest(), "decision", { outcome: "Approve with conditions", rationale: "Proceed with the recovery obligation.", condition: { owner: "Zapier service owner", due: "2026-12-01", evidence: "Customer-scoped recovery proof" } }, "customer-morgan");
+  for (const [identity, screenId, route] of [["customer-morgan", "C12", "C07"], ["analyst-01", "O07", "O09"]]) {
+    const routes = [], patches = [];
+    const c = { ...requestContext(identity, screenId, state), navigate: value => routes.push(value), update: value => patches.push(value) };
+    const html = openRendered(Findings, c, "Inspect this service’s evidence →");
+    assert.match(html, /Customer-scoped recovery proof/);
+    assert.match(html, /Zapier service owner/);
+    assert.match(html, /Open condition/);
+    assert.equal(routes.at(-1), route);
+    assert.equal(patches.at(-1).selected, request.id);
+  }
+});
+
+test("assessment register All retains a rejected signed request for later inspection", () => {
+  const state = requestAction(readyRequest(), "decision", { outcome: "Reject", rationale: "The remaining recovery gap exceeds appetite." }, "customer-morgan");
+  const c = requestContext("customer-morgan", "C15", state);
+  c.data = { ...c.data, engagements: [{ ...request, stage: "Rejected", risk: "High" }] };
+  const html = render(Registers, c);
+  assert.match(html, /Zapier/);
+  assert.match(html, /Customer record synchronisation/);
+  assert.match(html, /Rejected/);
+  assert.match(html, /Completed and pinned/);
+  assert.match(html, /Open service/);
+  assert.doesNotMatch(html, /No reviews match/);
+});
+
+test("QA explains missing independent customer assignments rather than suggesting an unavailable handoff", () => {
+  const c = requestContext("analyst-01", "O08", recommendedRequest());
+  const author = { ...sessionUser(model, "analyst-01"), canQA: true };
+  const reviewer = sessionUser(model, "analyst-02");
+  c.demoUsers = [author, { ...reviewer, workspaceIds: ["ridgeway"] }, { ...reviewer, id: "inactive-qa", active: false }];
+  const blocked = render(Page, c);
+  assert.match(blocked, /No independent QA reviewer is assigned to this customer/);
+  assert.match(blocked, /Ask the Superadmin to assign another analyst with QA permission/);
+  assert.doesNotMatch(blocked, />Record independent QA<\/button>/);
+  c.demoUsers = [author, reviewer];
+  const available = render(Page, c);
+  assert.match(available, /Available independent reviewer/);
+  assert.ok(available.includes(reviewer.name));
+  assert.doesNotMatch(available, /No independent QA reviewer is assigned/);
 });
 
 test("customer overview and decision steps do not claim customer action during rework", () => {
@@ -304,6 +469,16 @@ test("all workspace roles use the bottom profile menu and only analysts have a t
   const portal = renderApp("S01", { data: base, user: supplier, identity: supplier.id });
   assert.match(portal, /aria-label="Appearance"/);
   assert.doesNotMatch(portal, /aria-label="Account menu"/);
+});
+
+test("analyst sidebar contains workspace destinations while assessment steps stay inside the case", async () => {
+  const base = projectWorkspace(model, await readJSON("presentation"), await readJSON("examples"));
+  const actingUser = sessionUser(model, "analyst-01");
+  const html = renderApp("O02", { data: base, user: actingUser, identity: actingUser.id });
+  const nav = html.match(/<nav aria-label="Main navigation">([\s\S]*?)<\/nav>/)?.[1];
+  assert.ok(nav);
+  for (const route of ["O01", "O16", "O07", "O14", "O15", "O10"]) assert.ok(nav.includes(`href="#${route}"`));
+  for (const route of ["O02", "O03", "O08"]) assert.ok(!nav.includes(`href="#${route}"`));
 });
 
 test("account and billing panels keep each customer scope and password preview claims no credential change", async () => {

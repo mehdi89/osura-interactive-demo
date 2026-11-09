@@ -92,3 +92,43 @@ test("scoped owner edits and full decision patches retain the other customer's o
   assert.equal(signed.customerViews.northstar.intakeSubmitted, true);
   assert.deepEqual(state.owners, { cedar: "Northstar owner", clearbridge: "Ridgeway owner" });
 });
+
+test("request journeys and drafts survive a non-Cedar customer view and stay customer-scoped", () => {
+  const state = { selected: "r-extra", extraEngagements: [{ id: "n-extra", workspaceId: "northstar" }, { id: "r-extra", workspaceId: "ridgeway" }],
+    requestAssessments: { "n-extra": { scope: { service: "Northstar source" } }, "r-extra": { scope: { service: "Ridgeway source" }, qa: { outcome: "Passed" } } },
+    requestDrafts: { "n-extra": { rationale: "Northstar draft" }, "r-extra": { rationale: "Ridgeway draft" } },
+  };
+  const before = structuredClone(state);
+  const ridge = customerView(state, data("ridgeway"), ridgeway);
+  assert.equal(ridge.selected, "r-extra");
+  assert.deepEqual(ridge.requestAssessments, { "r-extra": state.requestAssessments["r-extra"] });
+  assert.deepEqual(ridge.requestDrafts, { "r-extra": state.requestDrafts["r-extra"] });
+  assert.doesNotMatch(JSON.stringify(ridge), /Northstar/);
+  const north = customerView(state, data("northstar"), northstar);
+  assert.deepEqual(Object.keys(north.requestAssessments), ["n-extra"]);
+  assert.deepEqual(Object.keys(north.requestDrafts), ["n-extra"]);
+  assert.deepEqual(state, before);
+});
+
+test("partial request map patches preserve other customers for analyst and customer actions", () => {
+  const state = { requestAssessments: { "n-extra": { revision: 1 }, "r-extra": { revision: 2 } }, requestDrafts: { "n-extra": { note: "Northstar" }, "r-extra": { note: "Ridgeway" } } };
+  for (const user of [ridgeway, { role: "analyst" }]) {
+    const patch = patchCustomerView(state, { requestAssessments: { "r-extra": { revision: 3 } }, requestDrafts: { "r-extra": null } }, user);
+    assert.deepEqual(patch.requestAssessments, { "n-extra": { revision: 1 }, "r-extra": { revision: 3 } });
+    assert.deepEqual(patch.requestDrafts, { "n-extra": { note: "Northstar" }, "r-extra": null });
+  }
+  assert.equal(state.requestAssessments["r-extra"].revision, 2);
+});
+
+test("analyst request maps honor assignments and the current customer filter", () => {
+  const state = { extraEngagements: [{ id: "n-extra", workspaceId: "northstar" }, { id: "r-extra", workspaceId: "ridgeway" }],
+    requestAssessments: { "n-extra": { revision: 1 }, "r-extra": { revision: 2 } }, requestDrafts: { "n-extra": { note: "Northstar" }, "r-extra": { note: "Ridgeway" } },
+  };
+  const analyst = { role: "analyst", workspaceIds: ["northstar", "ridgeway"] };
+  const filtered = customerView(state, { ...data("ridgeway"), workspaceProfiles: { ridgeway: {} } }, analyst);
+  assert.deepEqual(Object.keys(filtered.requestAssessments), ["r-extra"]);
+  assert.deepEqual(Object.keys(filtered.requestDrafts), ["r-extra"]);
+  const assigned = customerView(state, data("ridgeway"), { ...analyst, workspaceIds: ["northstar"] });
+  assert.deepEqual(Object.keys(assigned.requestAssessments), ["n-extra"]);
+  assert.deepEqual(Object.keys(assigned.requestDrafts), ["n-extra"]);
+});

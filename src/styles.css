@@ -1366,8 +1366,8 @@ blockquote {
 }
 .risk-grid-row {
   display: grid;
-  grid-template-columns: 85px repeat(6, minmax(45px, 1fr));
-  min-width: 385px;
+  grid-template-columns: 85px repeat(var(--risk-columns, 6), minmax(70px, 1fr));
+  min-width: calc(85px + 75px * var(--risk-columns, 6));
   gap: 5px;
   align-items: center;
 }
