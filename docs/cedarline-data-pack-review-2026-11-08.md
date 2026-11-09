@@ -2,6 +2,8 @@
 
 Reviewed 8 November 2026. This is a feasibility review and proposed implementation approach. No application code, data pack, loader or deployment was changed.
 
+**Scope update, 9 November:** the owner subsequently directed a data-only implementation with scenario pick/load, preserving existing UI and functionality. The implementation adapts Cedarline to reserved app IDs and existing outcomes rather than generalizing workflows or adding live Defer/PDF viewing. The broader proposals below remain review history; see [the implemented compatibility contract](cedarline-scenario-data.md).
+
 ## Recommendation
 
 Create a versioned Cedarline scenario JSON and retain the supplied evidence PDFs as associated, versioned assets. Load one active scenario at a time into our existing Osura UI. Keep CedarCloud available as the default scenario. The colleague's prototype is a useful manual-workflow reference; the original handover files should govern what the historical case actually contains.

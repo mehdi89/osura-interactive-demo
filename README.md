@@ -15,6 +15,8 @@ npm run dev -- --port 5178
 
 Open [localhost:5178](http://localhost:5178). The bottom demo bar selects a named demo user and opens that role’s screen index. Browser back/forward works through hash routes such as `/#C01`, `/#O04` and `/#S01`.
 
+Use **Scenario → Cedarline manual assessment → Load scenario** in the bottom bar to try the Cedarline pack. Expand **Demo tools** first on narrow screens. Loading a scenario clears the current session, including submitted requests and their assessment progress. Both the prepared scenario and the full journey for new customer requests are available in this checkout.
+
 ## Change the data
 
 As **Superadmin**, use **Demo data** in the bottom toolbar to add, edit or delete records. Changes survive navigation and perspective switches **until the page is refreshed**. There is no automatic localStorage/database saving. **Reset demo** clears walkthrough progress and overrides while preserving fixture edits; refreshing restores everything from the source JSON. Download the edited data JSON before refreshing if you want to keep it.
