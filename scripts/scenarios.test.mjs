@@ -7,6 +7,7 @@ import { projectWorkspace } from "../src/data-model.mjs";
 import { createState, mergeWorkflowPatch, recordDecision, workflowStatus } from "../src/state.mjs";
 import { sessionUser, scopeWorkspace } from "../src/access.mjs";
 import { requestAssessment, requestProgress, transitionRequest } from "../src/request-workflow.mjs";
+import { snapshotImpact } from "../src/ctp.mjs";
 
 const read = async name => JSON.parse(await readFile(new URL(`../public/${name}`, import.meta.url), "utf8"));
 const [workspace, presentation, examples, schema] = await Promise.all(["data/workspace.json", "data/presentation.json", "data/examples.json", "schemas/workspace.schema.json"].map(read));
@@ -166,4 +167,56 @@ test("new requests complete their own journey under Cedarline without borrowing 
     assert.equal(entry.engagementId, engagement.id);
     assert.equal(entry.service, engagement.service);
   }
+});
+
+test("the supplied blank scenario validates and a fresh request completes QA, decision and condition closure", async () => {
+  const fixture = JSON.parse(await readFile(new URL("./fixtures/osura-blank-scenario.json", import.meta.url), "utf8"));
+  const imported = validate(fixture);
+  const base = projectWorkspace(imported.workspace, imported.presentation, imported.examples);
+  assert.equal(imported.id, "blank-intake-starter");
+  assert.deepEqual(base.intake.answers, {});
+  assert.deepEqual(base.intake.businessImpactAnswers, {});
+  assert.deepEqual(base.documents, []);
+  assert.deepEqual(base.findings, []);
+  assert.equal(scopeWorkspace(base, sessionUser(imported.workspace, "customer-singh")).engagements.length, 0);
+  const owner = sessionUser(imported.workspace, "customer-morgan");
+  const engagement = { id: "request-blank-zapier", receipt: "REQ-BLANK-ZAPIER", workspaceId: owner.workspaceId,
+    client: base.workspace.name, supplier: "Zapier", service: "Customer record synchronisation", decisionOwnerId: owner.actorId,
+    risk: "Pending triage", stage: "Intake", answers: { 0: "Yes", 1: "Yes", 2: "Unknown", 3: "No" },
+    businessImpact: snapshotImpact(base.biaQuestions, Object.fromEntries(base.biaQuestions.map(row => [row.id, "Low"]))) };
+  let state = { ...createState(base), selected: engagement.id, extraEngagements: [engagement] };
+  const original = structuredClone(state);
+  const act = (identity, action, values) => {
+    const data = scopeWorkspace(base, sessionUser(imported.workspace, identity));
+    state = mergeWorkflowPatch(state, transitionRequest(state, { ...data, activeEngagementId: engagement.id,
+      engagements: [...data.engagements, engagement], workspace: data.workspaceProfiles[engagement.workspaceId] }, engagement.id, action, values));
+  };
+  act("analyst-01", "clarify", { question: "Would an outage interrupt a critical customer journey?" });
+  assert.equal(requestProgress(requestAssessment(state, engagement)).nextOwner, "Customer Decision Owner");
+  act("customer-morgan", "respond", { answer: "No; the service has a documented manual fallback." });
+  act("analyst-01", "scope", { service: engagement.service, risk: "Low", plan: "Standard review", rationale: "Manual classification reviewed the original context and customer clarification." });
+  act("analyst-01", "evidence", { name: "Zapier service control review", source: "Synthetic supplied service report", version: "v1", notes: "Controls cover this submitted service; recovery proof remains partial." });
+  const evidenceId = requestAssessment(state, engagement).evidence[0].id;
+  act("analyst-01", "review", { evidenceId, conclusion: "Partially supported", rationale: "Access controls are evidenced; request a recovery exercise condition." });
+  act("analyst-01", "recommend", { outcome: "Approve with conditions", rationale: "Recommend the scoped service with an owned recovery-proof obligation." });
+  act("analyst-02", "qa", { outcome: "Passed", rationale: "Independently challenged source coverage and the proposed recovery condition." });
+  act("customer-morgan", "decision", { outcome: "Approve with conditions", rationale: "Accept the scoped service with a named recovery-proof obligation.",
+    condition: { owner: "Customer operations", due: "2026-12-01", evidence: "Dated recovery exercise for this service" } });
+  const signed = structuredClone(requestAssessment(state, engagement).signedPack);
+  act("analyst-01", "evidence", { name: "Zapier recovery exercise", source: "Synthetic supplied recovery exercise", version: "v1", notes: "New service recovery proof follows the signed decision." });
+  const closureId = requestAssessment(state, engagement).evidence.at(-1).id;
+  act("analyst-01", "review", { evidenceId: closureId, conclusion: "Supported", rationale: "The dated exercise supports the signed recovery condition." });
+  act("analyst-01", "close", { rationale: "The reviewed service-specific exercise satisfies the customer condition." });
+  const record = requestAssessment(state, engagement);
+  assert.equal(requestProgress(record).label, "Condition closed");
+  assert.equal(record.decision.actor, "Customer owner");
+  assert.equal(record.qa.actor, "Demo QA reviewer");
+  assert.equal(record.signedPack.workspace.name, "My company");
+  assert.deepEqual(record.signedPack, signed);
+  assert.deepEqual(record.signedPack.submittedReceipt, engagement);
+  assert.deepEqual(record.signedPack.evidence.map(row => row.name), ["Zapier service control review"]);
+  assert.deepEqual({ conclusion: state.conclusion, judgement: state.judgement, qa: state.qa, qaReview: state.qaReview },
+    { conclusion: original.conclusion, judgement: original.judgement, qa: original.qa, qaReview: original.qaReview });
+  assert.deepEqual(base.documents, []);
+  assert.deepEqual(fixture, imported);
 });

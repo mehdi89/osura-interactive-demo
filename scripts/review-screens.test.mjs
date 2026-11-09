@@ -14,12 +14,12 @@ import { requestAssessment, transitionRequest } from "../src/request-workflow.mj
 // Render the actual screen functions without starting the browser-only app bootstrap.
 const source = await readFile(new URL("../src/main.jsx", import.meta.url), "utf8");
 const bundled = await build({
-  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { App, Page, Reports, Registers, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm, Operations, Quality, Monitoring, SupplierPortal, Intake, Impact, SecondaryCase, formatDue };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
+  stdin: { contents: source.slice(0, source.lastIndexOf("Promise.all(")) + "\nexport { App, Page, Reports, Registers, AuditTrail, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm, Operations, Quality, Monitoring, SupplierPortal, Intake, Impact, SecondaryCase, formatDue };", resolveDir: new URL("../src", import.meta.url).pathname, loader: "jsx" },
   bundle: true, platform: "node", format: "cjs", packages: "external", loader: { ".css": "empty" }, write: false,
 });
 const module = { exports: {} };
 new Function("require", "module", "exports", bundled.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports);
-const { App, Page, Reports, Registers, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm, Operations, Quality, Monitoring, SupplierPortal, Intake, Impact, SecondaryCase, formatDue } = module.exports;
+const { App, Page, Reports, Registers, AuditTrail, Drawer, Decision, Pack, Closure, EvidenceReview, Overview, Assessment, Inventory, RiskGrid, Findings, FindingForm, Operations, Quality, Monitoring, SupplierPortal, Intake, Impact, SecondaryCase, formatDue } = module.exports;
 const readJSON = async name => JSON.parse(await readFile(new URL(`../public/data/${name}.json`, import.meta.url)));
 const model = await readJSON("workspace");
 const user = sessionUser(model, "customer-morgan");
@@ -599,5 +599,65 @@ test("Cedarline renders through every existing role screen without old supplier 
       assert.match(html, /PREPARED REFERENCE EXAMPLE/);
       assert.doesNotMatch(html, /CUSTOMER DECISION RECORDED/);
     }
+  }
+});
+
+test("an assigned customer with an empty blank-scenario portfolio can start its first request", async () => {
+  const pack = JSON.parse(await readFile(new URL("./fixtures/osura-blank-scenario.json", import.meta.url), "utf8"));
+  const base = projectWorkspace(pack.workspace, pack.presentation, pack.examples);
+  const actor = sessionUser(pack.workspace, "customer-singh");
+  const props = { data: base, model: pack.workspace, user: actor, identity: actor.id };
+  const overview = renderApp("C01", props);
+  assert.match(overview, /Request assessment|Start a supplier request/);
+  assert.doesNotMatch(overview, /No customer data to show/);
+  const intake = renderApp("C02", props);
+  assert.match(intake, /Search supplier name or company domain/);
+  const main = intake.match(/<main[^>]*>([\s\S]*?)<\/main>/)[1];
+  assert.doesNotMatch(main, /No customer data to show|New supplier — not configured|My company/);
+});
+
+test("a blank scenario has no before-and-after supplier source comparison to render", async () => {
+  const pack = JSON.parse(await readFile(new URL("./fixtures/osura-blank-scenario.json", import.meta.url), "utf8"));
+  const base = projectWorkspace(pack.workspace, pack.presentation, pack.examples);
+  const actor = sessionUser(pack.workspace, "analyst-01");
+  const response = renderApp("O06", { data: base, model: pack.workspace, user: actor, identity: actor.id });
+  assert.match(response, /No (?:source|evidence|supplier response)/i);
+  assert.doesNotMatch(response, /BEFORE · BCP v2|Exercise coverage not demonstrated|Inspect changed result/);
+});
+
+test("new and legacy analyst recommendations have readable audit summaries without changing events", () => {
+  const entries = [
+    { id: "legacy-review", action: "Analyst recommendation recorded", recommendation: "Reject", actor: "Analyst", role: "analyst", workspaceId: "northstar", at: "2026-11-09T12:00:00Z" },
+    { id: "request-review", action: "Assessment recommendation recorded", recommendation: { outcome: "Approve with conditions", rationale: "Require proof" }, actor: "Demo analyst", role: "analyst", workspaceId: "northstar", at: "2026-11-09T12:01:00Z" },
+  ];
+  const before = structuredClone(entries);
+  const html = render(AuditTrail, { entries, user: sessionUser(model, "superadmin") });
+  assert.match(html, /<strong>Analyst recommendation recorded · Reject<\/strong>/);
+  assert.match(html, /<strong>Assessment recommendation recorded · Approve with conditions<\/strong>/);
+  assert.doesNotMatch(html, /\[object Object\]/);
+  assert.deepEqual(entries, before);
+});
+
+test("inactive customers and unassigned analysts cannot gain intake access through empty portfolios", async () => {
+  const pack = JSON.parse(await readFile(new URL("./fixtures/osura-blank-scenario.json", import.meta.url), "utf8"));
+  const base = projectWorkspace(pack.workspace, pack.presentation, pack.examples);
+  const inactive = { ...sessionUser(pack.workspace, "customer-singh"), active: false, workspaceIds: [] };
+  const customer = renderApp("C02", { data: base, model: pack.workspace, user: inactive, identity: inactive.id });
+  assert.match(customer, /Access unavailable/);
+  assert.doesNotMatch(customer, /Search supplier name or company domain/);
+  const unassigned = { ...sessionUser(pack.workspace, "analyst-01"), workspaceIds: [] };
+  const intake = renderApp("C02", { data: base, model: pack.workspace, user: unassigned, identity: unassigned.id });
+  assert.match(intake, /Access unavailable/);
+  assert.doesNotMatch(intake, /Search supplier name or company domain/);
+  assert.match(renderApp("O01", { data: base, model: pack.workspace, user: unassigned, identity: unassigned.id }), /No customer data to show/);
+});
+
+test("the supplied blank scenario renders every existing role screen without a source-data crash", async () => {
+  const pack = JSON.parse(await readFile(new URL("./fixtures/osura-blank-scenario.json", import.meta.url), "utf8"));
+  const base = projectWorkspace(pack.workspace, pack.presentation, pack.examples);
+  for (const screen of [...catalog.screens, { id: "A01", role: "superadmin" }]) {
+    const identity = { customer: "customer-morgan", analyst: "analyst-01", supplier: "supplier-contact", superadmin: "superadmin" }[screen.role];
+    const actor = screen.role === "supplier" ? { id: identity, actorId: identity, name: "Unconfigured supplier contact", role: "supplier", active: true, workspaceIds: ["northstar"] } : sessionUser(pack.workspace, identity);
+    assert.doesNotThrow(() => renderApp(screen.id, { data: base, model: pack.workspace, user: actor, identity }), screen.id);
   }
 });

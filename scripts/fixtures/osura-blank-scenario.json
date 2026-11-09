@@ -1,0 +1,647 @@
+{
+  "format": "osura-demo-scenario",
+  "version": 1,
+  "id": "blank-intake-starter",
+  "name": "Blank intake starter",
+  "description": "Start a new supplier intake with no sample answers, findings, evidence or recorded decisions. A required unassessed starter case remains for compatibility. New intake requests stop at Pending triage in the current demo.",
+  "workspace": {
+    "modelVersion": 1,
+    "workspaces": [
+      {
+        "id": "northstar",
+        "name": "My company"
+      },
+      {
+        "id": "ridgeway",
+        "name": "Other customer (empty)"
+      }
+    ],
+    "actors": [
+      {
+        "id": "a-morgan",
+        "name": "Customer owner"
+      },
+      {
+        "id": "t-singh",
+        "name": "Other customer owner"
+      },
+      {
+        "id": "osura-analyst-01",
+        "name": "Demo analyst"
+      },
+      {
+        "id": "qa-reviewer-02",
+        "name": "Demo QA reviewer"
+      },
+      {
+        "id": "osura-admin",
+        "name": "Demo administrator"
+      }
+    ],
+    "policyVersions": [
+      {
+        "id": "ctp-core-v1",
+        "name": "CTP Core v1",
+        "kind": "core",
+        "version": 1
+      },
+      {
+        "id": "standard-v2",
+        "name": "Standard v2",
+        "kind": "plan",
+        "version": 2
+      },
+      {
+        "id": "enhanced-v3",
+        "name": "Enhanced v3",
+        "kind": "plan",
+        "version": 3
+      },
+      {
+        "id": "customer-overlay-v3",
+        "name": "Enhanced v3",
+        "kind": "overlay",
+        "version": 3
+      }
+    ],
+    "suppliers": [
+      {
+        "id": "cedarcloud",
+        "name": "New supplier — not configured",
+        "domain": null,
+        "country": null,
+        "intakeEnabled": false
+      }
+    ],
+    "services": [
+      {
+        "id": "cedarcloud-payment-event-processing",
+        "supplierId": "cedarcloud",
+        "name": "Service — not configured",
+        "suggestionOrder": null
+      }
+    ],
+    "engagements": [
+      {
+        "id": "cedar",
+        "workspaceId": "northstar",
+        "serviceId": "cedarcloud-payment-event-processing",
+        "ownerId": "a-morgan",
+        "risk": "Pending triage",
+        "riskBasis": "awaiting-triage",
+        "stage": "Evidence",
+        "due": "2026-11-09",
+        "planVersionId": "enhanced-v3",
+        "corePolicyVersionId": "ctp-core-v1",
+        "overlayVersionId": "customer-overlay-v3",
+        "analystId": "osura-analyst-01",
+        "qaReviewerId": "qa-reviewer-02",
+        "decisionOwnerId": "a-morgan"
+      }
+    ],
+    "requirements": [
+      {
+        "id": "R-07",
+        "policyVersionId": "ctp-core-v1",
+        "family": "Resilience",
+        "name": "Service recovery exercise",
+        "expectation": "Recovery exercise scoped to service"
+      },
+      {
+        "id": "INC-03",
+        "policyVersionId": "ctp-core-v1",
+        "family": "Incident response",
+        "name": "Incident notification",
+        "expectation": "Incident notification roles and timeframes"
+      },
+      {
+        "id": "DATA-02",
+        "policyVersionId": "ctp-core-v1",
+        "family": "Data protection",
+        "name": "Data retention policy",
+        "expectation": "Retention and deletion evidence"
+      },
+      {
+        "id": "IAM-04",
+        "policyVersionId": "ctp-core-v1",
+        "family": "Identity and access",
+        "name": "Privileged access reviews",
+        "expectation": "Privileged access review"
+      }
+    ],
+    "requirementReviews": [
+      {
+        "id": "cedar-R-07",
+        "engagementId": "cedar",
+        "requirementId": "R-07",
+        "conclusion": "Needs review",
+        "next": "Add source evidence and record independent reasoning.",
+        "passage": "No evidence has been supplied.",
+        "proves": "Nothing established yet.",
+        "doesNotProve": "No assurance conclusion or service coverage has been established.",
+        "sourceLabel": "No source supplied",
+        "preparedProposal": "Not assessed. Review actual evidence before proposing an outcome."
+      },
+      {
+        "id": "cedar-INC-03",
+        "engagementId": "cedar",
+        "requirementId": "INC-03",
+        "conclusion": "Needs review",
+        "next": "Add source evidence and record independent reasoning.",
+        "passage": "No evidence has been supplied.",
+        "proves": "Nothing established yet.",
+        "doesNotProve": "No assurance conclusion or service coverage has been established.",
+        "sourceLabel": "No source supplied",
+        "preparedProposal": "Not assessed. Review actual evidence before proposing an outcome."
+      },
+      {
+        "id": "cedar-DATA-02",
+        "engagementId": "cedar",
+        "requirementId": "DATA-02",
+        "conclusion": "Needs review",
+        "next": "Add source evidence and record independent reasoning.",
+        "passage": "No evidence has been supplied.",
+        "proves": "Nothing established yet.",
+        "doesNotProve": "No assurance conclusion or service coverage has been established.",
+        "sourceLabel": "No source supplied",
+        "preparedProposal": "Not assessed. Review actual evidence before proposing an outcome."
+      },
+      {
+        "id": "cedar-IAM-04",
+        "engagementId": "cedar",
+        "requirementId": "IAM-04",
+        "conclusion": "Needs review",
+        "next": "Add source evidence and record independent reasoning.",
+        "passage": "No evidence has been supplied.",
+        "proves": "Nothing established yet.",
+        "doesNotProve": "No assurance conclusion or service coverage has been established.",
+        "sourceLabel": "No source supplied",
+        "preparedProposal": "Not assessed. Review actual evidence before proposing an outcome."
+      }
+    ],
+    "documentVersions": [],
+    "evidenceCitations": [],
+    "findings": [],
+    "triageQuestions": [
+      {
+        "id": "isITService",
+        "policyVersionId": "ctp-core-v1",
+        "label": "IT service"
+      },
+      {
+        "id": "isMySites",
+        "policyVersionId": "ctp-core-v1",
+        "label": "On-site service"
+      },
+      {
+        "id": "isIPInvolved",
+        "policyVersionId": "ctp-core-v1",
+        "label": "Intellectual property involved"
+      },
+      {
+        "id": "isIndirectIPAccess",
+        "policyVersionId": "ctp-core-v1",
+        "label": "Indirect IP access"
+      },
+      {
+        "id": "isIrreplaceable",
+        "policyVersionId": "ctp-core-v1",
+        "label": "Irreplaceable service"
+      },
+      {
+        "id": "hasPrecisionReliance",
+        "policyVersionId": "ctp-core-v1",
+        "label": "Precision-dependent operations"
+      },
+      {
+        "id": "hasNetworkAccess",
+        "policyVersionId": "ctp-core-v1",
+        "label": "Network access"
+      },
+      {
+        "id": "hasSecurityConfigAccess",
+        "policyVersionId": "ctp-core-v1",
+        "label": "Security configuration access"
+      },
+      {
+        "id": "hasSensitiveDataAccess",
+        "policyVersionId": "ctp-core-v1",
+        "label": "Sensitive data access"
+      }
+    ],
+    "triageAnswers": [],
+    "biaQuestions": [
+      {
+        "id": "confidentiality-1",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Confidentiality",
+        "label": "Unauthorised disclosure of Confidential or Intellectual data (Accidental)",
+        "canonicalCode": null
+      },
+      {
+        "id": "confidentiality-2",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Confidentiality",
+        "label": "Unauthorised disclosure of Confidential or Intellectual data (Deliberate)",
+        "canonicalCode": null
+      },
+      {
+        "id": "confidentiality-3",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Confidentiality",
+        "label": "Unauthorised disclosure of Confidential or Intellectual data to the public (Deliberate)",
+        "canonicalCode": null
+      },
+      {
+        "id": "confidentiality-4",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Confidentiality",
+        "label": "Unauthorised disclosure of Confidential or Intellectual data to the public (Accidental)",
+        "canonicalCode": null
+      },
+      {
+        "id": "confidentiality-5",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Confidentiality",
+        "label": "Legal or Compliance Implications due to disclosure e.g. TISAX",
+        "canonicalCode": null
+      },
+      {
+        "id": "integrity-1",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Integrity",
+        "label": "Unauthorised modification by 3rd Parties staff (Accidental)",
+        "canonicalCode": null
+      },
+      {
+        "id": "integrity-2",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Integrity",
+        "label": "Unauthorised modification by staff (Deliberate)",
+        "canonicalCode": null
+      },
+      {
+        "id": "integrity-3",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Integrity",
+        "label": "Unauthorised modification by member of the public e.g. ransomware or Malware",
+        "canonicalCode": null
+      },
+      {
+        "id": "integrity-4",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Integrity",
+        "label": "Corruption of communications (email or calls)",
+        "canonicalCode": null
+      },
+      {
+        "id": "integrity-5",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Integrity",
+        "label": "Legal Implications due to modification",
+        "canonicalCode": null
+      },
+      {
+        "id": "availability-1",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Availability",
+        "label": "Impact on business if service unavailable for 1 Hr",
+        "canonicalCode": null
+      },
+      {
+        "id": "availability-2",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Availability",
+        "label": "Impact on business if service unavailable for 4 Hrs",
+        "canonicalCode": null
+      },
+      {
+        "id": "availability-3",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Availability",
+        "label": "Impact on business if service unavailable for 1 Day",
+        "canonicalCode": null
+      },
+      {
+        "id": "availability-4",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Availability",
+        "label": "Impact on business if service unavailable for 2-3 Days",
+        "canonicalCode": null
+      },
+      {
+        "id": "availability-5",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Availability",
+        "label": "Impact on business if service unavailable for 1 Week",
+        "canonicalCode": null
+      },
+      {
+        "id": "availability-6",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Availability",
+        "label": "Impact on business if service unavailable for 1 Month",
+        "canonicalCode": null
+      },
+      {
+        "id": "availability-7",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Availability",
+        "label": "Impact on business if service is a Complete Loss",
+        "canonicalCode": null
+      }
+    ],
+    "biaAnswers": [],
+    "supplierRequests": [
+      {
+        "id": "BLANK-DEMO-001",
+        "engagementId": "cedar",
+        "recipient": "supplier@unconfigured.example",
+        "due": "2026-11-09",
+        "message": "Draft only. Configure the supplier, service, recipient, required proof and due date before using this practice request.",
+        "status": "Draft"
+      }
+    ],
+    "requestItems": [
+      {
+        "id": "request-item-1",
+        "requestId": "BLANK-DEMO-001",
+        "requirementId": "R-07",
+        "label": "Recovery exercise evidence",
+        "position": 1
+      },
+      {
+        "id": "request-item-2",
+        "requestId": "BLANK-DEMO-001",
+        "requirementId": "IAM-04",
+        "label": "Privileged access review record",
+        "position": 2
+      }
+    ],
+    "users": [
+      {
+        "id": "customer-morgan",
+        "actorId": "a-morgan",
+        "email": "customer-morgan@demo.example",
+        "role": "customer",
+        "workspaceId": "northstar",
+        "active": true,
+        "canQA": false
+      },
+      {
+        "id": "customer-singh",
+        "actorId": "t-singh",
+        "email": "customer-singh@demo.example",
+        "role": "customer",
+        "workspaceId": "ridgeway",
+        "active": true,
+        "canQA": false
+      },
+      {
+        "id": "analyst-01",
+        "actorId": "osura-analyst-01",
+        "email": "analyst-01@demo.example",
+        "role": "analyst",
+        "workspaceId": null,
+        "active": true,
+        "canQA": false
+      },
+      {
+        "id": "analyst-02",
+        "actorId": "qa-reviewer-02",
+        "email": "analyst-02@demo.example",
+        "role": "analyst",
+        "workspaceId": null,
+        "active": true,
+        "canQA": true
+      },
+      {
+        "id": "superadmin",
+        "actorId": "osura-admin",
+        "email": "superadmin@demo.example",
+        "role": "superadmin",
+        "workspaceId": null,
+        "active": true,
+        "canQA": false
+      }
+    ],
+    "customerAssignments": [
+      {
+        "id": "assignment-01",
+        "userId": "analyst-01",
+        "workspaceId": "northstar"
+      },
+      {
+        "id": "assignment-02",
+        "userId": "analyst-01",
+        "workspaceId": "ridgeway"
+      },
+      {
+        "id": "assignment-03",
+        "userId": "analyst-02",
+        "workspaceId": "northstar"
+      }
+    ]
+  },
+  "presentation": {
+    "schemaVersion": 2,
+    "intake": {
+      "supplier": "",
+      "domain": "",
+      "use": "",
+      "product": "",
+      "purpose": "",
+      "answers": {},
+      "attachments": [],
+      "businessImpactAnswers": {}
+    },
+    "initialState": {
+      "selected": "cedar",
+      "intakeSubmitted": false,
+      "judgement": "",
+      "conclusion": "Needs review",
+      "requestStatus": "Draft",
+      "supplierReceipt": null,
+      "supplierDraft": {
+        "fileName": "",
+        "answer": "",
+        "scope": ""
+      },
+      "qa": "More evidence required",
+      "qaNote": "No analyst assessment or independent QA has been recorded. Review the evidence and use a different authorised QA reviewer before a customer decision.",
+      "decision": null,
+      "signedPack": null,
+      "conditionClosed": false,
+      "events": [],
+      "extraEngagements": [],
+      "scheduledReviews": [],
+      "owners": {},
+      "supplierDrafts": {},
+      "supplierReceipts": {}
+    },
+    "programmeTabs": {
+      "Control sets": {
+        "title": "Versioned control requirements",
+        "rows": []
+      },
+      "Review rules": {
+        "title": "Independent review and customer authority",
+        "rows": []
+      },
+      "Communications": {
+        "title": "Supplier communication settings",
+        "rows": []
+      },
+      "Lifecycle": {
+        "title": "Monitoring and reassessment rules",
+        "rows": []
+      },
+      "Evidence standards": {
+        "title": "Evidence applicability and freshness",
+        "rows": []
+      },
+      "Publish history": {
+        "title": "Published policy versions",
+        "rows": []
+      }
+    },
+    "operationsAttention": {
+      "cedar": "Unassessed starter placeholder — configure before use"
+    },
+    "monitoring": [],
+    "directoryIdentity": [],
+    "riskPalette": {
+      "Critical": "#d85261",
+      "High": "#eea14d",
+      "Medium": "#5288de",
+      "Low": "#38a483",
+      "Pending triage": "#a5adbe"
+    },
+    "overviewActions": [],
+    "upcomingAssurance": [],
+    "operationsHandoffs": [],
+    "communications": [],
+    "historicalReports": [],
+    "assessmentActivity": [
+      {
+        "label": "Evidence review",
+        "stage": "Evidence",
+        "detail": "Including supplier follow-up"
+      },
+      {
+        "label": "Questions",
+        "stage": "Questions",
+        "detail": "Awaiting supplier answer"
+      },
+      {
+        "label": "Findings",
+        "stage": "Findings",
+        "detail": "Treatment in progress"
+      },
+      {
+        "label": "Decision",
+        "stage": "Decision",
+        "detail": "Customer signature required"
+      }
+    ],
+    "sourceHistory": [],
+    "relationshipHistory": [],
+    "policyConsequences": [],
+    "notifications": [],
+    "defaults": {
+      "conditionOwner": "",
+      "conditionDue": "",
+      "conditionEvidence": "",
+      "rationale": "",
+      "supplierTeam": "Supplier contact — configure before use",
+      "date": "2026-11-09",
+      "recommendation": "Return for clarification",
+      "materialIssue": "No supplier, service or evidence has been assessed.",
+      "requestItemDescriptions": [
+        "Configure the service and ask for the required recovery evidence. No evidence is attached.",
+        "Configure the service and ask for the required access evidence. No evidence is attached."
+      ]
+    },
+    "scenario": {
+      "workspaceId": "northstar",
+      "walkthroughEngagementId": "cedar",
+      "requestId": "BLANK-DEMO-001",
+      "directoryIds": [
+        "cedar"
+      ],
+      "intakeSupplierIds": [],
+      "displayDate": "2026-11-09",
+      "findingServiceLabels": {}
+    }
+  },
+  "examples": {
+    "referencePack": {
+      "version": 1,
+      "engagement": {
+        "id": "cedar",
+        "supplier": "New supplier — not configured",
+        "service": "Service — not configured",
+        "risk": "Pending triage",
+        "stage": "Evidence",
+        "owner": "Customer owner",
+        "due": "Not set — starter placeholder",
+        "plan": "Enhanced v3",
+        "client": "My company"
+      },
+      "policy": "CTP Core v1",
+      "overlay": "Enhanced v3",
+      "decision": {
+        "outcome": "Not recorded",
+        "rationale": "No customer decision exists. This required empty template is not a signed assessment.",
+        "condition": null,
+        "actor": "Not recorded",
+        "at": ""
+      },
+      "requirements": [],
+      "qa": "Not recorded",
+      "qaNote": "No independent QA has been performed.",
+      "judgement": "",
+      "conclusion": "Unknown",
+      "documents": [],
+      "qaReview": {
+        "actor": "Not recorded",
+        "prepared": true,
+        "at": null
+      }
+    },
+    "referenceReceipt": {
+      "reference": "",
+      "at": "",
+      "fileName": "",
+      "answer": "",
+      "scope": ""
+    }
+  },
+  "source": {
+    "synthetic": true,
+    "purpose": "Blank intake practice, with required technical placeholder records only.",
+    "requiredPlaceholders": {
+      "supplierId": "cedarcloud",
+      "serviceId": "cedarcloud-payment-event-processing",
+      "engagementId": "cedar",
+      "workspaceIds": [
+        "northstar",
+        "ridgeway"
+      ],
+      "note": "These IDs are existing app slots, not sample suppliers. The first supplier is excluded from intake suggestions. The dated engagement/request fields are schema-required placeholders, not agreed deadlines."
+    },
+    "instructions": [
+      "Load this JSON through Scenario → Scenario JSON file → Load scenario.",
+      "Choose Request assessment, enter the supplier name, then Enter manually.",
+      "Complete intended use, four scope questions and all 17 impact questions; review and submit.",
+      "New intake requests currently end at Pending triage. They are not promoted to the full reserved walkthrough by a JSON file.",
+      "For a practice full review, configure the existing starter supplier/service through Superadmin → Demo data, retaining their internal IDs, and add evidence before reviewing."
+    ],
+    "limits": [
+      "This is not a literally empty database: the loader requires a starter case, four unassessed control rows, two unsent request slots, demo identities and policy/question definitions.",
+      "The prepared Decision Pack shell contains no decision, signature, evidence or QA.",
+      "The legacy O06 supplier-response preview expects source document metadata. Do not open it before adding actual practice evidence; zero-document O06 is not supported in the current app.",
+      "No live app changes or deployment are included. Loading clears current tab progress; refresh restores the default demo."
+    ]
+  }
+}

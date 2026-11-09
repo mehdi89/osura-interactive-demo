@@ -409,8 +409,8 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   const visualTitles = { C01: ["Supplier portfolio", "Osura reviews supplier evidence and prepares a clear recommendation. Your team makes the final decision."], C14: ["Supplier register", "Approval belongs to a service, not every use of the supplier."], C15: ["Assessment register", "See the next owner, review state and exact service scope."], O16: ["Supplier directory", "Find the right supplier, service and customer before opening a record."], C06: ["Make your customer decision", "Review Osura’s advice, then record the outcome your organisation accepts."], O04: ["Evidence review", "Read the source, record your judgement, then compare the prepared proposal."], O07: ["Findings and actions", "Every material issue has a requirement, owner, due date and closure proof."], O14: ["Supplier communications", "Local outbox activity is separate from confirmed supplier delivery."], O15: ["Monitoring and reassessment", "See which obligation is due, who owns it and the evidence needed next."] };
   const screen = { ...baseScreen, ...(visualTitles[baseScreen.id] ? { title: visualTitles[baseScreen.id][0], subtitle: visualTitles[baseScreen.id][1] } : {}), ...(baseScreen.id === "C06" ? { label: workflowStatus(state).label } : {}) };
   if (screen.id === "O06" && !state.supplierReceipt) {
-    screen.title = "Supplier response preview · no session response";
-    screen.subtitle = "Prepared response example only. No supplier response has been received in this session.";
+    screen.title = data.documents.length ? "Supplier response preview · no session response" : "No supplier response recorded";
+    screen.subtitle = data.documents.length ? "Prepared response example only. No supplier response has been received in this session." : "This service has no recorded supplier response or earlier evidence source to compare.";
   }
   const role = user?.role || "customer";
   const denied = !user?.active || (screen.role !== role && !(role === "analyst" && ["C06","C07","C13"].includes(screen.id)));
@@ -590,6 +590,8 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
       .replaceAll("payment event processing", () => referenceCase(data).service.toLowerCase())
       .replaceAll("Northstar Payments", () => referenceCase(data).client);
   const isSupplier = role === "supplier";
+  const emptyCustomerWorkspace = user?.active && role === "customer" && allowedWorkspaces.has(user.workspaceId);
+  const emptyCustomerPage = emptyCustomerWorkspace && ["C01", "C02", "C03", "C04", "C05", "C10", "C12", "C14", "C15", "C16"].includes(screen.id);
   const caseScreens = [
     "C06",
     "C07",
@@ -607,7 +609,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   ];
   const secondaryCase =
     engagement.id !== "cedar" && caseScreens.includes(screen.id);
-  const action = secondaryCase || ["O07", "O15", "C08", "C05"].includes(screen.id) || (role === "analyst" && screen.id === "C06") ? null : (
+  const action = secondaryCase || ["O07", "O15", "C08", "C05"].includes(screen.id) || screen.id === "O06" && !data.documents.length || (role === "analyst" && screen.id === "C06") ? null : (
     primaryAction(screen.id, ctx)
   );
   if (signedOut) return <div className="session-ended"><span className="session-brand"><img className="brand-wordmark" src="/brand/osura-wordmark.png" alt="Osura" width="148" height="53" /></span><h1>Demo session ended</h1><p>Your workspace is hidden. Saved demo work remains in this tab until refresh.</p><Note>This is a simulated logout; no authenticated session is connected.</Note><Button primary onClick={() => setSignedOut(false)}>Resume as {user?.name}</Button></div>;
@@ -725,11 +727,11 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
                   : text(screen.subtitle)}
               </p>
             </div>
-            {!denied && role !== "superadmin" && engagement.id !== "none" && action}
+            {!denied && role !== "superadmin" && (engagement.id !== "none" || emptyCustomerPage) && action}
           </div>
           {denied ? <Card title="Access unavailable"><p>This page is outside this demo user’s role or the account is inactive.</p><Button onClick={()=>navigate(role === "superadmin" ? "A01" : role === "analyst" ? "O01" : role === "supplier" ? "S01" : "C01")}>Return to my view</Button></Card>
             : role === "superadmin" ? <RoleAdmin model={model} user={user} validate={validate} auditLog={auditLog} onSave={(next,entry)=>{onDataChange(next);onAudit(entry);}}/>
-            : engagement.id === "none" && role !== "supplier" ? <Card title="No customer data to show"><p>No customers are assigned, or the current filter has no engagements. Ask your superadmin to update access.</p></Card>
+            : engagement.id === "none" && role !== "supplier" && !emptyCustomerPage ? <Card title={emptyCustomerWorkspace ? "No service selected" : "No customer data to show"}><p>{emptyCustomerWorkspace ? "Start a supplier request to begin your first service assessment." : "No customers are assigned, or the current filter has no engagements. Ask your superadmin to update access."}</p>{emptyCustomerWorkspace && <Button primary onClick={() => navigate("C02")}>Start a supplier request</Button>}</Card>
             : role === "analyst" && !data.engagements.some(row=>row.id === "cedar") && ["O10","O13"].includes(screen.id) ? <Card title="Customer-specific reference"><p>This prepared programme belongs to {referenceCase(data).client}. Choose an assigned customer with a prepared programme.</p></Card>
             : <Page {...ctx} />}
 
@@ -1206,9 +1208,9 @@ function Overview(c) {
     return { engagement: row.id, title: `${row.supplier} · ${progress.label}`, detail: `${row.service}. Next owner: ${progress.nextOwner}.`, status: progress.label, nextOwner: progress.nextOwner, action: "Open assessment", route: "C09" };
   });
   const customerActions = [...requestActions, ...data.overviewActions.filter(action => action.engagement === "cedar" ? status.ready : !state.owners?.[action.engagement])];
-  const nextAction = customerActions[0];
+  const nextAction = customerActions[0] || (!data.engagements.length ? { title: "Start your first supplier request", detail: "Add a supplier and its intended service, then submit your business context for the assigned analyst to review.", status: "Ready to start", nextOwner: "You", action: "Start a supplier request", route: "C02" } : null);
   const openAction = (action) => {
-    c.update({ selected: action.engagement });
+    if (action.engagement) c.update({ selected: action.engagement });
     if (action.route) navigate(action.route);
     else setDrawer(action.dialog);
   };
@@ -2699,6 +2701,11 @@ function Communications(c) {
 
 function Response(c) {
   const { state, navigate, data } = c;
+  if (!data.documents.length) return <><Scope {...c}/><Card title={state.supplierReceipt ? "Supplier response awaiting review" : "No supplier response recorded"}>
+    <p>{state.supplierReceipt?.answer || "This scenario has no earlier evidence source or submitted supplier response to compare."}</p>
+    <Note>A response is not an evidence conclusion. Review service-specific sources before recording a recommendation.</Note>
+    <Button onClick={() => navigate("O02")}>Return to assessment</Button><Button onClick={() => navigate("O03")}>Review evidence</Button>
+  </Card></>;
   return (
     <>
       <Scope {...c} />
