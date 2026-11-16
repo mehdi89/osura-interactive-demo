@@ -1200,7 +1200,7 @@
         "scope": ""
       },
       "qa": "More evidence required",
-      "qaNote": "The supplied case contains no independent QA completion. The assigned demo QA reviewer is not a historical source reviewer. A separate assigned analyst must review new demo work before a customer decision.",
+      "qaNote": "The supplied case contains no QA review completion. The assigned analyst records QA on new demo work before a customer decision.",
       "decision": null,
       "signedPack": null,
       "conditionClosed": false,
@@ -1281,12 +1281,12 @@
             "Osura analyst 01 · demo assignment"
           ],
           [
-            "Independent QA",
-            "Not recorded in source · demo reviewer assigned"
+            "QA review",
+            "Not recorded in source · assigned analyst performs QA"
           ],
           [
             "Mandatory gate",
-            "Existing independent QA and customer decision gates remain unchanged"
+            "Existing QA review and customer decision gates remain unchanged"
           ],
           [
             "Customer decision owner",
@@ -1390,7 +1390,7 @@
           ],
           [
             "Enhanced v3",
-            "Published · resilience and independent QA"
+            "Published · resilience and QA review"
           ],
           [
             "Next change",
@@ -1400,7 +1400,7 @@
       }
     },
     "operationsAttention": {
-      "cedar": "Source HOLD · independent QA not recorded",
+      "cedar": "Source HOLD · QA review not recorded",
       "clearbridge": "Separate Ridgeway demo preview",
       "kite": "Separate Ridgeway demo preview"
     },
@@ -1497,7 +1497,7 @@
       {
         "engagement": "cedar",
         "title": "Cedarline Analytics Ltd · Invoice reconciliation portal",
-        "detail": "Source analyst recommends HOLD. Independent QA and current customer decision are not recorded.",
+        "detail": "Source analyst recommends HOLD. QA review and current customer decision are not recorded.",
         "status": "Needs review",
         "action": "Review source evidence",
         "route": "C09"
@@ -2037,7 +2037,7 @@
         }
       ],
       "qa": "Not recorded in source",
-      "qaNote": "No independent QA completion was supplied. The source deferral does not establish approval, QA sign-off or risk acceptance.",
+      "qaNote": "No QA review completion was supplied. The source deferral does not establish approval, QA sign-off or risk acceptance.",
       "qaReview": {
         "actor": "Not recorded",
         "prepared": true,

@@ -468,7 +468,7 @@
         "scope": ""
       },
       "qa": "More evidence required",
-      "qaNote": "No analyst assessment or independent QA has been recorded. Review the evidence and use a different authorised QA reviewer before a customer decision.",
+      "qaNote": "No analyst assessment or QA review has been recorded. Review the evidence and record QA before a customer decision.",
       "decision": null,
       "signedPack": null,
       "conditionClosed": false,
@@ -599,7 +599,7 @@
       },
       "requirements": [],
       "qa": "Not recorded",
-      "qaNote": "No independent QA has been performed.",
+      "qaNote": "No QA review has been performed.",
       "judgement": "",
       "conclusion": "Unknown",
       "documents": [],

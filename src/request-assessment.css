@@ -34,6 +34,7 @@
 .request-flow-form label small { font-weight: 400; }
 .request-flow-actions { display: flex; align-items: center; justify-content: flex-start; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
 .request-flow-actions > span { color: var(--muted); font-size: 12px; }
+.request-flow-ack { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 600; }
 .request-flow-meta { display: grid; gap: 22px; margin: 0; align-content: start; }
 .request-flow-evidence { display: grid; gap: 16px; margin: 18px 0; }
 .request-flow-evidence > article, article.request-flow-evidence { display: block; padding: 18px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }

@@ -5,7 +5,7 @@ const conclusions = ["Supported", "Partially supported", "Unknown", "Contradicto
 const labels = {
   clarify: "Assessment clarification requested", respond: "Customer clarification answered", scope: "Assessment scope confirmed",
   evidence: "Assessment evidence version recorded", review: "Assessment evidence reviewed", recommend: "Assessment recommendation recorded",
-  qa: "Assessment QA review recorded", decision: "Assessment customer decision recorded", close: "Assessment condition closed", askSupplier: "Supplier evidence requested", withdrawAsk: "Supplier evidence request withdrawn",
+  qa: "Assessment QA review recorded", decision: "Assessment customer decision recorded", close: "Assessment condition closed", askSupplier: "Supplier evidence requested", withdrawAsk: "Supplier evidence request withdrawn", finding: "Assessment finding raised",
 };
 const text = value => typeof value === "string" ? value.trim() : "";
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
@@ -13,7 +13,7 @@ const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 export function requestAssessment(state, engagement) {
   return state.requestAssessments?.[engagement.id] || {
     scope: null, clarification: null, customerReturn: null, evidence: [], reviews: {}, recommendation: null, qa: null,
-    decision: null, signedPack: null, conditionClosed: false, revision: 0, events: [], supplierAsks: [],
+    decision: null, signedPack: null, conditionClosed: false, revision: 0, events: [], supplierAsks: [], findings: [],
   };
 }
 
@@ -51,6 +51,7 @@ export function transitionRequest(state, data, engagementId, action, values = {}
   if (current.conditionClosed) throw new Error("This approval condition is already closed.");
   const record = structuredClone(current);
   record.supplierAsks ||= [];
+  record.findings ||= [];
   record.revision++;
   const rationale = text(values.rationale);
   const event = actionEntry(data, labels[action], rationale, {
@@ -111,6 +112,19 @@ export function transitionRequest(state, data, engagementId, action, values = {}
     if (!rationale) throw new Error("Say why the supplier request is withdrawn.");
     ask.status = "Withdrawn";
     ask.withdrawn = { rationale, ...attribution };
+  }
+  if (action === "finding") {
+    requireScope();
+    const evidence = record.evidence.find(row => row.id === values.evidenceId);
+    if (!evidence || !["Partially supported", "Contradictory"].includes(record.reviews[evidence.id]?.conclusion))
+      throw new Error("Raise a finding from a source reviewed as Partially supported or Contradictory.");
+    const finding = { issue: text(values.issue), severity: text(values.severity), owner: text(values.owner), due: text(values.due), closure: text(values.closure) };
+    if (!finding.issue || !finding.owner || !finding.closure || !["High", "Medium", "Low"].includes(finding.severity) || !/^\d{4}-\d{2}-\d{2}$/.test(finding.due))
+      throw new Error("A finding needs the unresolved issue, severity, accountable owner, due date and closure evidence.");
+    record.findings.push({ id: `F-${crypto.randomUUID().slice(0, 8)}`, evidenceId: evidence.id, source: `${evidence.name} · ${evidence.version}`, conclusion: record.reviews[evidence.id].conclusion, ...finding, state: "Open", ...attribution });
+    invalidate();
+    event.rationale = finding.issue;
+    event.finding = structuredClone(record.findings.at(-1));
   }
   if (action === "evidence") {
     requireScope();
@@ -180,7 +194,7 @@ export function transitionRequest(state, data, engagementId, action, values = {}
       record.signedPack = structuredClone({
         version: 1, assessmentVersion: event.assessmentVersion, engagement, submittedReceipt,
         workspace: data.workspace, policy: data.workspace.policy, overlay: data.workspace.overlay,
-        scope: record.scope, clarification: record.clarification, customerReturn: record.customerReturn, evidence: record.evidence, reviews: record.reviews,
+        scope: record.scope, clarification: record.clarification, customerReturn: record.customerReturn, evidence: record.evidence, reviews: record.reviews, findings: record.findings,
         recommendation: record.recommendation, qa: record.qa, decision, events: [...record.events, event],
       });
     }

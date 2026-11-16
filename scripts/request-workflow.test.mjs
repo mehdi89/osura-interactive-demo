@@ -244,3 +244,21 @@ test("an analyst can withdraw an unanswered supplier request so the case does no
   state = act(state, "withdrawAsk", { askId: ask.id, rationale: "Customer already holds this report." });
   assert.equal(requestProgress(requestAssessment(state, engagement)).nextOwner, "Assigned analyst");
 });
+
+test("an analyst raises a finding only from a partially supported or contradictory source", async () => {
+  let state = act(initial(), "scope", scope);
+  state = act(state, "evidence", evidence);
+  const id = requestAssessment(state, engagement).evidence[0].id;
+  const finding = { evidenceId: id, issue: "No recovery test results", severity: "High", owner: "Service owner", due: "2027-01-15", closure: "Dated recovery exercise report" };
+  state = act(state, "review", { evidenceId: id, conclusion: "Supported", rationale: "Covers the service." });
+  assert.throws(() => act(state, "finding", finding), /Partially supported or Contradictory/);
+  state = act(reviewed(), "recommend", { outcome: "Approve with conditions", rationale: "Proceed with a recovery condition." });
+  const sourceId = requestAssessment(state, engagement).evidence[0].id;
+  assert.throws(() => act(state, "finding", { ...finding, evidenceId: sourceId, severity: "Severe" }), /severity/);
+  state = act(state, "finding", { ...finding, evidenceId: sourceId });
+  const record = requestAssessment(state, engagement);
+  assert.equal(record.findings[0].source, "Service assurance report · 2026-v1");
+  assert.equal(record.findings[0].conclusion, "Partially supported");
+  assert.equal(record.recommendation, null, "a new finding sends the recommendation back for revision");
+  assert.equal(state.events.at(-1).action, "Assessment finding raised");
+});

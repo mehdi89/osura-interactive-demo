@@ -1972,7 +1972,9 @@ function Findings(c) {
       issue: record.decision.condition.evidence, owner: record.decision.condition.owner, due: record.decision.condition.due,
       state: record.conditionClosed ? "Closed" : "Open condition", evidence: record.decision.condition.evidence };
   });
-  const allRows = [...data.findings, ...(state.extraFindings || []), ...conditions];
+  const requestFindings = data.engagements.filter(row => row.receipt).flatMap(row => (requestAssessment(state, row).findings || []).map(f => ({
+    ...f, engagementId: row.id, supplier: row.supplier, service: row.service, control: f.source, evidence: `${f.conclusion} source review. ${f.closure}`, treatment: "Analyst finding · before customer decision" })));
+  const allRows = [...data.findings, ...(state.extraFindings || []), ...requestFindings, ...conditions];
   const rows = allRows.filter(row => `${row.issue} ${row.supplier} ${row.owner} ${row.control}`.toLowerCase().includes(search.toLowerCase()) && (filter === "All" || filter === "Open" && row.state !== "Closed" || filter === "Conditions" && /condition/i.test(row.state) || filter === row.state));
   const f = rows.find(row=>row.id===selectedId) || rows.find(row=>row.engagementId===state.selected) || rows[0];
   const requirement = f?.engagementId === "cedar" ? data.requirements.find(row=>row.id===f.control) : null;
@@ -3121,7 +3123,7 @@ function Programme(c) {
                 "Published v3",
                 "Material service exposure",
                 "Baseline + approved service overlays",
-                "Scoped resilience, data protection, independent QA",
+                "Scoped resilience, data protection, QA review",
               ],
             ].map(([title, status, headline, line1, line2]) => (
               <Card key={title} title={title} action={<Badge>{status}</Badge>}>
@@ -3444,7 +3446,7 @@ function FindingForm(c) {
   const edit = (key, value) => setDraft({ ...draft, [key]: value });
   const requirement = data.requirements.find(r => r.id === draft.control);
   const sources = data.documents.filter(doc => doc.requirement === draft.control);
-  if (engagement.id !== "cedar") return <><Entity name={engagement.supplier} service={engagement.service} /><Note>This portfolio preview has no applicable requirement records available for finding creation. Open a review with scoped requirements first.</Note><Button onClick={() => setDrawer(null)}>Return to findings</Button></>;
+  if (engagement.id !== "cedar") return <><Entity name={engagement.supplier} service={engagement.service} /><Note>{engagement.receipt ? "For a submitted request, raise the finding from its Evidence step: open a source reviewed as Partially supported or Contradictory and choose “Raise a finding from this source”." : "This portfolio preview has no applicable requirement records available for finding creation. Open a review with scoped requirements first."}</Note><Button onClick={() => setDrawer(null)}>Return to findings</Button></>;
   const save = () => {
     c.event(`Finding recorded: ${draft.issue.trim()}`, { extraFindings: [...(state.extraFindings || []), { ...draft, issue: draft.issue.trim(), evidence: draft.evidence.trim(), owner: draft.owner.trim(), closureEvidence: draft.closureEvidence.trim(), id: `F-${crypto.randomUUID()}`, workspaceId: engagement.workspaceId, engagementId: engagement.id, client: engagement.client, supplier: engagement.supplier, service: engagement.service, state: "Open" }] });
     setDrawer(null); c.notify("Finding recorded with the reviewed attributes.");
@@ -3770,7 +3772,7 @@ function Drawer(c) {
                     ["Customer overlay", data.workspace.overlay],
                     [
                       referenceCase(data).supplier,
-                      "Enhanced v3 · scoped resilience · independent QA",
+                      "Enhanced v3 · scoped resilience · QA review",
                     ],
                     ["Harbor Analytics", "Standard v2 · baseline evidence"],
                     ["Historical decisions", "Unaffected by future changes"],
