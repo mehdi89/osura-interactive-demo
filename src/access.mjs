@@ -15,8 +15,8 @@ export function requireAction(data, action) {
   if (action === "decision") {
     if (user.role !== "customer" || user.actorId !== engagement.decisionOwnerId)
       throw new Error("Only the designated customer Decision Owner can record a decision.");
-  } else if (user.role !== "analyst" || (action === "qa" && !user.canQA)) {
-    throw new Error(action === "qa" ? "Independent QA permission is required." : "An assigned analyst must record this recommendation.");
+  } else if (user.role !== "analyst") {
+    throw new Error(action === "qa" ? "An assigned analyst must record QA." : "An assigned analyst must record this recommendation.");
   }
   return user;
 }

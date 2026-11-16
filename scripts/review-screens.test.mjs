@@ -31,9 +31,9 @@ test("intake offers all 17 verbatim impact questions with blank defaults and an 
   const c = context({ screen: { id: "C04", role: "customer" } });
   const html = render(Intake, c);
   assert.equal((html.match(/id="intake-impact-/g) || []).length, 17);
-  assert.equal((html.match(/<option value="" selected="">Choose impact/g) || []).length, 17);
-  assert.equal((html.match(/<option value="N\/A">N\/A/g) || []).length, 17);
-  assert.equal((html.match(/<option value="Unknown">Unknown/g) || []).length, 17);
+  assert.equal((html.match(/name="impact-[^"]+" value="N\/A"/g) || []).length, 17);
+  assert.equal((html.match(/name="impact-[^"]+" value="Unknown"/g) || []).length, 17);
+  assert.doesNotMatch(html, /type="radio"[^>]*name="impact-[^"]+"[^>]*checked=""/);
   assert.match(html, /Base asset impact: Incomplete/);
   for (const question of data.biaQuestions) assert.ok(html.includes(question.label));
   assert.match(html, /four scope questions/);
@@ -178,7 +178,7 @@ function readyRequest() {
 test("new request case routes show actionable triage and prerequisites instead of repeating the receipt", () => {
   const intake = render(Page, requestContext());
   assert.match(intake, /Confirm scope and begin assessment/);
-  assert.match(intake, /Next owner: Assigned analyst/);
+  assert.match(intake, /Your next action/);
   assert.match(intake, /Applicable review plan/);
   assert.match(intake, /CTP inherent-risk tier/);
   for (const route of ["O02", "O03", "O08"]) {
@@ -195,11 +195,11 @@ test("request handoffs keep QA available after rework and reserve decision forms
   state = requestAction(state, "recommend", { outcome: "Approve with conditions", rationale: "A dated contracted-service recovery exercise is the explicit closure proof." });
   const qa = render(Page, requestContext("analyst-02", "O08", state));
   assert.match(qa, /<form[^>]*class="request-flow-form"/);
-  assert.match(qa, />Record independent QA<\/button>/);
-  assert.doesNotMatch(render(Page, requestContext("analyst-01", "O08", state)), />Record independent QA<\/button>/);
+  assert.match(qa, />Record QA and send to customer<\/button>/);
+  assert.match(render(Page, requestContext("analyst-01", "O08", state)), />Record QA and send to customer<\/button>/);
   state = requestAction(state, "qa", { outcome: "Passed", rationale: "The revised condition resolves the independent challenge." }, "analyst-02");
   const analyst = render(Page, requestContext("analyst-01", "C06", state));
-  assert.match(analyst, /analysts can read this decision page but cannot sign/);
+  assert.match(analyst, /analysts can read this page but cannot sign/);
   assert.doesNotMatch(analyst, /<form|Review customer decision/);
   const customer = render(Page, requestContext("customer-morgan", "C06", state));
   assert.match(customer, /Your decision rationale/);
@@ -211,9 +211,9 @@ test("request handoffs keep QA available after rework and reserve decision forms
 test("customer request for clarification returns the next action to the analyst with the customer's rationale", () => {
   const state = requestAction(readyRequest(), "decision", { outcome: "Return for clarification", rationale: "Explain who owns the outstanding recovery obligation." }, "customer-morgan");
   const html = render(Page, requestContext("analyst-01", "O02", state));
-  assert.match(html, /Next owner: Assigned analyst/);
+  assert.match(html, /Your next action/);
   assert.match(html, /Customer requested clarification: Explain who owns the outstanding recovery obligation/);
-  assert.match(html, />Save recommendation and send to QA<\/button>/);
+  assert.match(html, />Save recommendation and go to QA<\/button>/);
   assert.doesNotMatch(html, /Send reply to analyst|Download frozen decision record/);
 });
 
@@ -284,20 +284,10 @@ test("assessment register All retains a rejected signed request for later inspec
   assert.doesNotMatch(html, /No reviews match/);
 });
 
-test("QA explains missing independent customer assignments rather than suggesting an unavailable handoff", () => {
-  const c = requestContext("analyst-01", "O08", recommendedRequest());
-  const author = { ...sessionUser(model, "analyst-01"), canQA: true };
-  const reviewer = sessionUser(model, "analyst-02");
-  c.demoUsers = [author, { ...reviewer, workspaceIds: ["ridgeway"] }, { ...reviewer, id: "inactive-qa", active: false }];
-  const blocked = render(Page, c);
-  assert.match(blocked, /No independent QA reviewer is assigned to this customer/);
-  assert.match(blocked, /Ask the Superadmin to assign another analyst with QA permission/);
-  assert.doesNotMatch(blocked, />Record independent QA<\/button>/);
-  c.demoUsers = [author, reviewer];
-  const available = render(Page, c);
-  assert.match(available, /Available independent reviewer/);
-  assert.ok(available.includes(reviewer.name));
-  assert.doesNotMatch(available, /No independent QA reviewer is assigned/);
+test("the assigned analyst can complete QA on their own recommendation", () => {
+  const html = render(Page, requestContext("analyst-01", "O08", recommendedRequest()));
+  assert.match(html, />Record QA and send to customer<\/button>/);
+  assert.doesNotMatch(html, /independent reviewer/i);
 });
 
 test("customer overview and decision steps do not claim customer action during rework", () => {
@@ -544,10 +534,10 @@ test("QA and monitoring copy respect recorded outcomes and permissions", () => {
   assert.doesNotMatch(quality, /Record your independent challenge and a reasoned QA outcome|Northstar sponsor/);
   assert.match(quality, /A\. Morgan · Customer Decision Owner/);
   c.state = { ...c.state, qa: "More evidence required" };
-  assert.match(render(Quality, c), /A different analyst with independent QA permission/);
+  assert.doesNotMatch(render(Quality, c), /independent QA permission/);
   c.user = sessionUser(model, "analyst-02");
   c.state = { ...c.state, events: [{ action: "Analyst recommendation recorded", actorId: c.user.actorId }] };
-  assert.match(render(Quality, c), /A different analyst with independent QA permission/);
+  assert.doesNotMatch(render(Quality, c), /independent QA permission/);
   const customer = context();
   assert.match(render(Monitoring, customer), /Once signed, the customer decision stays frozen/);
   customer.state = recordDecision(customer.state, customer.data, "Approve", "The reviewed evidence meets our needs.", null);
@@ -608,7 +598,7 @@ test("an assigned customer with an empty blank-scenario portfolio can start its 
   const actor = sessionUser(pack.workspace, "customer-singh");
   const props = { data: base, model: pack.workspace, user: actor, identity: actor.id };
   const overview = renderApp("C01", props);
-  assert.match(overview, /Request assessment|Start a supplier request/);
+  assert.match(overview, /Request an assessment/);
   assert.doesNotMatch(overview, /No customer data to show/);
   const intake = renderApp("C02", props);
   assert.match(intake, /Search supplier name or company domain/);

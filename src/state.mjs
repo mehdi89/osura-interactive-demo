@@ -1,6 +1,11 @@
 import { requireAction, actionEntry } from "./access.mjs";
 
 export function createState(data) {
+  // A scenario whose walkthrough case is already Active starts from its prepared signed decision record.
+  const walkthrough = data.engagements?.find(row => row.id === "cedar");
+  const prepared = data.referencePack?.decision;
+  const signed = walkthrough?.stage === "Active" && ["Approve", "Approve with conditions", "Reject"].includes(prepared?.outcome)
+    ? { decision: { ...structuredClone(prepared), prepared: true }, signedPack: structuredClone(data.referencePack) } : {};
   return {
     ...structuredClone(data.initialState),
     intake: structuredClone(data.intake),
@@ -11,6 +16,7 @@ export function createState(data) {
     qaReworkRevision: null,
     requestReference: data.request.reference,
     qaReview: { actorId: data.workspace.qaReviewerId, actor: data.workspace.qaReviewer, role: "analyst", prepared: true, at: "2026-10-31T14:00:00Z", outcome: data.initialState.qa, rationale: data.initialState.qaNote },
+    ...signed,
   };
 }
 
@@ -28,7 +34,7 @@ export function recordDecision(state, data, outcome, rationale, condition) {
       "Review the new supplier evidence before recording a decision.",
     );
   if (!state.qa.startsWith("Passed") || (state.qaReworkRevision != null && (state.analysisRevision || 0) <= state.qaReworkRevision))
-    throw new Error("Independent QA must pass after any required analyst revision before recording a decision.");
+    throw new Error("QA review must pass after any required analyst revision before recording a decision.");
   if (!rationale.trim()) throw new Error("Enter a decision rationale.");
   if (
     ![
@@ -213,18 +219,14 @@ export function saveRequirementReview(state, data, id, review) {
 export function recordQA(state, data, outcome, note) {
   const user = requireAction(data, "qa");
   if (state.selected !== "cedar" || data.activeEngagementId !== "cedar") throw new Error("QA is scoped to the CedarCloud walkthrough.");
-  const leadActorId = data.engagements.find(row => row.id === data.activeEngagementId)?.analystId;
-  const reviewers = [...(state.analysisAuthors || []), ...Object.values(state.reviews || {}).map(row => row.actorId),
-    ...(state.events || []).filter(row => row.action === "Analyst recommendation recorded").map(row => row.actorId)];
-  if (user.actorId === leadActorId || reviewers.includes(user.actorId))
-    throw new Error("You cannot perform QA on your own analysis. Choose a different assigned reviewer.");
+  // ponytail: same-analyst QA allowed for now (client call); restore the author check for independent QA.
   if (!note.trim()) throw new Error("Record the QA challenge and rationale.");
   if (!["Passed", "Passed with condition", "Rework requested", "More evidence required"].includes(outcome)) throw new Error("Select a valid QA outcome.");
   if (outcome.startsWith("Passed") && (state.conclusion === "Needs review" || Object.values(state.pendingReviews || {}).some(Boolean)))
     throw new Error("Review the new evidence before passing QA.");
   if (outcome.startsWith("Passed") && state.qaReworkRevision != null && (state.analysisRevision || 0) <= state.qaReworkRevision)
     throw new Error("An analyst must revise the recommendation after QA requests rework.");
-  const entry = actionEntry(data, "Independent QA recorded", note.trim(), { outcome });
+  const entry = actionEntry(data, "QA review recorded", note.trim(), { outcome });
   return { ...state, qa: outcome, qaReworkRevision: outcome.startsWith("Passed") ? null : state.analysisRevision || 0, qaNote: note.trim(), qaReview: { ...entry, prepared: false }, events: [...state.events, entry] };
 }
 
@@ -254,7 +256,7 @@ export function workflowStatus(state) {
   if (state.qaReworkRevision != null && (state.analysisRevision || 0) <= state.qaReworkRevision)
     return { label: "Analyst revision required", nextOwner: "Analyst", stage: "Findings", step: 2, ready: false };
   if (!state.qa.startsWith("Passed"))
-    return { label: "Independent QA required", nextOwner: "Independent QA reviewer", stage: "QA", step: 3, ready: false };
+    return { label: "QA review required", nextOwner: "Assigned analyst", stage: "QA", step: 3, ready: false };
   return { label: "Ready for customer decision", nextOwner: "Customer Decision Owner", stage: "Decision", step: 4, ready: true };
 }
 

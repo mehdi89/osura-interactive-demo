@@ -16,7 +16,7 @@
       ["O03", "Evidence", "Folder"],
       ["O07", "Findings", "TriangleAlert"],
       ["O14", "Communications", "MessageSquare"],
-      ["O08", "Independent QA", "ShieldCheck"],
+      ["O08", "QA review", "ShieldCheck"],
       ["O15", "Monitoring", "Clock"],
       ["O10", "Programme", "SlidersHorizontal"]
     ]
@@ -98,10 +98,10 @@
     {
       "id": "C02",
       "role": "customer",
-      "label": "Add a supplier",
-      "title": "Add a supplier",
+      "label": "Choose the supplier",
+      "title": "Choose the supplier",
       "subtitle": "Start with the right legal entity. We will only ask about your intended use next.",
-      "nav": "C14",
+      "nav": "C15",
       "reference": "Customer Panel.html#s9"
     },
     {
@@ -110,7 +110,7 @@
       "label": "Intended use",
       "title": "What will you use {supplier} for?",
       "subtitle": "Choose the activities that apply to your team, or describe your own.",
-      "nav": "C14",
+      "nav": "C15",
       "reference": "Customer Panel.html#s10"
     },
     {
@@ -119,7 +119,7 @@
       "label": "Business context",
       "title": "A few details about your use",
       "subtitle": "We only need information your organisation can confirm.",
-      "nav": "C14",
+      "nav": "C15",
       "reference": "Customer Panel.html#s11"
     },
     {
@@ -128,7 +128,7 @@
       "label": "Review and submit",
       "title": "Review your request",
       "subtitle": "Everything remains editable until you submit. Submission is not approval.",
-      "nav": "C14",
+      "nav": "C15",
       "reference": "Customer Panel.html#s12"
     },
     {
@@ -260,8 +260,8 @@
     {
       "id": "O08",
       "role": "analyst",
-      "label": "Independent quality assurance",
-      "title": "Independent quality review",
+      "label": "QA review",
+      "title": "QA review",
       "subtitle": "Challenge the evidence and analyst reasoning before customer sign-off.",
       "nav": "O08",
       "reference": "Analyst Panel.html#s11"

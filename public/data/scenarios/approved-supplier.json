@@ -1,0 +1,946 @@
+{
+  "format": "osura-demo-scenario",
+  "version": 1,
+  "id": "approved-supplier-example",
+  "name": "Approved supplier example",
+  "description": "Synthetic prepared example: Brightline Logistics · TrackPro freight tracking completed intake, CTP triage, evidence review on all four requirements, analyst QA and an approved customer decision. All records are prepared fixtures, not live decisions by the current demo user. New intake requests still start fresh in this session.",
+  "workspace": {
+    "modelVersion": 1,
+    "workspaces": [
+      {
+        "id": "northstar",
+        "name": "My company"
+      },
+      {
+        "id": "ridgeway",
+        "name": "Other customer (empty)"
+      }
+    ],
+    "actors": [
+      {
+        "id": "a-morgan",
+        "name": "Customer owner"
+      },
+      {
+        "id": "t-singh",
+        "name": "Other customer owner"
+      },
+      {
+        "id": "osura-analyst-01",
+        "name": "Demo analyst"
+      },
+      {
+        "id": "qa-reviewer-02",
+        "name": "Second analyst"
+      },
+      {
+        "id": "osura-admin",
+        "name": "Demo administrator"
+      }
+    ],
+    "policyVersions": [
+      {
+        "id": "ctp-core-v1",
+        "name": "CTP Core v1",
+        "kind": "core",
+        "version": 1
+      },
+      {
+        "id": "standard-v2",
+        "name": "Standard v2",
+        "kind": "plan",
+        "version": 2
+      },
+      {
+        "id": "enhanced-v3",
+        "name": "Enhanced v3",
+        "kind": "plan",
+        "version": 3
+      },
+      {
+        "id": "customer-overlay-v3",
+        "name": "Enhanced v3",
+        "kind": "overlay",
+        "version": 3
+      }
+    ],
+    "suppliers": [
+      {
+        "id": "cedarcloud",
+        "name": "Brightline Logistics",
+        "domain": "brightline-logistics.example",
+        "country": "United Kingdom",
+        "intakeEnabled": true
+      }
+    ],
+    "services": [
+      {
+        "id": "cedarcloud-payment-event-processing",
+        "supplierId": "cedarcloud",
+        "name": "TrackPro freight tracking",
+        "suggestionOrder": 1
+      }
+    ],
+    "engagements": [
+      {
+        "id": "cedar",
+        "workspaceId": "northstar",
+        "serviceId": "cedarcloud-payment-event-processing",
+        "ownerId": "a-morgan",
+        "risk": "High",
+        "riskBasis": "synthetic-fixture",
+        "stage": "Active",
+        "due": "2027-11-01",
+        "planVersionId": "enhanced-v3",
+        "corePolicyVersionId": "ctp-core-v1",
+        "overlayVersionId": "customer-overlay-v3",
+        "analystId": "osura-analyst-01",
+        "qaReviewerId": "qa-reviewer-02",
+        "decisionOwnerId": "a-morgan"
+      }
+    ],
+    "requirements": [
+      {
+        "id": "R-07",
+        "policyVersionId": "ctp-core-v1",
+        "family": "Resilience",
+        "name": "Service recovery exercise",
+        "expectation": "Recovery exercise scoped to service"
+      },
+      {
+        "id": "INC-03",
+        "policyVersionId": "ctp-core-v1",
+        "family": "Incident response",
+        "name": "Incident notification",
+        "expectation": "Incident notification roles and timeframes"
+      },
+      {
+        "id": "DATA-02",
+        "policyVersionId": "ctp-core-v1",
+        "family": "Data protection",
+        "name": "Data retention policy",
+        "expectation": "Retention and deletion evidence"
+      },
+      {
+        "id": "IAM-04",
+        "policyVersionId": "ctp-core-v1",
+        "family": "Identity and access",
+        "name": "Privileged access reviews",
+        "expectation": "Privileged access review"
+      }
+    ],
+    "requirementReviews": [
+      {
+        "id": "cedar-R-07",
+        "engagementId": "cedar",
+        "requirementId": "R-07",
+        "conclusion": "Supported",
+        "next": "None",
+        "passage": "TrackPro full failover exercise completed 2026-09-18; RTO 3h 40m against 4h target, RPO 10 min.",
+        "proves": "A completed recovery exercise scoped to TrackPro",
+        "doesNotProve": "Recovery of the customer's own integrations",
+        "sourceLabel": "DR test report 2026 · p6",
+        "preparedProposal": "Supported. A completed recovery exercise scoped to TrackPro."
+      },
+      {
+        "id": "cedar-INC-03",
+        "engagementId": "cedar",
+        "requirementId": "INC-03",
+        "conclusion": "Supported",
+        "next": "None",
+        "passage": "Customers are notified of security incidents affecting their data within 24 hours via the named security contact.",
+        "proves": "Documented notification roles and 24h timeframe",
+        "doesNotProve": "Operational effectiveness in a live incident",
+        "sourceLabel": "IR Plan v4 · p3",
+        "preparedProposal": "Supported. Documented notification roles and 24h timeframe."
+      },
+      {
+        "id": "cedar-DATA-02",
+        "engagementId": "cedar",
+        "requirementId": "DATA-02",
+        "conclusion": "Supported",
+        "next": "None",
+        "passage": "Shipment and contact records are retained for contract term plus 90 days, then deleted; deletion certificates issued on request.",
+        "proves": "Defined retention period and deletion process",
+        "doesNotProve": "A completed deletion for this customer",
+        "sourceLabel": "Data handling v3 · p7",
+        "preparedProposal": "Supported. Defined retention period and deletion process."
+      },
+      {
+        "id": "cedar-IAM-04",
+        "engagementId": "cedar",
+        "requirementId": "IAM-04",
+        "conclusion": "Supported",
+        "next": "None",
+        "passage": "Quarterly privileged access review for TrackPro production completed 2026-09-30; 3 stale accounts removed.",
+        "proves": "A recent service-scoped privileged access review",
+        "doesNotProve": "Continuous monitoring between reviews",
+        "sourceLabel": "Access review Q3 2026 · p1",
+        "preparedProposal": "Supported. A recent service-scoped privileged access review."
+      }
+    ],
+    "documentVersions": [
+      {
+        "id": "bl-r-07-v1",
+        "engagementId": "cedar",
+        "requirementId": "R-07",
+        "documentKey": "bl-r-07",
+        "fileName": "Brightline_DR_Test_Report_2026.pdf",
+        "status": "Reviewed",
+        "version": 1,
+        "page": 6,
+        "pageCount": 14,
+        "receivedOn": "2026-10-20"
+      },
+      {
+        "id": "bl-inc-03-v1",
+        "engagementId": "cedar",
+        "requirementId": "INC-03",
+        "documentKey": "bl-inc-03",
+        "fileName": "Brightline_Incident_Response_Plan_v4.pdf",
+        "status": "Reviewed",
+        "version": 1,
+        "page": 3,
+        "pageCount": 9,
+        "receivedOn": "2026-10-20"
+      },
+      {
+        "id": "bl-data-02-v1",
+        "engagementId": "cedar",
+        "requirementId": "DATA-02",
+        "documentKey": "bl-data-02",
+        "fileName": "Brightline_Data_Handling_Standard_v3.pdf",
+        "status": "Reviewed",
+        "version": 1,
+        "page": 7,
+        "pageCount": 11,
+        "receivedOn": "2026-10-20"
+      },
+      {
+        "id": "bl-iam-04-v1",
+        "engagementId": "cedar",
+        "requirementId": "IAM-04",
+        "documentKey": "bl-iam-04",
+        "fileName": "TrackPro_Privileged_Access_Review_Q3_2026.pdf",
+        "status": "Reviewed",
+        "version": 1,
+        "page": 1,
+        "pageCount": 4,
+        "receivedOn": "2026-10-20"
+      }
+    ],
+    "evidenceCitations": [
+      {
+        "id": "bl-r-07-citation",
+        "reviewId": "cedar-R-07",
+        "documentVersionId": "bl-r-07-v1",
+        "pageStart": 6,
+        "pageEnd": 6,
+        "excerpt": "TrackPro full failover exercise completed 2026-09-18; RTO 3h 40m against 4h target, RPO 10 min."
+      },
+      {
+        "id": "bl-inc-03-citation",
+        "reviewId": "cedar-INC-03",
+        "documentVersionId": "bl-inc-03-v1",
+        "pageStart": 3,
+        "pageEnd": 3,
+        "excerpt": "Customers are notified of security incidents affecting their data within 24 hours via the named security contact."
+      },
+      {
+        "id": "bl-data-02-citation",
+        "reviewId": "cedar-DATA-02",
+        "documentVersionId": "bl-data-02-v1",
+        "pageStart": 7,
+        "pageEnd": 7,
+        "excerpt": "Shipment and contact records are retained for contract term plus 90 days, then deleted; deletion certificates issued on request."
+      },
+      {
+        "id": "bl-iam-04-citation",
+        "reviewId": "cedar-IAM-04",
+        "documentVersionId": "bl-iam-04-v1",
+        "pageStart": 1,
+        "pageEnd": 1,
+        "excerpt": "Quarterly privileged access review for TrackPro production completed 2026-09-30; 3 stale accounts removed."
+      }
+    ],
+    "findings": [],
+    "triageQuestions": [
+      {
+        "id": "isITService",
+        "policyVersionId": "ctp-core-v1",
+        "label": "IT service"
+      },
+      {
+        "id": "isMySites",
+        "policyVersionId": "ctp-core-v1",
+        "label": "On-site service"
+      },
+      {
+        "id": "isIPInvolved",
+        "policyVersionId": "ctp-core-v1",
+        "label": "Intellectual property involved"
+      },
+      {
+        "id": "isIndirectIPAccess",
+        "policyVersionId": "ctp-core-v1",
+        "label": "Indirect IP access"
+      },
+      {
+        "id": "isIrreplaceable",
+        "policyVersionId": "ctp-core-v1",
+        "label": "Irreplaceable service"
+      },
+      {
+        "id": "hasPrecisionReliance",
+        "policyVersionId": "ctp-core-v1",
+        "label": "Precision-dependent operations"
+      },
+      {
+        "id": "hasNetworkAccess",
+        "policyVersionId": "ctp-core-v1",
+        "label": "Network access"
+      },
+      {
+        "id": "hasSecurityConfigAccess",
+        "policyVersionId": "ctp-core-v1",
+        "label": "Security configuration access"
+      },
+      {
+        "id": "hasSensitiveDataAccess",
+        "policyVersionId": "ctp-core-v1",
+        "label": "Sensitive data access"
+      }
+    ],
+    "triageAnswers": [
+      {
+        "id": "cedar-isITService",
+        "engagementId": "cedar",
+        "questionId": "isITService",
+        "value": true
+      },
+      {
+        "id": "cedar-isMySites",
+        "engagementId": "cedar",
+        "questionId": "isMySites",
+        "value": false
+      },
+      {
+        "id": "cedar-isIPInvolved",
+        "engagementId": "cedar",
+        "questionId": "isIPInvolved",
+        "value": false
+      },
+      {
+        "id": "cedar-isIndirectIPAccess",
+        "engagementId": "cedar",
+        "questionId": "isIndirectIPAccess",
+        "value": false
+      },
+      {
+        "id": "cedar-isIrreplaceable",
+        "engagementId": "cedar",
+        "questionId": "isIrreplaceable",
+        "value": false
+      },
+      {
+        "id": "cedar-hasPrecisionReliance",
+        "engagementId": "cedar",
+        "questionId": "hasPrecisionReliance",
+        "value": false
+      },
+      {
+        "id": "cedar-hasNetworkAccess",
+        "engagementId": "cedar",
+        "questionId": "hasNetworkAccess",
+        "value": true
+      },
+      {
+        "id": "cedar-hasSecurityConfigAccess",
+        "engagementId": "cedar",
+        "questionId": "hasSecurityConfigAccess",
+        "value": false
+      },
+      {
+        "id": "cedar-hasSensitiveDataAccess",
+        "engagementId": "cedar",
+        "questionId": "hasSensitiveDataAccess",
+        "value": true
+      }
+    ],
+    "biaQuestions": [
+      {
+        "id": "confidentiality-1",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Confidentiality",
+        "label": "Unauthorised disclosure of Confidential or Intellectual data (Accidental)",
+        "canonicalCode": null
+      },
+      {
+        "id": "confidentiality-2",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Confidentiality",
+        "label": "Unauthorised disclosure of Confidential or Intellectual data (Deliberate)",
+        "canonicalCode": null
+      },
+      {
+        "id": "confidentiality-3",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Confidentiality",
+        "label": "Unauthorised disclosure of Confidential or Intellectual data to the public (Deliberate)",
+        "canonicalCode": null
+      },
+      {
+        "id": "confidentiality-4",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Confidentiality",
+        "label": "Unauthorised disclosure of Confidential or Intellectual data to the public (Accidental)",
+        "canonicalCode": null
+      },
+      {
+        "id": "confidentiality-5",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Confidentiality",
+        "label": "Legal or Compliance Implications due to disclosure e.g. TISAX",
+        "canonicalCode": null
+      },
+      {
+        "id": "integrity-1",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Integrity",
+        "label": "Unauthorised modification by 3rd Parties staff (Accidental)",
+        "canonicalCode": null
+      },
+      {
+        "id": "integrity-2",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Integrity",
+        "label": "Unauthorised modification by staff (Deliberate)",
+        "canonicalCode": null
+      },
+      {
+        "id": "integrity-3",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Integrity",
+        "label": "Unauthorised modification by member of the public e.g. ransomware or Malware",
+        "canonicalCode": null
+      },
+      {
+        "id": "integrity-4",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Integrity",
+        "label": "Corruption of communications (email or calls)",
+        "canonicalCode": null
+      },
+      {
+        "id": "integrity-5",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Integrity",
+        "label": "Legal Implications due to modification",
+        "canonicalCode": null
+      },
+      {
+        "id": "availability-1",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Availability",
+        "label": "Impact on business if service unavailable for 1 Hr",
+        "canonicalCode": null
+      },
+      {
+        "id": "availability-2",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Availability",
+        "label": "Impact on business if service unavailable for 4 Hrs",
+        "canonicalCode": null
+      },
+      {
+        "id": "availability-3",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Availability",
+        "label": "Impact on business if service unavailable for 1 Day",
+        "canonicalCode": null
+      },
+      {
+        "id": "availability-4",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Availability",
+        "label": "Impact on business if service unavailable for 2-3 Days",
+        "canonicalCode": null
+      },
+      {
+        "id": "availability-5",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Availability",
+        "label": "Impact on business if service unavailable for 1 Week",
+        "canonicalCode": null
+      },
+      {
+        "id": "availability-6",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Availability",
+        "label": "Impact on business if service unavailable for 1 Month",
+        "canonicalCode": null
+      },
+      {
+        "id": "availability-7",
+        "policyVersionId": "ctp-core-v1",
+        "dimension": "Availability",
+        "label": "Impact on business if service is a Complete Loss",
+        "canonicalCode": null
+      }
+    ],
+    "biaAnswers": [
+      {
+        "id": "cedar-confidentiality-1",
+        "engagementId": "cedar",
+        "questionId": "confidentiality-1",
+        "impact": "High"
+      },
+      {
+        "id": "cedar-confidentiality-2",
+        "engagementId": "cedar",
+        "questionId": "confidentiality-2",
+        "impact": "Medium"
+      },
+      {
+        "id": "cedar-confidentiality-3",
+        "engagementId": "cedar",
+        "questionId": "confidentiality-3",
+        "impact": "Medium"
+      },
+      {
+        "id": "cedar-confidentiality-4",
+        "engagementId": "cedar",
+        "questionId": "confidentiality-4",
+        "impact": "Medium"
+      },
+      {
+        "id": "cedar-confidentiality-5",
+        "engagementId": "cedar",
+        "questionId": "confidentiality-5",
+        "impact": "Low"
+      },
+      {
+        "id": "cedar-integrity-1",
+        "engagementId": "cedar",
+        "questionId": "integrity-1",
+        "impact": "Medium"
+      },
+      {
+        "id": "cedar-integrity-2",
+        "engagementId": "cedar",
+        "questionId": "integrity-2",
+        "impact": "Medium"
+      },
+      {
+        "id": "cedar-integrity-3",
+        "engagementId": "cedar",
+        "questionId": "integrity-3",
+        "impact": "High"
+      },
+      {
+        "id": "cedar-integrity-4",
+        "engagementId": "cedar",
+        "questionId": "integrity-4",
+        "impact": "Low"
+      },
+      {
+        "id": "cedar-integrity-5",
+        "engagementId": "cedar",
+        "questionId": "integrity-5",
+        "impact": "Low"
+      },
+      {
+        "id": "cedar-availability-1",
+        "engagementId": "cedar",
+        "questionId": "availability-1",
+        "impact": "Low"
+      },
+      {
+        "id": "cedar-availability-2",
+        "engagementId": "cedar",
+        "questionId": "availability-2",
+        "impact": "Low"
+      },
+      {
+        "id": "cedar-availability-3",
+        "engagementId": "cedar",
+        "questionId": "availability-3",
+        "impact": "Medium"
+      },
+      {
+        "id": "cedar-availability-4",
+        "engagementId": "cedar",
+        "questionId": "availability-4",
+        "impact": "High"
+      },
+      {
+        "id": "cedar-availability-5",
+        "engagementId": "cedar",
+        "questionId": "availability-5",
+        "impact": "High"
+      },
+      {
+        "id": "cedar-availability-6",
+        "engagementId": "cedar",
+        "questionId": "availability-6",
+        "impact": "High"
+      },
+      {
+        "id": "cedar-availability-7",
+        "engagementId": "cedar",
+        "questionId": "availability-7",
+        "impact": "High"
+      }
+    ],
+    "supplierRequests": [
+      {
+        "id": "BL-2026-021",
+        "engagementId": "cedar",
+        "recipient": "security@brightline-logistics.example",
+        "due": "2026-10-24",
+        "message": "Please provide the TrackPro recovery exercise report and the latest privileged access review record for the production service.",
+        "status": "Response received"
+      }
+    ],
+    "requestItems": [
+      {
+        "id": "request-item-1",
+        "requestId": "BL-2026-021",
+        "requirementId": "R-07",
+        "label": "Recovery exercise evidence",
+        "position": 1
+      },
+      {
+        "id": "request-item-2",
+        "requestId": "BL-2026-021",
+        "requirementId": "IAM-04",
+        "label": "Privileged access review record",
+        "position": 2
+      }
+    ],
+    "users": [
+      {
+        "id": "customer-morgan",
+        "actorId": "a-morgan",
+        "email": "customer-morgan@demo.example",
+        "role": "customer",
+        "workspaceId": "northstar",
+        "active": true,
+        "canQA": false
+      },
+      {
+        "id": "customer-singh",
+        "actorId": "t-singh",
+        "email": "customer-singh@demo.example",
+        "role": "customer",
+        "workspaceId": "ridgeway",
+        "active": true,
+        "canQA": false
+      },
+      {
+        "id": "analyst-01",
+        "actorId": "osura-analyst-01",
+        "email": "analyst-01@demo.example",
+        "role": "analyst",
+        "workspaceId": null,
+        "active": true,
+        "canQA": false
+      },
+      {
+        "id": "analyst-02",
+        "actorId": "qa-reviewer-02",
+        "email": "analyst-02@demo.example",
+        "role": "analyst",
+        "workspaceId": null,
+        "active": true,
+        "canQA": true
+      },
+      {
+        "id": "superadmin",
+        "actorId": "osura-admin",
+        "email": "superadmin@demo.example",
+        "role": "superadmin",
+        "workspaceId": null,
+        "active": true,
+        "canQA": false
+      }
+    ],
+    "customerAssignments": [
+      {
+        "id": "assignment-01",
+        "userId": "analyst-01",
+        "workspaceId": "northstar"
+      },
+      {
+        "id": "assignment-02",
+        "userId": "analyst-01",
+        "workspaceId": "ridgeway"
+      },
+      {
+        "id": "assignment-03",
+        "userId": "analyst-02",
+        "workspaceId": "northstar"
+      }
+    ]
+  },
+  "presentation": {
+    "schemaVersion": 2,
+    "intake": {
+      "supplier": "",
+      "domain": "",
+      "use": "",
+      "product": "",
+      "purpose": "",
+      "answers": {},
+      "attachments": [],
+      "businessImpactAnswers": {}
+    },
+    "initialState": {
+      "selected": "cedar",
+      "intakeSubmitted": false,
+      "judgement": "",
+      "conclusion": "Supported",
+      "requestStatus": "Response received",
+      "supplierReceipt": null,
+      "supplierDraft": {
+        "fileName": "",
+        "answer": "",
+        "scope": ""
+      },
+      "qa": "Passed",
+      "qaNote": "Prepared example: analyst QA passed. All four requirements supported by service-scoped evidence.",
+      "decision": null,
+      "signedPack": null,
+      "conditionClosed": false,
+      "events": [],
+      "extraEngagements": [],
+      "scheduledReviews": [],
+      "owners": {},
+      "supplierDrafts": {},
+      "supplierReceipts": {}
+    },
+    "programmeTabs": {
+      "Control sets": {
+        "title": "Versioned control requirements",
+        "rows": []
+      },
+      "Review rules": {
+        "title": "Independent review and customer authority",
+        "rows": []
+      },
+      "Communications": {
+        "title": "Supplier communication settings",
+        "rows": []
+      },
+      "Lifecycle": {
+        "title": "Monitoring and reassessment rules",
+        "rows": []
+      },
+      "Evidence standards": {
+        "title": "Evidence applicability and freshness",
+        "rows": []
+      },
+      "Publish history": {
+        "title": "Published policy versions",
+        "rows": []
+      }
+    },
+    "operationsAttention": {
+      "cedar": "Approved · prepared example"
+    },
+    "monitoring": [],
+    "directoryIdentity": [],
+    "riskPalette": {
+      "Critical": "#d85261",
+      "High": "#eea14d",
+      "Medium": "#5288de",
+      "Low": "#38a483",
+      "Pending triage": "#a5adbe"
+    },
+    "overviewActions": [],
+    "upcomingAssurance": [],
+    "operationsHandoffs": [],
+    "communications": [],
+    "historicalReports": [],
+    "assessmentActivity": [
+      {
+        "label": "Evidence review",
+        "stage": "Evidence",
+        "detail": "Including supplier follow-up"
+      },
+      {
+        "label": "Questions",
+        "stage": "Questions",
+        "detail": "Awaiting supplier answer"
+      },
+      {
+        "label": "Findings",
+        "stage": "Findings",
+        "detail": "Treatment in progress"
+      },
+      {
+        "label": "Decision",
+        "stage": "Decision",
+        "detail": "Customer signature required"
+      }
+    ],
+    "sourceHistory": [],
+    "relationshipHistory": [],
+    "policyConsequences": [],
+    "notifications": [],
+    "defaults": {
+      "conditionOwner": "",
+      "conditionDue": "",
+      "conditionEvidence": "",
+      "rationale": "",
+      "supplierTeam": "Supplier contact — configure before use",
+      "date": "2026-11-09",
+      "recommendation": "Return for clarification",
+      "materialIssue": "No supplier, service or evidence has been assessed.",
+      "requestItemDescriptions": [
+        "Configure the service and ask for the required recovery evidence. No evidence is attached.",
+        "Configure the service and ask for the required access evidence. No evidence is attached."
+      ]
+    },
+    "scenario": {
+      "workspaceId": "northstar",
+      "walkthroughEngagementId": "cedar",
+      "requestId": "BL-2026-021",
+      "directoryIds": [
+        "cedar"
+      ],
+      "intakeSupplierIds": [],
+      "displayDate": "2026-11-16",
+      "findingServiceLabels": {}
+    }
+  },
+  "examples": {
+    "referencePack": {
+      "version": 1,
+      "engagement": {
+        "id": "cedar",
+        "supplier": "Brightline Logistics",
+        "service": "TrackPro freight tracking",
+        "risk": "High",
+        "stage": "Active",
+        "owner": "Customer owner",
+        "due": "01 Nov 2027",
+        "plan": "Enhanced v3",
+        "client": "My company"
+      },
+      "policy": "CTP Core v1",
+      "overlay": "Enhanced v3",
+      "decision": {
+        "outcome": "Approve",
+        "rationale": "Prepared example: all four requirements are supported by service-scoped evidence and QA passed. TrackPro approved for freight tracking use.",
+        "condition": null,
+        "actor": "Customer owner",
+        "at": "2026-11-02T10:15:00Z"
+      },
+      "requirements": [
+        {
+          "id": "R-07",
+          "family": "Resilience",
+          "name": "Service recovery exercise",
+          "conclusion": "Supported",
+          "source": "DR test report 2026 · p6",
+          "expectation": "Recovery exercise scoped to service",
+          "next": "None",
+          "passage": "TrackPro full failover exercise completed 2026-09-18; RTO 3h 40m against 4h target, RPO 10 min.",
+          "proves": "A completed recovery exercise scoped to TrackPro",
+          "doesNotProve": "Recovery of the customer's own integrations"
+        },
+        {
+          "id": "INC-03",
+          "family": "Incident response",
+          "name": "Incident notification",
+          "conclusion": "Supported",
+          "source": "IR Plan v4 · p3",
+          "expectation": "Incident notification roles and timeframes",
+          "next": "None",
+          "passage": "Customers are notified of security incidents affecting their data within 24 hours via the named security contact.",
+          "proves": "Documented notification roles and 24h timeframe",
+          "doesNotProve": "Operational effectiveness in a live incident"
+        },
+        {
+          "id": "DATA-02",
+          "family": "Data protection",
+          "name": "Data retention policy",
+          "conclusion": "Supported",
+          "source": "Data handling v3 · p7",
+          "expectation": "Retention and deletion evidence",
+          "next": "None",
+          "passage": "Shipment and contact records are retained for contract term plus 90 days, then deleted; deletion certificates issued on request.",
+          "proves": "Defined retention period and deletion process",
+          "doesNotProve": "A completed deletion for this customer"
+        },
+        {
+          "id": "IAM-04",
+          "family": "Identity and access",
+          "name": "Privileged access reviews",
+          "conclusion": "Supported",
+          "source": "Access review Q3 2026 · p1",
+          "expectation": "Privileged access review",
+          "next": "None",
+          "passage": "Quarterly privileged access review for TrackPro production completed 2026-09-30; 3 stale accounts removed.",
+          "proves": "A recent service-scoped privileged access review",
+          "doesNotProve": "Continuous monitoring between reviews"
+        }
+      ],
+      "qa": "Passed",
+      "qaNote": "Prepared example: checked each source version and page against the TrackPro service scope; no open gaps.",
+      "judgement": "All four CTP requirements are supported by dated, service-scoped evidence.",
+      "conclusion": "Supported",
+      "documents": [
+        {
+          "name": "Brightline_DR_Test_Report_2026.pdf",
+          "status": "Reviewed",
+          "version": "v1",
+          "page": "6 of 14",
+          "date": "20 Oct 2026",
+          "requirement": "R-07"
+        },
+        {
+          "name": "Brightline_Incident_Response_Plan_v4.pdf",
+          "status": "Reviewed",
+          "version": "v1",
+          "page": "3 of 9",
+          "date": "20 Oct 2026",
+          "requirement": "INC-03"
+        },
+        {
+          "name": "Brightline_Data_Handling_Standard_v3.pdf",
+          "status": "Reviewed",
+          "version": "v1",
+          "page": "7 of 11",
+          "date": "20 Oct 2026",
+          "requirement": "DATA-02"
+        },
+        {
+          "name": "TrackPro_Privileged_Access_Review_Q3_2026.pdf",
+          "status": "Reviewed",
+          "version": "v1",
+          "page": "1 of 4",
+          "date": "20 Oct 2026",
+          "requirement": "IAM-04"
+        }
+      ],
+      "qaReview": {
+        "actor": "Demo analyst",
+        "prepared": true,
+        "at": "2026-10-30T16:00:00Z"
+      }
+    },
+    "referenceReceipt": {
+      "reference": "BL-2026-021-R01",
+      "at": "2026-10-20T09:30:00Z",
+      "fileName": "Brightline_DR_Test_Report_2026.pdf",
+      "answer": "TrackPro recovery exercise report and Q3 privileged access review supplied.",
+      "scope": "Covers this service"
+    }
+  },
+  "source": {
+    "kind": "prepared-synthetic",
+    "note": "Hand-built approved walkthrough; no real supplier data."
+  }
+}

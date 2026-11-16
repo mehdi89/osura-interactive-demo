@@ -237,7 +237,7 @@ test("QA send-back requires an analyst revision and readiness agrees with the de
   const revised = saveRequirementReview(sentBack, analystData, "R-07", {
     recommendation: "Approve with conditions", judgement: "Exact service scope considered", conclusion: "Partially supported", reason: "",
   });
-  assert.equal(workflowStatus(revised).label, "Independent QA required");
+  assert.equal(workflowStatus(revised).label, "QA review required");
   assert.deepEqual([workflowStatus(revised).stage, workflowStatus(revised).step], ["QA", 3]);
   const passed = recordQA(revised, qaData, "Passed with condition", "Independently checked revision");
   assert.equal(workflowStatus(passed).ready, true);

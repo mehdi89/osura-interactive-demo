@@ -220,3 +220,13 @@ test("the supplied blank scenario validates and a fresh request completes QA, de
   assert.deepEqual(base.documents, []);
   assert.deepEqual(fixture, imported);
 });
+
+test("approved supplier scenario validates and opens on its signed Approve decision", async () => {
+  const approved = validate(await read("data/scenarios/approved-supplier.json"));
+  const data = projectWorkspace(approved.workspace, approved.presentation, approved.examples);
+  const state = createState(data);
+  assert.equal(state.decision.outcome, "Approve");
+  assert.equal(workflowStatus(state).label, "Approved");
+  assert.equal(validate(await read("data/scenarios/blank-intake.json")).id, "blank-intake-starter");
+  assert.equal(createState(projectWorkspace(workspace, presentation, examples)).decision, workspace.engagements.find(row => row.id === "cedar").stage === "Active" ? state.decision : presentation.initialState.decision);
+});

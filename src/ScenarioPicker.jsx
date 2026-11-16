@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { MAX_SCENARIO_BYTES } from "./scenarios.mjs";
+const BUNDLED = { "cedarline-manual-v1": "cedarline.json", "blank-intake-starter": "blank-intake.json", "approved-supplier-example": "approved-supplier.json" };
 
 export default function ScenarioPicker({ current, defaultScenario, validate, onLoad }) {
   const [candidate, setCandidate] = useState(null);
@@ -30,11 +31,11 @@ export default function ScenarioPicker({ current, defaultScenario, validate, onL
       if (!choice) { ++request.current; setCandidate(null); setError(""); setBusy(false); return; }
       prepare(async () => {
         if (choice === defaultScenario.id) return defaultScenario;
-        const response = await fetch("/data/scenarios/cedarline.json", { cache: "no-store" });
-        if (!response.ok) throw new Error("Cedarline scenario could not load. Try again.");
+        const response = await fetch(`/data/scenarios/${BUNDLED[choice]}`, { cache: "no-store" });
+        if (!response.ok) throw new Error("This scenario could not load. Try again.");
         return response.json();
       });
-    }}><option value="">Choose a scenario</option><option value={defaultScenario.id}>{defaultScenario.name}</option><option value="cedarline-manual-v1">Cedarline manual assessment</option></select></label>
+    }}><option value="">Choose a scenario</option><option value={defaultScenario.id}>{defaultScenario.name}</option><option value="cedarline-manual-v1">Cedarline manual assessment</option><option value="blank-intake-starter">Blank intake starter</option><option value="approved-supplier-example">Approved supplier example</option></select></label>
     <label className="field"><span>Or load a scenario JSON file</span><input type="file" accept=".json,application/json" aria-label="Scenario JSON file" onChange={event => {
       const file = event.target.files?.[0];
       if (!file) return;

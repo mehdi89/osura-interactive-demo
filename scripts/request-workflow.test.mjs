@@ -123,10 +123,9 @@ test("evidence and rationale gates prevent invented approval and enforce indepen
   const pending = act(scoped, "evidence", evidence);
   assert.throws(() => act(pending, "recommend", { outcome: "Approve", rationale: "Not reviewed" }), /review every evidence/);
   let state = act(reviewed(), "recommend", { outcome: "Approve", rationale: "Independently weighed the documented gap." });
-  assert.throws(() => act(state, "qa", { outcome: "Passed", rationale: "Self review" }), /QA permission/);
-  const selfQA = { ...context(), access: { ...users.analyst, canQA: true } };
-  assert.throws(() => transitionRequest(state, selfQA, engagement.id, "qa", { outcome: "Passed", rationale: "Self review" }), /own analysis/);
-  assert.throws(() => act(state, "qa", { outcome: "Passed", rationale: " " }, "qa"), /challenge and rationale/);
+  assert.throws(() => act(state, "qa", { outcome: "Passed", rationale: " " }, "qa"), /what you checked/);
+  // Same analyst may QA their own recommendation (independent QA paused by client decision).
+  assert.equal(requestProgress(requestAssessment(act(state, "qa", { outcome: "Passed", rationale: "Self review" }), engagement)).stage, "Decision");
 });
 
 test("new evidence invalidates previous QA and duplicate evidence never overwrites history", () => {
@@ -156,9 +155,9 @@ test("QA rework requires a revised recommendation and another independent pass",
   assert.equal(requestProgress(requestAssessment(state, engagement)).stage, "Decision");
 });
 
-test("a prior QA reviewer who revises the recommendation becomes an author and cannot pass their own revision", () => {
+test("an analyst who revises the recommendation can run QA on the revision", () => {
   const state = act(ready(), "recommend", { outcome: "Reject", rationale: "My revised judgement changes the proposed outcome." }, "qa");
-  assert.throws(() => act(state, "qa", { outcome: "Passed", rationale: "Reviewing my revision" }, "qa"), /own analysis/);
+  assert.equal(requestProgress(requestAssessment(act(state, "qa", { outcome: "Passed", rationale: "Reviewing my revision" }, "qa"), engagement)).stage, "Decision");
 });
 
 test("customer return for clarification loops back without signing an approval", () => {
@@ -222,4 +221,26 @@ test("superseded supported evidence cannot close a condition after a newer contr
   id = requestAssessment(state, engagement).evidence.at(-1).id;
   state = act(state, "review", { evidenceId: id, conclusion: "Contradictory", rationale: "Corrected evidence shows the test failed." });
   assert.throws(() => act(state, "close", { rationale: "Use the obsolete successful result" }), /supported evidence/);
+});
+
+test("supplier evidence requests round-trip from analyst ask and approval condition to reviewable evidence", async () => {
+  const { respondAsSupplier } = await import("../src/request-workflow.mjs");
+  let state = act(reviewed(), "askSupplier", { ask: "BCP/DR test report", due: "2027-01-15" });
+  let record = requestAssessment(state, engagement);
+  assert.equal(requestProgress(record).nextOwner, "Supplier contact");
+  assert.throws(() => respondAsSupplier(state, engagement.id, record.supplierAsks[0].id, { name: "DR report" }), /version/);
+  state = { ...state, ...respondAsSupplier(state, engagement.id, record.supplierAsks[0].id, { name: "DR report", version: "2026-10", notes: "TrackPro failover test" }) };
+  record = requestAssessment(state, engagement);
+  assert.equal(record.supplierAsks[0].status, "Responded");
+  assert.equal(record.evidence.at(-1).supplierAskId, record.supplierAsks[0].id);
+  assert.equal(requestProgress(record).label, "Evidence review required");
+});
+
+test("an analyst can withdraw an unanswered supplier request so the case does not dead-end", async () => {
+  let state = act(reviewed(), "askSupplier", { ask: "Pen test summary", due: "2027-01-15" });
+  const ask = requestAssessment(state, engagement).supplierAsks[0];
+  assert.equal(requestProgress(requestAssessment(state, engagement)).nextOwner, "Supplier contact");
+  assert.throws(() => act(state, "withdrawAsk", { askId: ask.id, rationale: " " }), /why/);
+  state = act(state, "withdrawAsk", { askId: ask.id, rationale: "Customer already holds this report." });
+  assert.equal(requestProgress(requestAssessment(state, engagement)).nextOwner, "Assigned analyst");
 });

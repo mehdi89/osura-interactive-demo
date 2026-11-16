@@ -55,7 +55,7 @@ export default function RoleAdmin({ model, user, validate, onSave, auditLog }) {
           <label className="field"><span>Analyst name</span><input required name="analystName" value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label>
           <label className="field"><span>Email</span><input required type="email" name="analystEmail" value={draft.email} onChange={e=>setDraft({...draft,email:e.target.value})}/></label>
           <label className="role-check"><input type="checkbox" checked={draft.active} onChange={e=>setDraft({...draft,active:e.target.checked})}/>Active team member</label>
-          <label className="role-check"><input type="checkbox" checked={draft.canQA} onChange={e=>setDraft({...draft,canQA:e.target.checked})}/>Allow independent QA (cannot review own work)</label>
+          <label className="role-check"><input type="checkbox" checked={draft.canQA} onChange={e=>setDraft({...draft,canQA:e.target.checked})}/>QA permission (not required for demo QA)</label>
           <fieldset><legend>Assigned customers</legend>{model.workspaces.map(workspace=><label className="role-check" key={workspace.id}><input type="checkbox" name={workspace.id} checked={draft.workspaceIds.includes(workspace.id)} onChange={e=>setDraft({...draft,workspaceIds:e.target.checked?[...draft.workspaceIds,workspace.id]:draft.workspaceIds.filter(id=>id!==workspace.id)})}/>{workspace.name}</label>)}</fieldset>
           <p>With no assignments, an analyst sees an empty work list.</p><button className="button primary" type="submit">Save analyst</button>
         </form>
