@@ -17,7 +17,12 @@ export const CONTROL_LIBRARY = [
   { id: "CTL-IR", family: "Incident management", name: "Incident response and notification", expectation: "Incident response plan with a customer notification commitment", keywords: ["notified", "incident", "Incidents", "post-incident"] },
   { id: "CTL-VUL", family: "Vulnerability management", name: "Penetration testing and remediation", expectation: "Penetration test within 12 months with high severity issues remediated", keywords: ["Penetration", "high severity", "remediated"] },
 ];
-export const controlById = id => CONTROL_LIBRARY.find(row => row.id === id);
+// Scenario control sets (e.g. Cedarline's supplied buyer requirements) replace the generic rules for that case.
+// ponytail: module-level registry for bundled examples; the backend stores published control sets per framework.
+const CONTROL_SETS = {};
+const keywordsFor = row => [...new Set(`${row.name} ${row.expectation}`.split(/[^A-Za-z0-9]+/).filter(w => w.length > 4))].slice(0, 8);
+export const registerControlSet = (name, controls) => { CONTROL_SETS[name] = controls.map(row => ({ ...row, keywords: row.keywords || keywordsFor(row) })); };
+export const controlById = id => CONTROL_LIBRARY.find(row => row.id === id) || Object.values(CONTROL_SETS).flat().find(row => row.id === id);
 
 // Intake context facts (index into engagement.answers) → named facts.
 const fact = (engagement, index) => engagement.answers?.[index] || "Unknown";
@@ -55,6 +60,8 @@ export function calculateRisk(engagement) {
 
 // R2: controls applied from the rating and facts, each with its rule and reason.
 export function deriveControls(engagement, tier) {
+  if (engagement.controlSet && CONTROL_SETS[engagement.controlSet])
+    return CONTROL_SETS[engagement.controlSet].map(row => ({ controlId: row.id, source: "rule", ruleId: `SET-${engagement.controlSet}`, reason: row.reason || "Supplied buyer requirement for this case", rulesVersion: RULES_VERSION }));
   const facts = contextFacts(engagement);
   const applied = new Map();
   for (const rule of RULES) if (rule.when(facts, tier))

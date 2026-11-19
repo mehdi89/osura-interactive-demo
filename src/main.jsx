@@ -82,7 +82,7 @@ import {
   saveRequirementReview,
   recordQA,
   mergeWorkflowPatch,
-  workflowStatus,
+  workflowStatus as cedarWorkflowStatus,
   addEvidence,
   filterSupplierServices,
   canCloseCondition,
@@ -102,6 +102,14 @@ import RoleAdmin, { AuditTrail } from "./RoleAdmin.jsx";
 import WorkspaceSearch from "./WorkspaceSearch.jsx";
 import RequestAssessment, { SupplierInbox } from "./RequestAssessment.jsx";
 import { PackExport } from "./assessment-parts.jsx";
+import { prepareExampleData } from "./prepared-requests.mjs";
+// Prepared examples run their walkthrough case on the request engine; every cedar status read follows that record.
+const workflowStatus = state => {
+  const record = state.requestAssessments?.cedar;
+  if (!record?.preparedExample) return cedarWorkflowStatus(state);
+  const progress = requestProgress(record);
+  return { label: progress.label, nextOwner: progress.nextOwner, stage: progress.stage, step: Math.min(progress.step, 4), ready: progress.action === "decision" };
+};
 import { requestAssessment, requestProgress } from "./request-workflow.mjs";
 import { customerView, patchCustomerView } from "./customer-session.mjs";
 import { sessionUser, scopeWorkspace, actionEntry } from "./access.mjs";
@@ -276,7 +284,7 @@ function Demo({ initialModel, presentation, examples, schema, catalog, validate,
   const [auditLog, setAuditLog] = useState([]);
   const onAudit = entries => setAuditLog(old => [...old, ...structuredClone([entries].flat()).filter(row => !old.some(item => item.id === row.id))]);
   const user = identity === "supplier-contact" ? { id: identity, actorId: identity, name: `${model.suppliers.find(row => row.id === "cedarcloud").name} contact`, role: "supplier", active: true, workspaceIds: ["northstar"] } : sessionUser(model, identity);
-  const data = React.useMemo(() => projectWorkspace(model, presentation, examples), [model]);
+  const data = React.useMemo(() => prepareExampleData(projectWorkspace(model, presentation, examples), model, scenario), [model]);
   return <App data={data} {...{ catalog, model, schema, validate, user, identity, auditLog, onAudit, scenario, validateScenario, defaultScenario, onScenarioLoad }} onSwitch={setIdentity} onDataChange={setModel} />;
 }
 
@@ -490,14 +498,14 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   });
   const tour = [
     { role: "customer-morgan", screen: "C01", actor: "Customer", title: "Understand who owns the decision", body: "Osura reviews evidence, independent QA challenges the work, and your organisation makes the final decision." },
-    { role: "analyst-01", screen: "O04", actor: "Osura analyst", title: "Read the evidence before recommending", body: "Inspect the exact source version, its limits and service scope. Save independent reasoning before comparing the prepared proposal." },
-    { role: "analyst-01", screen: "O05", actor: "Osura analyst", title: "Ask only for the missing proof", body: "Review the scoped supplier packet. The demo outbox never sends external email." },
-    { role: "supplier-contact", screen: "S01", actor: "Supplier", title: "Respond to the exact request", body: "Provide service-scoped evidence, an alternative or a cannot-provide explanation. A receipt is delivery, not verification." },
-    { role: "analyst-01", screen: "O04", actor: "Osura analyst", title: "Review the changed version", body: "New evidence returns the affected requirement to review. Earlier versions remain part of the history." },
-    { role: "analyst-02", screen: "O08", actor: "Independent QA reviewer", title: "Challenge the recommendation", body: "QA must be a different permitted reviewer. Returning work blocks the customer decision until the challenge is addressed." },
-    { role: "customer-morgan", screen: "C06", actor: "Customer Decision Owner", title: "Make a deliberate customer decision", body: "Choose your own outcome and rationale, review the named obligation, then confirm. This guide performs no signing or approval." },
-    { role: "customer-morgan", screen: "C07", actor: "Customer", title: "Keep the decision record intact", body: "A signed pack freezes its evidence and attribution. An unsigned example stays clearly labelled as prepared." },
-    { role: "customer-morgan", screen: "C08", actor: "Customer and Osura", title: "Follow the next obligation", body: "Track the accountable owner, due date and proof needed. Closing a condition never rewrites the original customer decision." },
+    { role: "analyst-01", screen: "O02", actor: "Osura analyst", title: "Calculated risk and applied controls", body: "The tier comes from the intake answers with visible drivers and a rule version. Controls come from a separate library, each with the reason it applies." },
+    { role: "analyst-01", screen: "O04", actor: "Osura analyst", title: "Cite the exact page", body: "Open a control: the supplier claim sits beside its correction, the cited PDF page opens alongside, and simulated AI proposals are accepted, edited or rejected with a reason." },
+    { role: "supplier-contact", screen: "S01", actor: "Supplier (simulated)", title: "Respond to the exact request", body: "One consolidated request listed only what was missing. Sending a document is delivery, not acceptance; nothing is emailed." },
+    { role: "analyst-01", screen: "O04", actor: "Osura analyst", title: "A finding for every gap", body: "Insufficient, contradicted or missing controls each carry an owned, dated finding with a severity rationale before the recommendation." },
+    { role: "analyst-02", screen: "O08", actor: "Independent QA reviewer", title: "Challenge the recommendation", body: "A different analyst with QA permission challenged the work; the analyst answered before QA passed. Reasoning and sources sit side by side." },
+    { role: "customer-morgan", screen: "C06", actor: "Customer Decision Owner", title: "Decide and accept risk explicitly", body: "Read the memo and choose your outcome. Approving with open findings needs a risk acceptance; a condition goes to the supplier only after you confirm." },
+    { role: "customer-morgan", screen: "C07", actor: "Customer", title: "Keep the decision record intact", body: "Recording the decision freezes citations, findings, QA and the rule version. Export JSON or Save as PDF from the same snapshot." },
+    { role: "customer-morgan", screen: "C08", actor: "Customer and Osura", title: "Follow the open items", body: "Findings and conditions close only on newer, cited evidence. Accepting risk is not closure." },
   ];
   const showTourStep = index => requestNavigation(() => {
     const step = tour[index]; setTourStep(index); onSwitch(step.role); setCustomerFilter("all"); update({ selected: "cedar" }); commitNavigation(step.screen);
@@ -1976,7 +1984,8 @@ function Findings(c) {
   });
   const requestFindings = data.engagements.filter(row => row.receipt).flatMap(row => (requestAssessment(state, row).findings || []).map(f => ({
     ...f, engagementId: row.id, supplier: row.supplier, service: row.service, control: f.controlIds.join(", "), evidence: `${f.severityRationale} Action: ${f.action}${f.missingRequirement ? ` Missing: ${f.missingRequirement}` : ""}`, treatment: f.closure ? `Closed on new evidence: ${f.closure.rationale}` : "Open analyst finding" })));
-  const allRows = [...data.findings, ...(state.extraFindings || []), ...conditions, ...requestFindings];
+  const receiptIds = new Set(data.engagements.filter(row => row.receipt).map(row => row.id));
+  const allRows = [...data.findings.filter(row => !receiptIds.has(row.engagementId)), ...(state.extraFindings || []), ...conditions, ...requestFindings];
   const rows = allRows.filter(row => `${row.issue} ${row.supplier} ${row.owner} ${row.control}`.toLowerCase().includes(search.toLowerCase()) && (filter === "All" || filter === "Open" && row.state !== "Closed" || filter === "Conditions" && /condition/i.test(row.state) || filter === row.state));
   const f = rows.find(row=>row.id===selectedId) || rows.find(row=>row.engagementId===state.selected) || rows[0];
   const requirement = f?.engagementId === "cedar" ? data.requirements.find(row=>row.id===f.control) : null;

@@ -198,7 +198,8 @@ export default function RequestAssessment(c) {
     <section className="request-flow-hero" aria-label="Current assessment and next action">
       <div className="eyebrow">{engagement.client} · {engagement.receipt}</div>
       <h2>{engagement.supplier} · {record.scope?.service || engagement.service}</h2>
-      <div className="badges"><Badge>{progress.label}</Badge><Badge>CTP inherent risk: {record.scope?.risk || "Pending triage"}</Badge><Badge>Evidence: {controls.length ? `${controls.filter(r => record.controlReviews[r.controlId]?.conclusion === "Supported").length}/${controls.length} controls supported` : "No controls yet"}</Badge><Badge>Open findings: {openFindings(record).length}</Badge></div>
+      {record.preparedExample && <Note>{record.preparedExample.note}</Note>}
+      <div className="badges"><Badge>{progress.label}</Badge><Badge>{`CTP inherent risk: ${record.scope?.risk || "Pending triage"}${record.scope?.calculated?.provisional ? " · provisional" : ""}`}</Badge><Badge>Evidence: {controls.length ? `${controls.filter(r => record.controlReviews[r.controlId]?.conclusion === "Supported").length}/${controls.length} controls supported` : "No controls yet"}</Badge><Badge>Open findings: {openFindings(record).length}</Badge></div>
       <div className="request-flow-next"><div><b>{record.decision && !followUp ? "Complete · no open actions" : myTurn ? "Your next action" : `Waiting for ${progress.nextOwner}`}</b><h3>{currentAction[0]}</h3><p>{currentAction[1]}</p></div>{myTurn ? <Button primary onClick={() => changeSection(sectionFor(progress.action))}>{currentAction[0]} →</Button> : <Button onClick={() => changeSection(sectionFor(progress.action))}>View this step</Button>}</div>
       {!myTurn && (!record.decision || followUp) && <p>Switch the bottom Demo user to the {supplierStep ? "supplier" : customerStep ? "customer" : qaStep ? "independent QA reviewer" : "analyst"} to continue{supplierStep ? "; the request appears in the supplier's inbox" : "; this service stays selected"}.</p>}
     </section>
@@ -359,7 +360,8 @@ export function SupplierInbox(c) {
   const [drafts, setDrafts] = useState({});
   const [error, setError] = useState("");
   // ponytail: one demo supplier contact; scope to the selected case when it has requests, else every case with requests.
-  const all = (state.extraEngagements || []).map(engagement => ({ engagement, record: state.requestAssessments?.[engagement.id] }))
+  const submitted = [...(c.data?.engagements || []).filter(row => row.receipt), ...(state.extraEngagements || [])].filter((row, i, rows) => rows.findIndex(r => r.id === row.id) === i);
+  const all = submitted.map(engagement => ({ engagement, record: state.requestAssessments?.[engagement.id] }))
     .filter(row => row.record?.supplierAsks?.some(ask => ask.status !== "Withdrawn"));
   const cases = all.some(row => row.engagement.id === state.selected) ? all.filter(row => row.engagement.id === state.selected) : all;
   const submit = (engagement, ask) => {

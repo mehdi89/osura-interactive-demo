@@ -1,4 +1,5 @@
 import { requireAction, actionEntry } from "./access.mjs";
+import { seedPreparedRequest } from "./prepared-requests.mjs";
 
 export function createState(data) {
   // A scenario whose walkthrough case is already Active starts from its prepared signed decision record.
@@ -17,7 +18,14 @@ export function createState(data) {
     requestReference: data.request.reference,
     qaReview: { actorId: data.workspace.qaReviewerId, actor: data.workspace.qaReviewer, role: "analyst", prepared: true, at: "2026-10-31T14:00:00Z", outcome: data.initialState.qa, rationale: data.initialState.qaNote },
     ...signed,
+    ...preparedExampleState(data),
   };
+}
+// The prepared example's record is the source of truth; mirror its decision for shared portfolio views.
+function preparedExampleState(data) {
+  const seeded = seedPreparedRequest(data);
+  const record = seeded.requestAssessments?.cedar;
+  return record ? { ...seeded, decision: record.decision || null, signedPack: record.signedPack || null } : data.preparedExample ? { decision: null, signedPack: null } : {};
 }
 
 export function recordDecision(state, data, outcome, rationale, condition, riskAcceptance = "") {

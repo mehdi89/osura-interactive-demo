@@ -208,7 +208,7 @@ export function transitionRequest(state, data, engagementId, action, values = {}
       : { libraryId: null, documentKey: text(values.name).toLowerCase(), name: text(values.name), version: text(values.version), date: text(values.date), sourceType: text(values.sourceType), status: text(values.status), file: null, pageCount: 0 };
     doc.source = text(values.source) || (lib ? "Synthetic document pack" : "");
     doc.notes = text(values.notes);
-    if (!doc.name || !doc.version || !isDate(doc.date) || !SOURCE_TYPES.includes(doc.sourceType) || !["Final", "Draft"].includes(doc.status) || !doc.source || !doc.notes)
+    if (!doc.name || !doc.version || !isDate(doc.date) || (!lib && !SOURCE_TYPES.includes(doc.sourceType)) || !["Final", "Draft"].includes(doc.status) || !doc.source || !doc.notes)
       throw new Error("Enter the document, version, date, source type, final or draft status, source and service-coverage notes.");
     if (record.evidence.some(row => row.name === doc.name && row.version === doc.version))
       throw new Error("This document version is already recorded. Use a new version for changed evidence.");

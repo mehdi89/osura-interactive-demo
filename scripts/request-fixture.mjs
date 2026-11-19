@@ -5,7 +5,7 @@ import { activeControls, requestAssessment } from "../src/request-workflow.mjs";
 const lib = id => DOCUMENT_LIBRARY.find(row => row.id === id);
 // control → [library document, page, excerpt sentence, conclusion]
 export const PLAN = {
-  "CTL-SEC": ["doc-soc2-2026", 1, "The service in scope is the contracted tracking platform and its customer data processing.", "Supported"],
+  "CTL-SEC": ["doc-soc2-2026", 1, "The service in scope is the contracted service and its customer data processing.", "Supported"],
   "CTL-ACC": ["doc-soc2-2026", 2, "Privileged access reviews are performed quarterly and evidenced for all four quarters.", "Supported"],
   "CTL-DATA": ["doc-soc2-2026", 3, "One exception: the annual data deletion test was not performed during the period.", "Insufficient"],
   "CTL-SUB": ["doc-dpa-v3", 2, "Security obligations are flowed down by written contract.", "Supported"],

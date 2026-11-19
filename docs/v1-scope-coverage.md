@@ -20,3 +20,16 @@ Source: https://osura-demo.pages.dev/scope (40 V1 items, agreed 18 November 2026
 | M2, C1 | Findings stay open after any decision; client overview exists. |
 
 Prepared CedarCloud/Cedarline case: independent QA, four QA outcomes, risk acceptance and the unified finding fields apply; its approved layouts are unchanged.
+
+## Bundled examples on the request flow (19 November 2026)
+
+The bundled examples now open their walkthrough case in the same request flow as new requests (`src/prepared-requests.mjs`). The record is replayed through `transitionRequest`, so every gate applies; Reset demo replays it again.
+
+| Scenario | Prepared state |
+| --- | --- |
+| CedarCloud reference (default) | Critical tier, 7 controls, supplier request answered with the recovery exercise, a claim and its correction, a QA challenge answered, QA passed. Ready for the customer decision with 2 open findings (risk acceptance needed). |
+| Approved supplier example | All 7 controls supported by current cited documents, independent QA passed, signed Approve. Complete, no open items. |
+| Cedarline manual case | The supplied E01–E07 PDFs (text extracted to `src/cedarline-pack.mjs`, files unmodified), its 14 buyer requirements as the control set, 14 original supplier answers plus the E07 corrections, source review states as conclusions, findings F01–F07 open. Stops before a recommendation: the source HOLD and buyer deferral are not imported as current outcomes. Tier is provisional because no triage or impact answers were supplied. |
+| Blank intake starter | No prepared record. |
+
+The old prepared case screens remain in code for imported scenarios that are not bundled examples; bundled examples no longer reach them. Their approved concept layouts are retired for the example case.

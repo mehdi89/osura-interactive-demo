@@ -12,12 +12,12 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
 endobj
 5 0 obj
-<< /Length 397 >>
+<< /Length 398 >>
 stream
-BT /F2 15 Tf 56 780 Td (Business continuity plan - v2 2026-12) Tj ET
-BT /F1 9 Tf 56 762 Td (SYNTHETIC DEMO DOCUMENT - Supplier test report - Final - dated 2026-12-05 - page 1 of 2) Tj ET
+BT /F2 15 Tf 56 780 Td (Business continuity plan - v2 2026-10) Tj ET
+BT /F1 9 Tf 56 762 Td (SYNTHETIC DEMO DOCUMENT - Supplier test report - Final - dated 2026-10-28 - page 1 of 2) Tj ET
 BT /F1 11 Tf 56 728 Td (Business continuity plan v2 with recovery exercise report. A full technical failover) Tj ET
-BT /F1 11 Tf 56 712 Td (test of the tracking platform was performed on 3 December 2026.) Tj ET
+BT /F1 11 Tf 56 712 Td (test of the contracted service was performed on 27 October 2026.) Tj ET
 endstream
 endobj
 6 0 obj
@@ -26,8 +26,8 @@ endobj
 7 0 obj
 << /Length 404 >>
 stream
-BT /F2 15 Tf 56 780 Td (Business continuity plan - v2 2026-12) Tj ET
-BT /F1 9 Tf 56 762 Td (SYNTHETIC DEMO DOCUMENT - Supplier test report - Final - dated 2026-12-05 - page 2 of 2) Tj ET
+BT /F2 15 Tf 56 780 Td (Business continuity plan - v2 2026-10) Tj ET
+BT /F1 9 Tf 56 762 Td (SYNTHETIC DEMO DOCUMENT - Supplier test report - Final - dated 2026-10-28 - page 2 of 2) Tj ET
 BT /F1 11 Tf 56 728 Td (Results. Service was restored in 2 hours, within the 4 hour RTO. Data loss was 15) Tj ET
 BT /F1 11 Tf 56 712 Td (minutes, within the 1 hour RPO. No open actions remain from the exercise.) Tj ET
 endstream
@@ -43,11 +43,11 @@ xref
 0000000121 00000 n 
 0000000191 00000 n 
 0000000266 00000 n 
-0000000714 00000 n 
-0000000850 00000 n 
-0000001305 00000 n 
+0000000715 00000 n 
+0000000851 00000 n 
+0000001306 00000 n 
 trailer
 << /Size 9 /Root 1 0 R >>
 startxref
-1441
+1442
 %%EOF

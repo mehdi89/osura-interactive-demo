@@ -223,7 +223,7 @@ test("S1/S2 and supplier inbox: consolidated ask linked to gap controls; respons
 test("closure ignores a fresh citation from an old or draft document; only newer current evidence closes", () => {
   let state = act(ready(), "decision", { outcome: "Approve with conditions", rationale: "Proceed", condition, riskAcceptance: accept }, "customer");
   const finding = record(state).findings.find(row => row.controlIds.includes("CTL-BCP"));
-  state = act(state, "cite", { controlId: "CTL-BCP", documentId: docId(state, engagement, "doc-bcp-2024"), page: 1, excerpt: "The recovery time objective (RTO) is 4 hours and the recovery point objective (RPO) is 1 hour for the tracking platform.", shows: "Old draft target" });
+  state = act(state, "cite", { controlId: "CTL-BCP", documentId: docId(state, engagement, "doc-bcp-2024"), page: 1, excerpt: "The recovery time objective (RTO) is 4 hours and the recovery point objective (RPO) is 1 hour for the contracted service.", shows: "Old draft target" });
   const stale = record(state).citations.at(-1);
   assert.throws(() => act(state, "closeFinding", { findingId: finding.id, citationId: stale.id, rationale: "x" }), /received after the finding/);
   assert.throws(() => act(state, "close", { rationale: "Old draft cited again." }), /received after the signed decision/);

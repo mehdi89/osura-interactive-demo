@@ -1,0 +1,40 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Length 476 >>
+stream
+BT /F2 15 Tf 56 780 Td (Data deletion test report - 2026-10) Tj ET
+BT /F1 9 Tf 56 762 Td (SYNTHETIC DEMO DOCUMENT - Supplier test report - Final - dated 2026-10-20 - page 1 of 1) Tj ET
+BT /F1 11 Tf 56 728 Td (Data deletion test report. A deletion test of customer personal data for the contracted) Tj ET
+BT /F1 11 Tf 56 712 Td (service was completed on 20 October 2026. All test records were deleted and deletion was) Tj ET
+BT /F1 11 Tf 56 696 Td (confirmed in writing.) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000000260 00000 n 
+0000000787 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+923
+%%EOF

@@ -229,3 +229,22 @@ test("approved supplier scenario validates and opens on its signed Approve decis
   assert.equal(validate(await read("data/scenarios/blank-intake.json")).id, "blank-intake-starter");
   assert.equal(createState(projectWorkspace(workspace, presentation, examples)).decision, workspace.engagements.find(row => row.id === "cedar").stage === "Active" ? state.decision : presentation.initialState.decision);
 });
+
+test("bundled examples open their walkthrough case on the request engine with a replayed record", async () => {
+  const { prepareExampleData } = await import("../src/prepared-requests.mjs");
+  const { requestProgress, openFindings } = await import("../src/request-workflow.mjs");
+  const packs = [{ id: "cedarcloud-reference", workspace, presentation, examples }];
+  for (const name of ["approved-supplier", "cedarline", "blank-intake"]) packs.push(validate(await read(`data/scenarios/${name}.json`)));
+  const seen = {};
+  for (const pack of packs) {
+    const data = prepareExampleData(projectWorkspace(pack.workspace, pack.presentation, pack.examples), pack.workspace, { id: pack.id, source: pack.source });
+    const state = createState(data);
+    const record = state.requestAssessments?.cedar;
+    assert.ok(data.engagements.find(row => row.id === "cedar").receipt, pack.id);
+    seen[pack.id] = record ? [requestProgress(record).label, openFindings(record).length, record.citations.every(c => c.verified)] : null;
+  }
+  assert.deepEqual(seen["cedarcloud-reference"], ["Ready for customer decision", 2, true]);
+  assert.deepEqual(seen["approved-supplier-example"], ["Approved", 0, true]);
+  assert.deepEqual(seen["cedarline-manual-v1"], ["Recommendation required", 7, true]);
+  assert.equal(seen["blank-intake-starter"], null);
+});

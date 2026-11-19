@@ -7,7 +7,7 @@ export const DOCUMENT_LIBRARY = [
     id: "doc-soc2-2026", documentKey: "soc2", file: "soc2-type2-2026.pdf", name: "SOC 2 Type II report", version: "2026-09",
     date: "2026-09-30", sourceType: "Independent audit report", status: "Final",
     pages: [
-      "SOC 2 Type II report. Period 1 October 2025 to 30 September 2026. Auditor: Synthetic Assurance LLP. The service in scope is the contracted tracking platform and its customer data processing. Hosting on the public cloud provider is carved out of this report.",
+      "SOC 2 Type II report. Period 1 October 2025 to 30 September 2026. Auditor: Synthetic Assurance LLP. The service in scope is the contracted service and its customer data processing. Hosting on the public cloud provider is carved out of this report.",
       "Controls tested. Multi-factor authentication is enforced for all administrative access. Privileged access reviews are performed quarterly and evidenced for all four quarters. Security incidents are logged and triaged within 24 hours.",
       "Exceptions noted. One exception: the annual data deletion test was not performed during the period. Management response: a deletion test is scheduled for the next quarter.",
     ],
@@ -16,15 +16,15 @@ export const DOCUMENT_LIBRARY = [
     id: "doc-bcp-2024", documentKey: "bcp", file: "bcp-plan-2024.pdf", name: "Business continuity plan", version: "v1 2024-03",
     date: "2024-03-12", sourceType: "Supplier policy", status: "Draft",
     pages: [
-      "Business continuity plan, draft v1. The recovery time objective (RTO) is 4 hours and the recovery point objective (RPO) is 1 hour for the tracking platform.",
+      "Business continuity plan, draft v1. The recovery time objective (RTO) is 4 hours and the recovery point objective (RPO) is 1 hour for the contracted service.",
       "Testing. The last continuity exercise was a tabletop walkthrough in 2024. No technical failover test has been performed.",
     ],
   },
   {
-    id: "doc-bcp-2026", documentKey: "bcp", file: "recovery-exercise-2026.pdf", name: "Business continuity plan", version: "v2 2026-12",
-    date: "2026-12-05", sourceType: "Supplier test report", status: "Final", replacesId: "doc-bcp-2024",
+    id: "doc-bcp-2026", documentKey: "bcp", file: "recovery-exercise-2026.pdf", name: "Business continuity plan", version: "v2 2026-10",
+    date: "2026-10-28", sourceType: "Supplier test report", status: "Final", replacesId: "doc-bcp-2024",
     pages: [
-      "Business continuity plan v2 with recovery exercise report. A full technical failover test of the tracking platform was performed on 3 December 2026.",
+      "Business continuity plan v2 with recovery exercise report. A full technical failover test of the contracted service was performed on 27 October 2026.",
       "Results. Service was restored in 2 hours, within the 4 hour RTO. Data loss was 15 minutes, within the 1 hour RPO. No open actions remain from the exercise.",
     ],
   },
@@ -32,7 +32,7 @@ export const DOCUMENT_LIBRARY = [
     id: "doc-pentest-2026", documentKey: "pentest", file: "pentest-summary-2026.pdf", name: "Penetration test summary", version: "2026-06",
     date: "2026-06-18", sourceType: "Independent test report", status: "Final",
     pages: [
-      "Penetration test summary. Tester: Synthetic Offensive Security Ltd. Scope: external web application and API of the tracking platform. Two high severity issues were identified.",
+      "Penetration test summary. Tester: Synthetic Offensive Security Ltd. Scope: external web application and API of the contracted service. Two high severity issues were identified.",
       "Remediation status. One high severity issue was remediated and retested on 2 July 2026. One high severity issue remains open with a target date of 31 January 2027.",
     ],
   },
@@ -52,10 +52,28 @@ export const DOCUMENT_LIBRARY = [
       "Roles. The security lead coordinates response. A post-incident review is completed within 10 business days.",
     ],
   },
+  {
+    id: "doc-pentest-retest-2026", documentKey: "pentest", file: "pentest-retest-2026.pdf", name: "Penetration test summary", version: "retest 2026-10",
+    date: "2026-10-15", sourceType: "Independent test report", status: "Final", replacesId: "doc-pentest-2026",
+    pages: [
+      "Penetration test retest letter. Tester: Synthetic Offensive Security Ltd. Scope: the open high severity issue from the June 2026 test of the contracted service.",
+      "Retest result. All high severity issues from the June 2026 test are remediated and verified closed as of 15 October 2026.",
+    ],
+  },
+  {
+    id: "doc-deletion-test-2026", documentKey: "deletion", file: "deletion-test-2026.pdf", name: "Data deletion test report", version: "2026-10",
+    date: "2026-10-20", sourceType: "Supplier test report", status: "Final",
+    pages: [
+      "Data deletion test report. A deletion test of customer personal data for the contracted service was completed on 20 October 2026. All test records were deleted and deletion was confirmed in writing.",
+    ],
+  },
 ];
 
+// Scenario-supplied documents (e.g. Cedarline's original PDFs) join the pack at load time.
+// ponytail: module-level registry for bundled examples; the backend serves documents per tenant.
+export const registerDocuments = docs => { for (const doc of docs) if (!DOCUMENT_LIBRARY.some(row => row.id === doc.id)) DOCUMENT_LIBRARY.push(doc); };
 export const documentFromLibrary = id => DOCUMENT_LIBRARY.find(row => row.id === id) || null;
-export const documentUrl = (doc, page = 1) => doc?.file ? `${import.meta.env?.BASE_URL || "/"}documents/${doc.file}#page=${page}` : null;
+export const documentUrl = (doc, page = 1) => doc?.file ? `${import.meta.env?.BASE_URL || "/"}${doc.path || `documents/${doc.file}`}#page=${page}` : null;
 export const pageText = (libraryId, page) => documentFromLibrary(libraryId)?.pages[page - 1] || "";
 // E2: a citation is verifiable only when its excerpt is on the cited page.
 export const excerptOnPage = (libraryId, page, excerpt) => !!excerpt?.trim() && pageText(libraryId, page).includes(excerpt.trim());
