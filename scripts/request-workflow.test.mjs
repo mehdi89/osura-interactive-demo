@@ -174,7 +174,7 @@ test("F3: a finding closes only on a later verified citation for its control; th
   let state = act(ready(), "decision", { outcome: "Approve with conditions", rationale: "Proceed", condition, riskAcceptance: accept }, "customer");
   const finding = record(state).findings.find(row => row.controlIds.includes("CTL-BCP"));
   const oldCitation = record(state).citations.find(row => row.controlId === "CTL-BCP");
-  assert.throws(() => act(state, "closeFinding", { findingId: finding.id, citationId: oldCitation.id, rationale: "x" }), /recorded after the finding/);
+  assert.throws(() => act(state, "closeFinding", { findingId: finding.id, citationId: oldCitation.id, rationale: "x" }), /received after the finding/);
   state = addDocuments(act, state, ["doc-bcp-2026"]);
   state = act(state, "cite", { controlId: "CTL-BCP", documentId: docId(state, engagement, "doc-bcp-2026"), page: 2, excerpt: "Service was restored in 2 hours, within the 4 hour RTO.", shows: "Failover met RTO" });
   const proof = record(state).citations.at(-1);
@@ -218,4 +218,39 @@ test("S1/S2 and supplier inbox: consolidated ask linked to gap controls; respons
   assert.equal(record(state).claims[0].source, "supplier");
   state = act(state, "withdrawAsk", { askId: record(state).supplierAsks[1].id, rationale: "Covered by the response." });
   assert.equal(requestProgress(record(state)).label, "Document review required");
+});
+
+test("closure ignores a fresh citation from an old or draft document; only newer current evidence closes", () => {
+  let state = act(ready(), "decision", { outcome: "Approve with conditions", rationale: "Proceed", condition, riskAcceptance: accept }, "customer");
+  const finding = record(state).findings.find(row => row.controlIds.includes("CTL-BCP"));
+  state = act(state, "cite", { controlId: "CTL-BCP", documentId: docId(state, engagement, "doc-bcp-2024"), page: 1, excerpt: "The recovery time objective (RTO) is 4 hours and the recovery point objective (RPO) is 1 hour for the tracking platform.", shows: "Old draft target" });
+  const stale = record(state).citations.at(-1);
+  assert.throws(() => act(state, "closeFinding", { findingId: finding.id, citationId: stale.id, rationale: "x" }), /received after the finding/);
+  assert.throws(() => act(state, "close", { rationale: "Old draft cited again." }), /received after the signed decision/);
+});
+
+test("invalid condition dates and missing rationale cannot produce a signed decision", () => {
+  const state = ready();
+  for (const due of ["2026-02-30", "12/01/2026", ""]) assert.throws(() => act(state, "decision", { outcome: "Approve with conditions", rationale: "Proceed", condition: { ...condition, due }, riskAcceptance: accept }, "customer"), /valid due date/);
+  assert.throws(() => act(state, "decision", { outcome: "Approve", rationale: " ", riskAcceptance: accept }, "customer"), /decision rationale/);
+  assert.throws(() => act(state, "decision", { outcome: "Approve", rationale: "OK", riskAcceptance: accept }, "analyst"), /Decision Owner/);
+});
+
+test("new evidence invalidates recommendation and QA; duplicate document versions never overwrite history", () => {
+  let state = ready();
+  assert.throws(() => act(state, "evidence", { libraryId: "doc-soc2-2026", notes: "Again." }), /already recorded/);
+  state = addDocuments(act, state, ["doc-bcp-2026"]);
+  assert.equal(record(state).recommendation, null);
+  assert.equal(record(state).qa, null);
+  assert.equal(record(state).evidence.filter(row => row.libraryId === "doc-soc2-2026").length, 1);
+  assert.equal(requestProgress(record(state)).label, "Recommendation required");
+});
+
+test("the signed pack keeps the submitted receipt and is unchanged by follow-up actions", () => {
+  let state = act(ready(), "decision", { outcome: "Approve with conditions", rationale: "Proceed", condition, riskAcceptance: accept }, "customer");
+  const frozen = structuredClone(record(state).signedPack);
+  assert.deepEqual(frozen.submittedReceipt, engagement);
+  state = addDocuments(act, state, ["doc-bcp-2026"]);
+  state = act(state, "claim", { controlId: "CTL-BCP", text: "Failover tested December 2026." });
+  assert.deepEqual(record(state).signedPack, frozen);
 });

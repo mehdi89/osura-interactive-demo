@@ -398,3 +398,12 @@ test("unavailable evidence needs a reason, preserves review gates and cannot inh
   assert.equal(revised.supplierReceipt.supersedes, original.reference);
   assert.equal(revised.supplierReceipt.reference, "CC-2026-104-R02");
 });
+
+test("M2/D3: the prepared pack freezes the case findings and approving records the risk acceptance", () => {
+  const signed = recordDecision(createState(data), data, "Approve", "Proceed", null, "Accept F-01 until due.");
+  assert.ok(signed.signedPack.findings.some(row => row.id === "F-01"));
+  assert.deepEqual(signed.decision.riskAcceptance.findingIds, ["F-01"]);
+  assert.throws(() => recordDecision(createState(data), data, "Approve", "Proceed", null), /risk acceptance/);
+  const rejected = recordDecision(createState(data), data, "Reject", "No", null);
+  assert.equal(rejected.signedPack.findings.find(row => row.id === "F-01").state, "Open condition");
+});

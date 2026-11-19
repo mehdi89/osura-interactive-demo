@@ -101,6 +101,7 @@ import ScenarioPicker from "./ScenarioPicker.jsx";
 import RoleAdmin, { AuditTrail } from "./RoleAdmin.jsx";
 import WorkspaceSearch from "./WorkspaceSearch.jsx";
 import RequestAssessment, { SupplierInbox } from "./RequestAssessment.jsx";
+import { PackExport } from "./assessment-parts.jsx";
 import { requestAssessment, requestProgress } from "./request-workflow.mjs";
 import { customerView, patchCustomerView } from "./customer-session.mjs";
 import { sessionUser, scopeWorkspace, actionEntry } from "./access.mjs";
@@ -2367,17 +2368,7 @@ function Pack(c) {
             <Note>
               {preview ? "This prepared example is separate from your session review and is labelled as an example in print and JSON." : "This record is frozen from the current session’s review state. Subsequent condition closure leaves the original pack unchanged."}
             </Note>
-            <div className="form-actions">
-              <Button
-                onClick={() => downloadJSON(preview ? "Prepared-Decision-Pack-example" : "Decision-Pack-v1", exportedPack)}
-                icon="Download"
-              >
-                Download JSON
-              </Button>
-              <Button primary onClick={() => window.print()} icon="Printer">
-                Print / Save PDF
-              </Button>
-            </div>
+            <PackExport name={preview ? "Prepared-Decision-Pack-example" : "Decision-Pack-v1"} pack={exportedPack} Button={Button} downloadJSON={downloadJSON} Note={Note} />
             {!preview && ["Approve", "Approve with conditions"].includes(pack.decision.outcome) && <Link onClick={() => { c.update({ selected: pack.engagement.id }); navigate("C08"); }}>Continue to active assurance →</Link>}
             {!preview && pack.decision.outcome === "Reject" && <Note>This service was rejected and has no active assurance relationship.</Note>}
           </Card>

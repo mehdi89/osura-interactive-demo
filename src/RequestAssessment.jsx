@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import {
-  activeControls, derivedControlStatus, documentQualifiers, effectiveEngagement, OUTCOMES, openFindings, QA_OUTCOMES, qaPassed,
+  activeControls, closingCitation, derivedControlStatus, documentQualifiers, effectiveEngagement, OUTCOMES, openFindings, QA_OUTCOMES, qaPassed,
   requestAssessment, requestProgress, respondAsSupplier, SEVERITIES, transitionRequest, uncoveredGaps,
 } from "./request-workflow.mjs";
 import { calculateRisk, CONTROL_CONCLUSIONS, CONTROL_LIBRARY, controlById, TIERS } from "./controls.mjs";
@@ -321,7 +321,7 @@ export default function RequestAssessment(c) {
             <h3>Findings after the decision</h3>
             {record.findings.length ? record.findings.map(f => <article className="request-flow-evidence" key={f.id}><p><Badge>{f.severity}</Badge> <Badge>{f.state}</Badge> <b>{f.issue}</b></p><small>{f.controlIds.join(", ")} · {f.owner} · due {f.due}</small>
               {f.closure && <p><b>Closed:</b> {f.closure.rationale} <small>{historyRecord(f.closure)}</small></p>}
-              {f.state === "Open" && analyst && form(`close-${f.id}`, [["citationId", "New verified citation on this finding's control", record.citations.filter(ci => f.controlIds.includes(ci.controlId) && ci.verified && ci.revision > f.revision).map(ci => [ci.id, `p.${ci.page} · ${ci.excerpt.slice(0, 60)}`])], ["rationale", "Why the new evidence resolves it", "textarea"]], values => run("closeFinding", { ...values, findingId: f.id }, `close-${f.id}`), "Close finding")}
+              {f.state === "Open" && analyst && form(`close-${f.id}`, [["citationId", "New verified citation on this finding's control", record.citations.filter(ci => f.controlIds.includes(ci.controlId) && closingCitation(record, ci, f.revision)).map(ci => [ci.id, `p.${ci.page} · ${ci.excerpt.slice(0, 60)}`])], ["rationale", "Why the new evidence resolves it", "textarea"]], values => run("closeFinding", { ...values, findingId: f.id }, `close-${f.id}`), "Close finding")}
             </article>) : <p>No findings were raised.</p>}
             {openFindings(record).length > 0 && <Note>Open findings stay open after the decision. A risk acceptance is not closure: add a newer document, cite it on the finding’s control, then close. <Button onClick={() => changeSection("evidence")}>Add and review follow-up evidence →</Button></Note>}
             {record.decision.condition && <><h3>Customer condition · {record.conditionClosed ? "Closed" : "Open"}</h3><Fields items={[["Owner", record.decision.condition.owner], ["Due date", record.decision.condition.due], ["Required proof", record.decision.condition.evidence]]}/>{!record.conditionClosed && <><Note>{asks.some(ask => ask.condition && ask.status === "Open") ? "The condition was sent to the supplier as an evidence request. Their response will appear for analyst review." : "Review and cite the new evidence, then close the condition."}</Note><Button onClick={() => changeSection("evidence")}>Add and review follow-up evidence →</Button>{analyst && form("close", [["rationale", "How new, cited evidence satisfies the condition", "textarea"]], values => run("close", values), "Close condition")}</>}</>}

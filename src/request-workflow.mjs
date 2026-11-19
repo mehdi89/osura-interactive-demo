@@ -40,6 +40,11 @@ const usableCitation = (record, citation) => {
   const doc = record.evidence.find(row => row.id === citation.documentId);
   return doc?.review && citation.verified ? doc : null;
 };
+// F3/condition closure: a verified citation from a reviewed, current, final document that arrived after `revision`.
+export const closingCitation = (record, citation, revision) => {
+  const doc = usableCitation(record, citation);
+  return !!doc && doc.revision > revision && !documentQualifiers(record, doc).length;
+};
 
 // E3: rule-derived control status. Qualifiers (draft/stale/superseded) are never proof; AI4 contradiction wins.
 export function derivedControlStatus(record, controlId, at = new Date()) {
@@ -308,8 +313,8 @@ export function transitionRequest(state, data, engagementId, action, values = {}
     if (!finding) throw new Error("Choose an open finding.");
     const citation = record.citations.find(row => row.id === values.citationId);
     // F3: only new, verified, reviewed evidence on the finding's control closes it. Risk acceptance is not closure.
-    if (!citation || !finding.controlIds.includes(citation.controlId) || !usableCitation(record, citation) || citation.revision <= finding.revision)
-      throw new Error("Close a finding with a verified citation, recorded after the finding, from a reviewed document on its control.");
+    if (!citation || !finding.controlIds.includes(citation.controlId) || !closingCitation(record, citation, finding.revision))
+      throw new Error("Close a finding with a verified citation on its control from a reviewed, current, final document received after the finding.");
     if (!rationale) throw new Error("Record why the new evidence resolves the finding.");
     finding.state = "Closed";
     finding.closure = { citationId: citation.id, documentId: citation.documentId, rationale, ...attribution };
@@ -390,7 +395,7 @@ export function transitionRequest(state, data, engagementId, action, values = {}
   if (action === "close") {
     if (!record.decision?.condition) throw new Error("There is no signed approval condition to close.");
     if (!rationale) throw new Error("Record the reviewer reasoning before closing the condition.");
-    const proof = record.citations.find(row => usableCitation(record, row) && row.revision > record.decision.revision);
+    const proof = record.citations.find(row => closingCitation(record, row, record.decision.revision));
     if (!proof) throw new Error("Record and cite reviewed evidence received after the signed decision before closing the condition.");
     record.conditionClosed = true;
     record.closure = { rationale, citationId: proof.id, evidenceId: proof.documentId, ...attribution };

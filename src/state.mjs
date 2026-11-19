@@ -102,6 +102,8 @@ export function recordDecision(state, data, outcome, rationale, condition, riskA
       judgement: state.judgement,
       conclusion: state.conclusion,
       documents: structuredClone(data.documents),
+      // M2: findings are frozen with their state at decision time; a decision never resolves them.
+      findings: structuredClone(cedarOpenFindings(state, data).concat([...(data.findings || []), ...(state.extraFindings || [])].filter(row => row.engagementId === state.selected && row.state === "Closed"))),
     },
   };
 }
