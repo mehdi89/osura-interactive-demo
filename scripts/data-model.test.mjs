@@ -96,7 +96,7 @@ test("generated SQL stays in sync and quotes fixture values safely", async () =>
   const model = copy(); model.actors[0].name = "O'Brien'); DROP TABLE actors; --";
   const sql = generateDatabase(schema, model)["seed.sql"];
   assert.ok(sql.includes("O''Brien''); DROP TABLE actors; --"));
-  assert.equal((output["schema.sql"].match(/CREATE TABLE/g) || []).length, 19);
+  assert.equal((output["schema.sql"].match(/CREATE TABLE/g) || []).length, 30);
 });
 
 
@@ -106,4 +106,10 @@ test("the data editor cannot redirect CedarCloud's walkthrough to another suppli
   assert.throws(() => changeRecord(data, "engagements", "update", { ...engagement, serviceId: otherService.id }, validate), /original supplier service link/);
   const service = data.services.find(row => row.id === engagement.serviceId);
   assert.throws(() => changeRecord(data, "services", "update", { ...service, supplierId: otherService.supplierId }, validate), /original supplier service link/);
+});
+
+test("the seeded control library and rules match the runtime rule module (single source)", async () => {
+  const { CONTROL_LIBRARY, RULES, RULES_VERSION } = await import("../src/controls.mjs");
+  assert.deepEqual(data.controlLibrary, CONTROL_LIBRARY.map(({ id, family, name, expectation }) => ({ id, family, name, expectation, rulesVersion: RULES_VERSION })));
+  assert.deepEqual(data.controlRuleTargets.map(row => [row.ruleId, row.controlId]), RULES.flatMap(rule => rule.controls.map(control => [rule.id, control])));
 });

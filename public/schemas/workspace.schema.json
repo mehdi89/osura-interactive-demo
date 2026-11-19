@@ -144,6 +144,72 @@
       "items": {
         "$ref": "#/$defs/customerAssignments"
       }
+    },
+    "controlLibrary": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/controlLibrary"
+      }
+    },
+    "controlRules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/controlRules"
+      }
+    },
+    "controlRuleTargets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/controlRuleTargets"
+      }
+    },
+    "assessmentControls": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/assessmentControls"
+      }
+    },
+    "supplierClaims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/supplierClaims"
+      }
+    },
+    "aiRuns": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/aiRuns"
+      }
+    },
+    "aiProposalDecisions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/aiProposalDecisions"
+      }
+    },
+    "controlConclusions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/controlConclusions"
+      }
+    },
+    "findingControls": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/findingControls"
+      }
+    },
+    "qaChallenges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/qaChallenges"
+      }
+    },
+    "riskAcceptances": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/riskAcceptances"
+      }
     }
   },
   "$defs": {
@@ -603,6 +669,42 @@
         "receivedOn": {
           "type": "string",
           "format": "date"
+        },
+        "sourceType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "documentStatus": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "Final",
+            "Draft",
+            null
+          ]
+        },
+        "documentDate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "replacesId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "documentVersions"
+        },
+        "doesNotProve": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "x-unique": [
@@ -630,9 +732,10 @@
           "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
         },
         "reviewId": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "\\S",
+          "type": [
+            "string",
+            "null"
+          ],
           "x-references": "requirementReviews"
         },
         "documentVersionId": {
@@ -654,6 +757,43 @@
             "string",
             "null"
           ]
+        },
+        "controlId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "controlLibrary"
+        },
+        "shows": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verified": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "origin": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "human",
+            "ai",
+            null
+          ]
+        },
+        "aiRunId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "aiRuns"
         }
       },
       "x-unique": []
@@ -726,6 +866,24 @@
           "type": "string",
           "minLength": 1,
           "pattern": "\\S"
+        },
+        "severityRationale": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "action": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "missingRequirement": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "x-unique": []
@@ -1055,6 +1213,604 @@
           "workspaceId"
         ]
       ]
+    },
+    "controlLibrary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "family",
+        "name",
+        "expectation",
+        "rulesVersion"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "family": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "expectation": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "rulesVersion": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "x-unique": [],
+      "description": "R2: control library, maintained separately from the rules that apply it."
+    },
+    "controlRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "rulesVersion",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "rulesVersion": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "x-unique": [],
+      "description": "R2: transparent rule that applies controls from inherent risk and intake facts."
+    },
+    "controlRuleTargets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "ruleId",
+        "controlId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "ruleId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "controlRules"
+        },
+        "controlId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "controlLibrary"
+        }
+      },
+      "x-unique": [
+        [
+          "ruleId",
+          "controlId"
+        ]
+      ]
+    },
+    "assessmentControls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "engagementId",
+        "controlId",
+        "source",
+        "ruleId",
+        "reason",
+        "status",
+        "removedReason"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "engagementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "engagements"
+        },
+        "controlId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "controlLibrary"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "rule",
+            "manual"
+          ]
+        },
+        "ruleId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "controlRules"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Applied",
+            "Removed"
+          ]
+        },
+        "removedReason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "x-unique": [
+        [
+          "engagementId",
+          "controlId"
+        ]
+      ],
+      "description": "R2: controls applied to one assessment, each with its rule or analyst reason."
+    },
+    "supplierClaims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "engagementId",
+        "controlId",
+        "text",
+        "version",
+        "supersedesId",
+        "source",
+        "actorId",
+        "recordedOn"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "engagementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "engagements"
+        },
+        "controlId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "controlLibrary"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "supersedesId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "supplierClaims"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "supplier",
+            "analyst-entered"
+          ]
+        },
+        "actorId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "actors"
+        },
+        "recordedOn": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "x-unique": [
+        [
+          "engagementId",
+          "controlId",
+          "version"
+        ]
+      ],
+      "description": "E4: append-only supplier claims; a correction supersedes but never overwrites the original."
+    },
+    "aiRuns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "engagementId",
+        "task",
+        "provider",
+        "model",
+        "live",
+        "status",
+        "controlId",
+        "startedAt",
+        "error",
+        "outputJson"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "engagementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "engagements"
+        },
+        "task": {
+          "type": "string",
+          "enum": [
+            "evidence-notes",
+            "draft-findings",
+            "compare-claim"
+          ]
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "live": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "abstained",
+            "failed"
+          ]
+        },
+        "controlId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "controlLibrary"
+        },
+        "startedAt": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outputJson": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "x-unique": [],
+      "description": "AI1/AI2/AI4 run provenance. live=false marks simulated output."
+    },
+    "aiProposalDecisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "aiRunId",
+        "proposalIndex",
+        "decision",
+        "reason",
+        "actorId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "aiRunId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "aiRuns"
+        },
+        "proposalIndex": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "edited",
+            "rejected"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "actorId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "actors"
+        }
+      },
+      "x-unique": [],
+      "description": "N1: human accept/edit/reject of each AI proposal, with the reason."
+    },
+    "controlConclusions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "engagementId",
+        "controlId",
+        "conclusion",
+        "derivedStatus",
+        "aiHint",
+        "rationale",
+        "overrideReason",
+        "actorId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "engagementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "engagements"
+        },
+        "controlId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "controlLibrary"
+        },
+        "conclusion": {
+          "type": "string",
+          "enum": [
+            "Supported",
+            "Insufficient",
+            "Contradicted",
+            "Missing",
+            "Not applicable"
+          ]
+        },
+        "derivedStatus": {
+          "type": "string",
+          "enum": [
+            "Supported",
+            "Insufficient",
+            "Contradicted",
+            "Missing"
+          ]
+        },
+        "aiHint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "overrideReason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "actorId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "actors"
+        }
+      },
+      "x-unique": [],
+      "description": "E3/N1: human conclusion per control beside the rule-derived status; overriding needs a reason."
+    },
+    "findingControls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "findingId",
+        "controlId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "findingId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "findings"
+        },
+        "controlId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "controlLibrary"
+        }
+      },
+      "x-unique": [
+        [
+          "findingId",
+          "controlId"
+        ]
+      ],
+      "description": "F1/F2: one finding may cover related controls."
+    },
+    "qaChallenges": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "engagementId",
+        "controlId",
+        "text",
+        "raisedById",
+        "response",
+        "respondedById",
+        "resolved"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "engagementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "engagements"
+        },
+        "controlId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "controlLibrary"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "raisedById": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "actors"
+        },
+        "response": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "respondedById": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "actors"
+        },
+        "resolved": {
+          "type": "boolean"
+        }
+      },
+      "x-unique": [],
+      "description": "Q3: QA challenge, analyst answer and resolution."
+    },
+    "riskAcceptances": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "engagementId",
+        "rationale",
+        "actorId",
+        "acceptedOn"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "engagementId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "x-references": "engagements"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "actorId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-references": "actors"
+        },
+        "acceptedOn": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "x-unique": [],
+      "description": "D3: explicit risk acceptance when approving with open findings. Not a closure."
     }
   }
 }

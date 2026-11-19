@@ -13,20 +13,20 @@ export function createModelValidator(schema, presentation) {
     const lookup = {};
     for (const [table, definition] of Object.entries(schema.$defs)) {
       lookup[table] = new Map();
-      for (const row of data[table]) {
+      for (const row of data[table] || []) {
         if (lookup[table].has(row.id)) throw new Error(`${table}: duplicate id ${row.id}`);
         lookup[table].set(row.id, row);
       }
       for (const fields of definition["x-unique"]) {
-        const keys = data[table].map(row => JSON.stringify(fields.map(key => row[key])));
+        const keys = (data[table] || []).map(row => JSON.stringify(fields.map(key => row[key])));
         if (new Set(keys).size !== keys.length) throw new Error(`${table}: ${fields.join(" + ")} must be unique`);
       }
     }
     for (const [table, definition] of Object.entries(schema.$defs)) {
-      for (const row of data[table]) {
+      for (const row of data[table] || []) {
         for (const [field, property] of Object.entries(definition.properties)) {
           const target = property["x-references"];
-          if (target && row[field] !== null && !lookup[target].has(row[field]))
+          if (target && row[field] != null && !lookup[target].has(row[field]))
             throw new Error(`${table}/${row.id}/${field}: ${target} record ${row[field]} is missing or still referenced`);
         }
       }

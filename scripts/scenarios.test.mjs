@@ -1,3 +1,4 @@
+import { addDocuments, concludeAll } from "./request-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -143,13 +144,12 @@ test("new requests complete their own journey under Cedarline without borrowing 
       workspace: data.workspaceProfiles[engagement.workspaceId] };
     state = mergeWorkflowPatch(state, transitionRequest(state, context, engagement.id, action, values));
   };
-  act("analyst-01", "scope", { service: engagement.service, risk: "Medium", plan: "Standard review", rationale: "Manual service classification after reviewing customer context." });
-  act("analyst-01", "evidence", { name: "Zapier service report", source: "Separately supplied report", version: "v1", notes: "Covers this new staff-record service only." });
-  const evidence = requestAssessment(state, engagement).evidence[0];
-  act("analyst-01", "review", { evidenceId: evidence.id, conclusion: "Supported", rationale: "Reviewed the exact staff-record service source." });
-  act("analyst-01", "recommend", { outcome: "Approve", rationale: "The new source supports this service's recommendation." });
-  act("analyst-02", "qa", { outcome: "Passed", rationale: "Independent challenge checked the new service report." });
-  act("customer-morgan", "decision", { outcome: "Approve", rationale: "Accept this service's reviewed outcome." });
+  act("analyst-01", "scope", { service: engagement.service, risk: "Low", plan: "Standard review", rationale: "Manual service classification after reviewing customer context." });
+  const step = (st, action, values) => { state = st; act("analyst-01", action, values); return state; };
+  state = concludeAll(step, addDocuments(step, state), engagement);
+  act("analyst-01", "recommend", { outcome: "Approve", rationale: "The new sources support this service's recommendation." });
+  act("analyst-02", "qa", { outcome: "Passed", rationale: "Independent challenge checked the new service reports." });
+  act("customer-morgan", "decision", { outcome: "Approve", rationale: "Accept this service's reviewed outcome.", riskAcceptance: "Accept the open findings until due." });
   const record = requestAssessment(state, engagement);
   assert.equal(requestProgress(record).stage, "Active");
   assert.equal(record.decision.actor, "Morgan Vale");
@@ -157,8 +157,8 @@ test("new requests complete their own journey under Cedarline without borrowing 
   assert.equal(record.signedPack.workspace.name, "Northbridge Commerce Ltd");
   assert.equal(record.signedPack.policy, base.workspaceProfiles.northstar.policy);
   assert.equal(record.signedPack.overlay, base.workspaceProfiles.northstar.overlay);
-  assert.deepEqual(record.signedPack.evidence.map(row => [row.name, row.version]), [["Zapier service report", "v1"]]);
-  assert.deepEqual(Object.keys(record.signedPack.reviews), [evidence.id]);
+  assert.equal(record.signedPack.evidence.length, 5);
+  assert.equal(record.signedPack.citations.length, 7);
   assert.equal(record.signedPack.qa.actorId, sessionUser(imported.workspace, "analyst-02").actorId);
   assert.deepEqual({ conclusion: state.conclusion, judgement: state.judgement, qa: state.qa, qaReview: state.qaReview }, prepared);
   for (const entry of record.events) {
@@ -194,27 +194,26 @@ test("the supplied blank scenario validates and a fresh request completes QA, de
   act("analyst-01", "clarify", { question: "Would an outage interrupt a critical customer journey?" });
   assert.equal(requestProgress(requestAssessment(state, engagement)).nextOwner, "Customer Decision Owner");
   act("customer-morgan", "respond", { answer: "No; the service has a documented manual fallback." });
-  act("analyst-01", "scope", { service: engagement.service, risk: "Low", plan: "Standard review", rationale: "Manual classification reviewed the original context and customer clarification." });
-  act("analyst-01", "evidence", { name: "Zapier service control review", source: "Synthetic supplied service report", version: "v1", notes: "Controls cover this submitted service; recovery proof remains partial." });
-  const evidenceId = requestAssessment(state, engagement).evidence[0].id;
-  act("analyst-01", "review", { evidenceId, conclusion: "Partially supported", rationale: "Access controls are evidenced; request a recovery exercise condition." });
+  act("analyst-01", "scope", { service: engagement.service, risk: "High", plan: "Standard review", rationale: "Manual classification reviewed the original context and customer clarification." });
+  const step = (st, action, values) => { state = st; act("analyst-01", action, values); return state; };
+  state = concludeAll(step, addDocuments(step, state), engagement);
   act("analyst-01", "recommend", { outcome: "Approve with conditions", rationale: "Recommend the scoped service with an owned recovery-proof obligation." });
   act("analyst-02", "qa", { outcome: "Passed", rationale: "Independently challenged source coverage and the proposed recovery condition." });
   act("customer-morgan", "decision", { outcome: "Approve with conditions", rationale: "Accept the scoped service with a named recovery-proof obligation.",
-    condition: { owner: "Customer operations", due: "2026-12-01", evidence: "Dated recovery exercise for this service" } });
+    riskAcceptance: "Accept the open findings until due.", condition: { owner: "Customer operations", due: "2026-12-01", evidence: "Dated recovery exercise for this service" } });
   const signed = structuredClone(requestAssessment(state, engagement).signedPack);
-  act("analyst-01", "evidence", { name: "Zapier recovery exercise", source: "Synthetic supplied recovery exercise", version: "v1", notes: "New service recovery proof follows the signed decision." });
-  const closureId = requestAssessment(state, engagement).evidence.at(-1).id;
-  act("analyst-01", "review", { evidenceId: closureId, conclusion: "Supported", rationale: "The dated exercise supports the signed recovery condition." });
+  state = addDocuments(step, state, ["doc-bcp-2026"]);
+  act("analyst-01", "cite", { controlId: "CTL-BCP", documentId: requestAssessment(state, engagement).evidence.at(-1).id, page: 2, excerpt: "Service was restored in 2 hours, within the 4 hour RTO.", shows: "The dated exercise supports the signed recovery condition." });
   act("analyst-01", "close", { rationale: "The reviewed service-specific exercise satisfies the customer condition." });
   const record = requestAssessment(state, engagement);
-  assert.equal(requestProgress(record).label, "Condition closed");
+  assert.equal(requestProgress(record).label, "Condition closed · 3 open finding(s)", "M2: findings stay open after the condition closes");
   assert.equal(record.decision.actor, "Customer owner");
   assert.equal(record.qa.actor, "Demo QA reviewer");
   assert.equal(record.signedPack.workspace.name, "My company");
   assert.deepEqual(record.signedPack, signed);
   assert.deepEqual(record.signedPack.submittedReceipt, engagement);
-  assert.deepEqual(record.signedPack.evidence.map(row => row.name), ["Zapier service control review"]);
+  assert.equal(record.signedPack.evidence.length, 5);
+  assert.equal(record.evidence.length, 6, "post-decision evidence never changes the signed pack");
   assert.deepEqual({ conclusion: state.conclusion, judgement: state.judgement, qa: state.qa, qaReview: state.qaReview },
     { conclusion: original.conclusion, judgement: original.judgement, qa: original.qa, qaReview: original.qaReview });
   assert.deepEqual(base.documents, []);

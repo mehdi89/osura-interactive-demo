@@ -16,7 +16,7 @@
       ["O03", "Evidence", "Folder"],
       ["O07", "Findings", "TriangleAlert"],
       ["O14", "Communications", "MessageSquare"],
-      ["O08", "QA review", "ShieldCheck"],
+      ["O08", "Independent QA", "ShieldCheck"],
       ["O15", "Monitoring", "Clock"],
       ["O10", "Programme", "SlidersHorizontal"]
     ]
@@ -260,8 +260,8 @@
     {
       "id": "O08",
       "role": "analyst",
-      "label": "QA review",
-      "title": "QA review",
+      "label": "Independent quality assurance",
+      "title": "Independent quality review",
       "subtitle": "Challenge the evidence and analyst reasoning before customer sign-off.",
       "nav": "O08",
       "reference": "Analyst Panel.html#s11"

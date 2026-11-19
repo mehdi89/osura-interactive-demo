@@ -77,16 +77,26 @@ CREATE TABLE "documentVersions" (
   "page" integer NOT NULL CHECK ("page" >= 1),
   "pageCount" integer NOT NULL CHECK ("pageCount" >= 1),
   "receivedOn" date NOT NULL,
+  "sourceType" text,
+  "documentStatus" text CHECK ("documentStatus" IN ('Final', 'Draft', NULL)),
+  "documentDate" text,
+  "replacesId" text,
+  "doesNotProve" text,
   UNIQUE ("engagementId", "documentKey", "version"),
   CHECK ("page" <= "pageCount")
 );
 CREATE TABLE "evidenceCitations" (
   "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
-  "reviewId" text NOT NULL CHECK (length("reviewId") >= 1 AND "reviewId" ~ '\S'),
+  "reviewId" text,
   "documentVersionId" text NOT NULL CHECK (length("documentVersionId") >= 1 AND "documentVersionId" ~ '\S'),
   "pageStart" integer NOT NULL CHECK ("pageStart" >= 1),
   "pageEnd" integer NOT NULL CHECK ("pageEnd" >= 1),
   "excerpt" text,
+  "controlId" text,
+  "shows" text,
+  "verified" boolean,
+  "origin" text CHECK ("origin" IN ('human', 'ai', NULL)),
+  "aiRunId" text,
   CHECK ("pageStart" <= "pageEnd")
 );
 CREATE TABLE "findings" (
@@ -98,7 +108,10 @@ CREATE TABLE "findings" (
   "ownerId" text NOT NULL CHECK (length("ownerId") >= 1 AND "ownerId" ~ '\S'),
   "state" text NOT NULL CHECK ("state" IN ('Open condition', 'Awaiting evidence', 'In remediation', 'Closed')),
   "due" date NOT NULL,
-  "evidence" text NOT NULL CHECK (length("evidence") >= 1 AND "evidence" ~ '\S')
+  "evidence" text NOT NULL CHECK (length("evidence") >= 1 AND "evidence" ~ '\S'),
+  "severityRationale" text,
+  "action" text,
+  "missingRequirement" text
 );
 CREATE TABLE "triageQuestions" (
   "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
@@ -161,6 +174,102 @@ CREATE TABLE "customerAssignments" (
   "workspaceId" text NOT NULL,
   UNIQUE ("userId", "workspaceId")
 );
+CREATE TABLE "controlLibrary" (
+  "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
+  "family" text NOT NULL CHECK (length("family") >= 1 AND "family" ~ '\S'),
+  "name" text NOT NULL CHECK (length("name") >= 1 AND "name" ~ '\S'),
+  "expectation" text NOT NULL CHECK (length("expectation") >= 1 AND "expectation" ~ '\S'),
+  "rulesVersion" text NOT NULL CHECK (length("rulesVersion") >= 1 AND "rulesVersion" ~ '\S')
+);
+CREATE TABLE "controlRules" (
+  "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
+  "rulesVersion" text NOT NULL CHECK (length("rulesVersion") >= 1 AND "rulesVersion" ~ '\S'),
+  "description" text NOT NULL CHECK (length("description") >= 1 AND "description" ~ '\S')
+);
+CREATE TABLE "controlRuleTargets" (
+  "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
+  "ruleId" text NOT NULL CHECK (length("ruleId") >= 1 AND "ruleId" ~ '\S'),
+  "controlId" text NOT NULL CHECK (length("controlId") >= 1 AND "controlId" ~ '\S'),
+  UNIQUE ("ruleId", "controlId")
+);
+CREATE TABLE "assessmentControls" (
+  "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
+  "engagementId" text NOT NULL CHECK (length("engagementId") >= 1 AND "engagementId" ~ '\S'),
+  "controlId" text NOT NULL CHECK (length("controlId") >= 1 AND "controlId" ~ '\S'),
+  "source" text NOT NULL CHECK ("source" IN ('rule', 'manual')),
+  "ruleId" text,
+  "reason" text NOT NULL CHECK (length("reason") >= 1 AND "reason" ~ '\S'),
+  "status" text NOT NULL CHECK ("status" IN ('Applied', 'Removed')),
+  "removedReason" text,
+  UNIQUE ("engagementId", "controlId")
+);
+CREATE TABLE "supplierClaims" (
+  "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
+  "engagementId" text NOT NULL CHECK (length("engagementId") >= 1 AND "engagementId" ~ '\S'),
+  "controlId" text NOT NULL CHECK (length("controlId") >= 1 AND "controlId" ~ '\S'),
+  "text" text NOT NULL CHECK (length("text") >= 1 AND "text" ~ '\S'),
+  "version" integer NOT NULL CHECK ("version" >= 1),
+  "supersedesId" text,
+  "source" text NOT NULL CHECK ("source" IN ('supplier', 'analyst-entered')),
+  "actorId" text,
+  "recordedOn" date NOT NULL,
+  UNIQUE ("engagementId", "controlId", "version")
+);
+CREATE TABLE "aiRuns" (
+  "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
+  "engagementId" text NOT NULL CHECK (length("engagementId") >= 1 AND "engagementId" ~ '\S'),
+  "task" text NOT NULL CHECK ("task" IN ('evidence-notes', 'draft-findings', 'compare-claim')),
+  "provider" text NOT NULL CHECK (length("provider") >= 1 AND "provider" ~ '\S'),
+  "model" text NOT NULL CHECK (length("model") >= 1 AND "model" ~ '\S'),
+  "live" boolean NOT NULL,
+  "status" text NOT NULL CHECK ("status" IN ('ok', 'abstained', 'failed')),
+  "controlId" text,
+  "startedAt" text NOT NULL CHECK (length("startedAt") >= 1 AND "startedAt" ~ '\S'),
+  "error" text,
+  "outputJson" text
+);
+CREATE TABLE "aiProposalDecisions" (
+  "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
+  "aiRunId" text NOT NULL CHECK (length("aiRunId") >= 1 AND "aiRunId" ~ '\S'),
+  "proposalIndex" integer,
+  "decision" text NOT NULL CHECK ("decision" IN ('accepted', 'edited', 'rejected')),
+  "reason" text,
+  "actorId" text
+);
+CREATE TABLE "controlConclusions" (
+  "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
+  "engagementId" text NOT NULL CHECK (length("engagementId") >= 1 AND "engagementId" ~ '\S'),
+  "controlId" text NOT NULL CHECK (length("controlId") >= 1 AND "controlId" ~ '\S'),
+  "conclusion" text NOT NULL CHECK ("conclusion" IN ('Supported', 'Insufficient', 'Contradicted', 'Missing', 'Not applicable')),
+  "derivedStatus" text NOT NULL CHECK ("derivedStatus" IN ('Supported', 'Insufficient', 'Contradicted', 'Missing')),
+  "aiHint" text,
+  "rationale" text NOT NULL CHECK (length("rationale") >= 1 AND "rationale" ~ '\S'),
+  "overrideReason" text,
+  "actorId" text
+);
+CREATE TABLE "findingControls" (
+  "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
+  "findingId" text NOT NULL CHECK (length("findingId") >= 1 AND "findingId" ~ '\S'),
+  "controlId" text NOT NULL CHECK (length("controlId") >= 1 AND "controlId" ~ '\S'),
+  UNIQUE ("findingId", "controlId")
+);
+CREATE TABLE "qaChallenges" (
+  "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
+  "engagementId" text NOT NULL CHECK (length("engagementId") >= 1 AND "engagementId" ~ '\S'),
+  "controlId" text,
+  "text" text NOT NULL CHECK (length("text") >= 1 AND "text" ~ '\S'),
+  "raisedById" text,
+  "response" text,
+  "respondedById" text,
+  "resolved" boolean NOT NULL
+);
+CREATE TABLE "riskAcceptances" (
+  "id" text PRIMARY KEY CHECK ("id" ~ '^[A-Za-z0-9][A-Za-z0-9_-]*$'),
+  "engagementId" text NOT NULL CHECK (length("engagementId") >= 1 AND "engagementId" ~ '\S'),
+  "rationale" text NOT NULL CHECK (length("rationale") >= 1 AND "rationale" ~ '\S'),
+  "actorId" text,
+  "acceptedOn" date NOT NULL
+);
 ALTER TABLE "services" ADD FOREIGN KEY ("supplierId") REFERENCES "suppliers" ("id") ON DELETE RESTRICT;
 ALTER TABLE "engagements" ADD FOREIGN KEY ("workspaceId") REFERENCES "workspaces" ("id") ON DELETE RESTRICT;
 ALTER TABLE "engagements" ADD FOREIGN KEY ("serviceId") REFERENCES "services" ("id") ON DELETE RESTRICT;
@@ -176,8 +285,11 @@ ALTER TABLE "requirementReviews" ADD FOREIGN KEY ("engagementId") REFERENCES "en
 ALTER TABLE "requirementReviews" ADD FOREIGN KEY ("requirementId") REFERENCES "requirements" ("id") ON DELETE RESTRICT;
 ALTER TABLE "documentVersions" ADD FOREIGN KEY ("engagementId") REFERENCES "engagements" ("id") ON DELETE RESTRICT;
 ALTER TABLE "documentVersions" ADD FOREIGN KEY ("requirementId") REFERENCES "requirements" ("id") ON DELETE RESTRICT;
+ALTER TABLE "documentVersions" ADD FOREIGN KEY ("replacesId") REFERENCES "documentVersions" ("id") ON DELETE RESTRICT;
 ALTER TABLE "evidenceCitations" ADD FOREIGN KEY ("reviewId") REFERENCES "requirementReviews" ("id") ON DELETE RESTRICT;
 ALTER TABLE "evidenceCitations" ADD FOREIGN KEY ("documentVersionId") REFERENCES "documentVersions" ("id") ON DELETE RESTRICT;
+ALTER TABLE "evidenceCitations" ADD FOREIGN KEY ("controlId") REFERENCES "controlLibrary" ("id") ON DELETE RESTRICT;
+ALTER TABLE "evidenceCitations" ADD FOREIGN KEY ("aiRunId") REFERENCES "aiRuns" ("id") ON DELETE RESTRICT;
 ALTER TABLE "findings" ADD FOREIGN KEY ("engagementId") REFERENCES "engagements" ("id") ON DELETE RESTRICT;
 ALTER TABLE "findings" ADD FOREIGN KEY ("requirementId") REFERENCES "requirements" ("id") ON DELETE RESTRICT;
 ALTER TABLE "findings" ADD FOREIGN KEY ("ownerId") REFERENCES "actors" ("id") ON DELETE RESTRICT;
@@ -194,5 +306,29 @@ ALTER TABLE "users" ADD FOREIGN KEY ("actorId") REFERENCES "actors" ("id") ON DE
 ALTER TABLE "users" ADD FOREIGN KEY ("workspaceId") REFERENCES "workspaces" ("id") ON DELETE RESTRICT;
 ALTER TABLE "customerAssignments" ADD FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE RESTRICT;
 ALTER TABLE "customerAssignments" ADD FOREIGN KEY ("workspaceId") REFERENCES "workspaces" ("id") ON DELETE RESTRICT;
+ALTER TABLE "controlRuleTargets" ADD FOREIGN KEY ("ruleId") REFERENCES "controlRules" ("id") ON DELETE RESTRICT;
+ALTER TABLE "controlRuleTargets" ADD FOREIGN KEY ("controlId") REFERENCES "controlLibrary" ("id") ON DELETE RESTRICT;
+ALTER TABLE "assessmentControls" ADD FOREIGN KEY ("engagementId") REFERENCES "engagements" ("id") ON DELETE RESTRICT;
+ALTER TABLE "assessmentControls" ADD FOREIGN KEY ("controlId") REFERENCES "controlLibrary" ("id") ON DELETE RESTRICT;
+ALTER TABLE "assessmentControls" ADD FOREIGN KEY ("ruleId") REFERENCES "controlRules" ("id") ON DELETE RESTRICT;
+ALTER TABLE "supplierClaims" ADD FOREIGN KEY ("engagementId") REFERENCES "engagements" ("id") ON DELETE RESTRICT;
+ALTER TABLE "supplierClaims" ADD FOREIGN KEY ("controlId") REFERENCES "controlLibrary" ("id") ON DELETE RESTRICT;
+ALTER TABLE "supplierClaims" ADD FOREIGN KEY ("supersedesId") REFERENCES "supplierClaims" ("id") ON DELETE RESTRICT;
+ALTER TABLE "supplierClaims" ADD FOREIGN KEY ("actorId") REFERENCES "actors" ("id") ON DELETE RESTRICT;
+ALTER TABLE "aiRuns" ADD FOREIGN KEY ("engagementId") REFERENCES "engagements" ("id") ON DELETE RESTRICT;
+ALTER TABLE "aiRuns" ADD FOREIGN KEY ("controlId") REFERENCES "controlLibrary" ("id") ON DELETE RESTRICT;
+ALTER TABLE "aiProposalDecisions" ADD FOREIGN KEY ("aiRunId") REFERENCES "aiRuns" ("id") ON DELETE RESTRICT;
+ALTER TABLE "aiProposalDecisions" ADD FOREIGN KEY ("actorId") REFERENCES "actors" ("id") ON DELETE RESTRICT;
+ALTER TABLE "controlConclusions" ADD FOREIGN KEY ("engagementId") REFERENCES "engagements" ("id") ON DELETE RESTRICT;
+ALTER TABLE "controlConclusions" ADD FOREIGN KEY ("controlId") REFERENCES "controlLibrary" ("id") ON DELETE RESTRICT;
+ALTER TABLE "controlConclusions" ADD FOREIGN KEY ("actorId") REFERENCES "actors" ("id") ON DELETE RESTRICT;
+ALTER TABLE "findingControls" ADD FOREIGN KEY ("findingId") REFERENCES "findings" ("id") ON DELETE RESTRICT;
+ALTER TABLE "findingControls" ADD FOREIGN KEY ("controlId") REFERENCES "controlLibrary" ("id") ON DELETE RESTRICT;
+ALTER TABLE "qaChallenges" ADD FOREIGN KEY ("engagementId") REFERENCES "engagements" ("id") ON DELETE RESTRICT;
+ALTER TABLE "qaChallenges" ADD FOREIGN KEY ("controlId") REFERENCES "controlLibrary" ("id") ON DELETE RESTRICT;
+ALTER TABLE "qaChallenges" ADD FOREIGN KEY ("raisedById") REFERENCES "actors" ("id") ON DELETE RESTRICT;
+ALTER TABLE "qaChallenges" ADD FOREIGN KEY ("respondedById") REFERENCES "actors" ("id") ON DELETE RESTRICT;
+ALTER TABLE "riskAcceptances" ADD FOREIGN KEY ("engagementId") REFERENCES "engagements" ("id") ON DELETE RESTRICT;
+ALTER TABLE "riskAcceptances" ADD FOREIGN KEY ("actorId") REFERENCES "actors" ("id") ON DELETE RESTRICT;
 CREATE UNIQUE INDEX "users_email_case_insensitive" ON "users" (lower("email"));
 COMMIT;

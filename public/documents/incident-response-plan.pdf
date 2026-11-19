@@ -1,0 +1,53 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Length 351 >>
+stream
+BT /F2 15 Tf 56 780 Td (Incident response plan - v1) Tj ET
+BT /F1 9 Tf 56 762 Td (SYNTHETIC DEMO DOCUMENT - Supplier policy - Final - dated 2026-05-20 - page 1 of 2) Tj ET
+BT /F1 11 Tf 56 728 Td (Incident response plan. Customers are notified of a confirmed security incident) Tj ET
+BT /F1 11 Tf 56 712 Td (affecting their data within 72 hours.) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 341 >>
+stream
+BT /F2 15 Tf 56 780 Td (Incident response plan - v1) Tj ET
+BT /F1 9 Tf 56 762 Td (SYNTHETIC DEMO DOCUMENT - Supplier policy - Final - dated 2026-05-20 - page 2 of 2) Tj ET
+BT /F1 11 Tf 56 728 Td (Roles. The security lead coordinates response. A post-incident review is completed) Tj ET
+BT /F1 11 Tf 56 712 Td (within 10 business days.) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000191 00000 n 
+0000000266 00000 n 
+0000000668 00000 n 
+0000000804 00000 n 
+0000001196 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+1332
+%%EOF

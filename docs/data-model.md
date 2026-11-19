@@ -102,3 +102,20 @@ This work changes the data foundation and session tools. It does not implement t
 C04 keeps the four existing service-scope questions separate from the 17 impact questions. All impact answers start blank; Unknown can be submitted for analyst clarification. Drafts live inside each customer's intake and survive ordinary navigation. A changed supplier or service scope clears the prior scope facts and impact answers for reconfirmation. C05 shows all answers and their base-impact summary. The request receipt snapshots question IDs, wording, category, answers and source attribution; later question edits cannot rename a submitted answer. Receipt JSON includes this snapshot.
 
 The O12 reference view shows the new questions with Not answered rather than reusing answers to the old fixture labels. Existing synthetic inherent-risk tiers and workflow gates are unchanged. The guide notes that separate questionnaire inputs can affect full CTP calculations, so the base-impact summary is not a new final CTP risk engine. New requests stay Pending triage. See [implementation and verification](ctp-questions-2026-11-08.md).
+
+## V1 assessment model (optional collections, 19 November 2026)
+
+The locked V1 scope adds these normalized collections to the schema. They are optional in scenario packs; new-request session records use the same shapes (`src/request-workflow.mjs`).
+
+| Collection | Purpose (scope item) |
+| --- | --- |
+| controlLibrary, controlRules, controlRuleTargets | Control library kept separate from the transparent rules that apply it (R2). Seeded from `src/controls.mjs`; a test keeps them in sync. |
+| assessmentControls | Controls applied to one assessment, with rule or analyst reason and not-applicable justification (R2). |
+| documentVersions (+ sourceType, documentStatus, documentDate, replacesId, doesNotProve) | Document metadata and replacement chain (E1). |
+| evidenceCitations (+ controlId, shows, verified, origin, aiRunId) | Citation to a document version, page and excerpt; `verified` is true only when the excerpt is on the cited page (E2). |
+| supplierClaims | Append-only claims; corrections supersede, never overwrite (E4). |
+| aiRuns, aiProposalDecisions | Run provenance (provider, model, live flag, status, output) and each human accept/edit/reject with reason (AI1/AI2/AI4, N1). |
+| controlConclusions | Human conclusion beside the rule-derived status and AI hint; override reason when they differ (E3, N1). |
+| findings (+ severityRationale, action, missingRequirement), findingControls | Unified finding fields; one finding may cover several controls (F1, F2). |
+| qaChallenges | QA challenge, analyst answer and resolution (Q3). |
+| riskAcceptances | Explicit acceptance when approving with open findings; not a closure (D3). |

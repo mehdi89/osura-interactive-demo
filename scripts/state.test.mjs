@@ -96,6 +96,7 @@ test("signed pack preserves evidence and original decision through later edits",
     "Approve with conditions",
     "Proceed with test",
     condition,
+    "Accept the open findings until their due dates.",
   );
   assert.equal(initial.decision, null);
   assert.equal(next.signedPack.decision.outcome, "Approve with conditions");
@@ -237,12 +238,12 @@ test("QA send-back requires an analyst revision and readiness agrees with the de
   const revised = saveRequirementReview(sentBack, analystData, "R-07", {
     recommendation: "Approve with conditions", judgement: "Exact service scope considered", conclusion: "Partially supported", reason: "",
   });
-  assert.equal(workflowStatus(revised).label, "QA review required");
+  assert.equal(workflowStatus(revised).label, "Independent QA required");
   assert.deepEqual([workflowStatus(revised).stage, workflowStatus(revised).step], ["QA", 3]);
   const passed = recordQA(revised, qaData, "Passed with condition", "Independently checked revision");
   assert.equal(workflowStatus(passed).ready, true);
   assert.deepEqual([workflowStatus(passed).stage, workflowStatus(passed).step], ["Decision", 4]);
-  const approved = recordDecision(passed, data, "Approve", "Service scope is acceptable", null);
+  const approved = recordDecision(passed, data, "Approve", "Service scope is acceptable", null, "Accept the open findings until their due dates.");
   assert.deepEqual([workflowStatus(approved).stage, workflowStatus(approved).step], ["Active", 5]);
   const signed = recordDecision(passed, data, "Reject", "Service scope is unacceptable", null);
   assert.equal(workflowStatus(signed).label, "Rejected");
@@ -266,7 +267,7 @@ test("ordinary evidence uploads invalidate readiness and require their own revie
 });
 
 test("a signed pack keeps its workspace name and cannot close on evidence predating the decision", () => {
-  const signed = recordDecision(createState(data), data, "Approve with conditions", "Proceed with future proof", condition);
+  const signed = recordDecision(createState(data), data, "Approve with conditions", "Proceed with future proof", condition, "Accept the open findings until their due dates.");
   assert.equal(signed.signedPack.workspace.name, data.workspace.name);
   const old = {
     ...signed,
@@ -334,7 +335,7 @@ test("new evidence versions allow the same conclusion but reordered identical ev
 });
 
 test("closure selects the newest reviewed evidence version even when filenames match", () => {
-  const signed = recordDecision(createState(data), data, "Approve with conditions", "Proceed subject to newer scoped proof", condition);
+  const signed = recordDecision(createState(data), data, "Approve with conditions", "Proceed subject to newer scoped proof", condition, "Accept the open findings until their due dates.");
   const oldReceipt = { fileName: "same.pdf", reference: "supplier-v1", at: "2026-11-05T01:00:00Z" };
   const upload = { name: "same.pdf", version: "upload-v2", requirement: "R-07", receivedAt: "2026-11-05T02:00:00Z" };
   const state = { ...signed, signedPack: { ...signed.signedPack, decision: { ...signed.decision, at: "2026-11-05T00:00:00Z" } }, supplierReceipt: oldReceipt, uploads: [upload],

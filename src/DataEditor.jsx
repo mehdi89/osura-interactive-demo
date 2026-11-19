@@ -5,7 +5,7 @@ const label = row => row.name || row.fileName || row.issue || row.label || row.i
 const words = value => value.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, c => c.toUpperCase());
 
 export default function DataEditor({ model, schema, validate, onChange }) {
-  const tables = Object.keys(schema.$defs).filter(name => !["users", "customerAssignments"].includes(name));
+  const tables = Object.keys(schema.$defs).filter(name => !["users", "customerAssignments"].includes(name) && Array.isArray(model[name]));
   const [table, setTable] = useState("engagements");
   const [draft, setDraft] = useState(null);
   const [editing, setEditing] = useState(false);

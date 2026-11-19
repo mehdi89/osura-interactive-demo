@@ -3,7 +3,7 @@
   "version": 1,
   "id": "approved-supplier-example",
   "name": "Approved supplier example",
-  "description": "Synthetic prepared example: Brightline Logistics · TrackPro freight tracking completed intake, CTP triage, evidence review on all four requirements, analyst QA and an approved customer decision. All records are prepared fixtures, not live decisions by the current demo user. New intake requests still start fresh in this session.",
+  "description": "Synthetic prepared example: Brightline Logistics · TrackPro freight tracking completed intake, CTP triage, evidence review on all four requirements, independent QA and an approved customer decision. All records are prepared fixtures, not live decisions by the current demo user. New intake requests still start fresh in this session.",
   "workspace": {
     "modelVersion": 1,
     "workspaces": [
@@ -708,7 +708,7 @@
         "scope": ""
       },
       "qa": "Passed",
-      "qaNote": "Prepared example: analyst QA passed. All four requirements supported by service-scoped evidence.",
+      "qaNote": "Prepared example: independent QA by the second analyst passed. All four requirements supported by service-scoped evidence.",
       "decision": null,
       "signedPack": null,
       "conditionClosed": false,
@@ -832,7 +832,7 @@
       "overlay": "Enhanced v3",
       "decision": {
         "outcome": "Approve",
-        "rationale": "Prepared example: all four requirements are supported by service-scoped evidence and QA passed. TrackPro approved for freight tracking use.",
+        "rationale": "Prepared example: all four requirements are supported by service-scoped evidence and independent QA passed. TrackPro approved for freight tracking use.",
         "condition": null,
         "actor": "Customer owner",
         "at": "2026-11-02T10:15:00Z"
@@ -926,7 +926,7 @@
         }
       ],
       "qaReview": {
-        "actor": "Demo analyst",
+        "actor": "Second analyst",
         "prepared": true,
         "at": "2026-10-30T16:00:00Z"
       }

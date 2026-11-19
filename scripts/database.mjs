@@ -38,7 +38,7 @@ export function generateDatabase(schema, data) {
   lines.push(...relations, 'CREATE UNIQUE INDEX "users_email_case_insensitive" ON "users" (lower("email"));', "COMMIT;", "");
   const seed = ["-- Generated synthetic data. Apply schema.sql first to a fresh database.", "BEGIN;"];
   for (const table of Object.keys(schema.$defs)) {
-    for (const row of data[table]) seed.push(`INSERT INTO ${q(table)} (${Object.keys(row).map(q).join(", ")}) VALUES (${Object.values(row).map(literal).join(", ")});`);
+    for (const row of data[table] || []) seed.push(`INSERT INTO ${q(table)} (${Object.keys(row).map(q).join(", ")}) VALUES (${Object.values(row).map(literal).join(", ")});`);
   }
   seed.push("COMMIT;", "");
   return { "schema.sql": lines.join("\n"), "seed.sql": seed.join("\n") };

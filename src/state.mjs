@@ -20,7 +20,7 @@ export function createState(data) {
   };
 }
 
-export function recordDecision(state, data, outcome, rationale, condition) {
+export function recordDecision(state, data, outcome, rationale, condition, riskAcceptance = "") {
   const user = requireAction(data, "decision");
   if (state.selected !== "cedar" || data.activeEngagementId !== "cedar")
     throw new Error(
@@ -34,7 +34,7 @@ export function recordDecision(state, data, outcome, rationale, condition) {
       "Review the new supplier evidence before recording a decision.",
     );
   if (!state.qa.startsWith("Passed") || (state.qaReworkRevision != null && (state.analysisRevision || 0) <= state.qaReworkRevision))
-    throw new Error("QA review must pass after any required analyst revision before recording a decision.");
+    throw new Error("Independent QA must pass after any required analyst revision before recording a decision.");
   if (!rationale.trim()) throw new Error("Enter a decision rationale.");
   if (
     ![
@@ -56,12 +56,17 @@ export function recordDecision(state, data, outcome, rationale, condition) {
     throw new Error(
       "This review already has a recorded decision. Create a reassessment to record a new one.",
     );
+  const open = cedarOpenFindings(state, data);
+  // D3: approving while findings are open needs an explicit, recorded risk acceptance (shared rule with new requests).
+  if (outcome.startsWith("Approve") && open.length && !riskAcceptance?.trim())
+    throw new Error(`Approving with ${open.length} open finding(s) requires a recorded risk acceptance.`);
   const engagement = data.engagements.find((e) => e.id === state.selected);
   const decision = {
     outcome,
     rationale: rationale.trim(),
     assessmentVersion: data.assessmentVersion || "cedar-review-v1",
     condition: outcome === "Approve with conditions" ? { owner: condition.owner.trim(), due: condition.due, evidence: condition.evidence.trim() } : null,
+    riskAcceptance: outcome.startsWith("Approve") && open.length ? { rationale: riskAcceptance.trim(), findingIds: open.map(row => row.id) } : null,
     actor: user.name,
     actorId: user.actorId,
     userId: user.id,
@@ -219,14 +224,18 @@ export function saveRequirementReview(state, data, id, review) {
 export function recordQA(state, data, outcome, note) {
   const user = requireAction(data, "qa");
   if (state.selected !== "cedar" || data.activeEngagementId !== "cedar") throw new Error("QA is scoped to the CedarCloud walkthrough.");
-  // ponytail: same-analyst QA allowed for now (client call); restore the author check for independent QA.
+  const leadActorId = data.engagements.find(row => row.id === data.activeEngagementId)?.analystId;
+  const reviewers = [...(state.analysisAuthors || []), ...Object.values(state.reviews || {}).map(row => row.actorId),
+    ...(state.events || []).filter(row => row.action === "Analyst recommendation recorded").map(row => row.actorId)];
+  if (user.actorId === leadActorId || reviewers.includes(user.actorId))
+    throw new Error("You cannot perform QA on your own analysis. Choose a different assigned reviewer.");
   if (!note.trim()) throw new Error("Record the QA challenge and rationale.");
   if (!["Passed", "Passed with condition", "Rework requested", "More evidence required"].includes(outcome)) throw new Error("Select a valid QA outcome.");
   if (outcome.startsWith("Passed") && (state.conclusion === "Needs review" || Object.values(state.pendingReviews || {}).some(Boolean)))
     throw new Error("Review the new evidence before passing QA.");
   if (outcome.startsWith("Passed") && state.qaReworkRevision != null && (state.analysisRevision || 0) <= state.qaReworkRevision)
     throw new Error("An analyst must revise the recommendation after QA requests rework.");
-  const entry = actionEntry(data, "QA review recorded", note.trim(), { outcome });
+  const entry = actionEntry(data, "Independent QA recorded", note.trim(), { outcome });
   return { ...state, qa: outcome, qaReworkRevision: outcome.startsWith("Passed") ? null : state.analysisRevision || 0, qaNote: note.trim(), qaReview: { ...entry, prepared: false }, events: [...state.events, entry] };
 }
 
@@ -256,7 +265,7 @@ export function workflowStatus(state) {
   if (state.qaReworkRevision != null && (state.analysisRevision || 0) <= state.qaReworkRevision)
     return { label: "Analyst revision required", nextOwner: "Analyst", stage: "Findings", step: 2, ready: false };
   if (!state.qa.startsWith("Passed"))
-    return { label: "QA review required", nextOwner: "Assigned analyst", stage: "QA", step: 3, ready: false };
+    return { label: "Independent QA required", nextOwner: "Independent QA reviewer", stage: "QA", step: 3, ready: false };
   return { label: "Ready for customer decision", nextOwner: "Customer Decision Owner", stage: "Decision", step: 4, ready: true };
 }
 
@@ -317,4 +326,9 @@ export function filterSupplierServices(rows, search = "", filter = "All", tab = 
     }
   }
   return [...groups.values()];
+}
+
+// Open findings on the prepared walkthrough case (fixtures plus session-recorded findings).
+export function cedarOpenFindings(state, data) {
+  return [...(data.findings || []), ...(state.extraFindings || [])].filter(row => row.engagementId === (state.selected || "cedar") && row.state !== "Closed");
 }

@@ -64,7 +64,7 @@
           "Osura analyst 01"
         ],
         [
-          "QA review",
+          "Independent QA",
           "QA reviewer 02"
         ],
         [
@@ -169,7 +169,7 @@
         ],
         [
           "Enhanced v3",
-          "Published · resilience and QA review"
+          "Published · resilience and independent QA"
         ],
         [
           "Next change",
@@ -248,7 +248,7 @@
     {
       "engagement": "cedar",
       "title": "CedarCloud · Payment event processing",
-      "detail": "Decision memo and QA review completed",
+      "detail": "Decision memo and independent QA completed",
       "status": "Critical",
       "action": "Review decision",
       "route": "C06"
@@ -432,7 +432,7 @@
       "CedarCloud",
       "Critical payment events",
       "Enhanced v3",
-      "Scoped resilience/privacy proof · QA review"
+      "Scoped resilience/privacy proof · independent QA"
     ]
   ],
   "notifications": [

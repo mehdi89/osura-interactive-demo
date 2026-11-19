@@ -70,3 +70,50 @@
   .request-flow-layout { display: block; }
   .request-flow .card, .request-flow-evidence > article { break-inside: avoid; }
 }
+/* Evidence workspace: controls beside the cited PDF page (E5, Q4). */
+.request-flow-layout.is-wide { grid-template-columns: minmax(0,1fr); }
+.evidence-split { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(320px,1fr); gap: 22px; align-items: start; }
+.evidence-main { min-width: 0; display: grid; gap: 12px; align-content: start; }
+.evidence-main > h3 { margin: 18px 0 4px; }
+.request-flow-layout.is-wide .card { overflow: clip; } /* hidden would make the card a scroll container and break the sticky viewer */
+.evidence-viewer-pane { position: sticky; top: 16px; min-width: 0; }
+.pdf-viewer { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); overflow: hidden; }
+.pdf-viewer.empty { padding: 18px; color: var(--muted); }
+.pdf-viewer-head { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.pdf-viewer-head span { color: var(--muted); font-size: 12px; }
+.pdf-viewer-head a { margin-left: auto; font-size: 12px; }
+.pdf-viewer iframe { display: block; width: 100%; height: min(70vh, 640px); border: 0; background: #fff; }
+.pdf-viewer details { padding: 0 14px 12px; }
+.pdf-page-text { white-space: pre-wrap; font-size: 13px; }
+.pdf-page-text mark { background: var(--accent-soft); color: inherit; outline: 1px solid var(--accent-line); }
+.control-panel { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.control-panel.is-open { border-color: var(--accent-line); }
+.control-panel-head { display: flex; width: 100%; gap: 12px; justify-content: space-between; align-items: center; padding: 14px 16px; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; font: inherit; }
+.control-panel-head small { display: block; color: var(--muted); }
+.control-panel-head .badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.control-panel-body { padding: 0 16px 16px; border-top: 1px solid var(--line); }
+.control-panel-body h4 { margin: 16px 0 6px; }
+.claim-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.claim-compare > div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; }
+.claim-compare small, .muted { color: var(--muted); }
+.ai-block { margin: 12px 0; padding: 12px; border: 1px dashed var(--accent-line); border-radius: 6px; background: var(--accent-soft); }
+.ai-block-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.ai-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--accent-line); font-size: 11px; font-weight: 600; color: var(--accent); background: var(--surface); }
+.ai-proposal { margin: 10px 0; padding: 10px 12px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line); }
+.citation-list { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.finding-row { margin: 8px 0; padding: 10px 12px; border-left: 3px solid var(--warning, #c58a1b); background: var(--surface); }
+.finding-also { display: flex; flex-wrap: wrap; gap: 6px 14px; border: 0; padding: 0; margin: -8px 0 12px; font-size: 13px; }
+.risk-calculation { margin: 16px 0; padding: 14px 16px; border: 1px solid var(--accent-line); border-radius: 6px; }
+.risk-calculation ul, .memo-drivers { margin: 6px 0 0; padding-left: 18px; }
+.decision-memo { display: grid; gap: 14px; margin-bottom: 18px; }
+.decision-memo section { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.memo-controls { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.memo-controls li { display: flex; justify-content: space-between; gap: 10px; }
+.pre-wrap { white-space: pre-wrap; }
+.document-row .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+@media (max-width: 1100px) { .evidence-split { grid-template-columns: minmax(0,1fr); } .evidence-viewer-pane { position: static; } }
+@media (max-width: 600px) { .claim-compare { grid-template-columns: 1fr; } .control-panel-head { flex-direction: column; align-items: flex-start; } }
+@media print {
+  .request-flow-hero, .pack-export, .evidence-viewer-pane, .request-flow-meta { display: none !important; }
+  .request-pack-print { display: block; }
+}

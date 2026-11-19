@@ -935,5 +935,115 @@
       "userId": "analyst-02",
       "workspaceId": "northstar"
     }
+  ],
+  "controlLibrary": [
+    {
+      "id": "CTL-SEC",
+      "family": "Security assurance",
+      "name": "Independent security assurance",
+      "expectation": "Current SOC 2 Type II report or ISO 27001 certificate covering the contracted service",
+      "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation"
+    },
+    {
+      "id": "CTL-ACC",
+      "family": "Access control",
+      "name": "Privileged access management",
+      "expectation": "MFA for administrative access and evidenced periodic privileged access reviews",
+      "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation"
+    },
+    {
+      "id": "CTL-DATA",
+      "family": "Data protection",
+      "name": "Data protection and deletion",
+      "expectation": "Contractual deletion commitment and a completed deletion test",
+      "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation"
+    },
+    {
+      "id": "CTL-SUB",
+      "family": "Supply chain",
+      "name": "Subprocessor management",
+      "expectation": "Subprocessor list with security obligations flowed down",
+      "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation"
+    },
+    {
+      "id": "CTL-BCP",
+      "family": "Resilience",
+      "name": "Business continuity and recovery testing",
+      "expectation": "A dated technical recovery test meeting the agreed RTO and RPO",
+      "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation"
+    },
+    {
+      "id": "CTL-IR",
+      "family": "Incident management",
+      "name": "Incident response and notification",
+      "expectation": "Incident response plan with a customer notification commitment",
+      "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation"
+    },
+    {
+      "id": "CTL-VUL",
+      "family": "Vulnerability management",
+      "name": "Penetration testing and remediation",
+      "expectation": "Penetration test within 12 months with high severity issues remediated",
+      "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation"
+    }
+  ],
+  "controlRules": [
+    {
+      "id": "R-BASE",
+      "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation",
+      "description": "Every in-scope supplier service"
+    },
+    {
+      "id": "R-DATA",
+      "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation",
+      "description": "Personal or payment data is not No"
+    },
+    {
+      "id": "R-PROD",
+      "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation",
+      "description": "Connects to production systems is not No, or tier High or above"
+    },
+    {
+      "id": "R-AVAIL",
+      "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation",
+      "description": "Critical journey is not No, not replaceable within a day, or tier High or above"
+    }
+  ],
+  "controlRuleTargets": [
+    {
+      "id": "R-BASE-CTL-SEC",
+      "ruleId": "R-BASE",
+      "controlId": "CTL-SEC"
+    },
+    {
+      "id": "R-BASE-CTL-IR",
+      "ruleId": "R-BASE",
+      "controlId": "CTL-IR"
+    },
+    {
+      "id": "R-DATA-CTL-DATA",
+      "ruleId": "R-DATA",
+      "controlId": "CTL-DATA"
+    },
+    {
+      "id": "R-DATA-CTL-SUB",
+      "ruleId": "R-DATA",
+      "controlId": "CTL-SUB"
+    },
+    {
+      "id": "R-PROD-CTL-ACC",
+      "ruleId": "R-PROD",
+      "controlId": "CTL-ACC"
+    },
+    {
+      "id": "R-PROD-CTL-VUL",
+      "ruleId": "R-PROD",
+      "controlId": "CTL-VUL"
+    },
+    {
+      "id": "R-AVAIL-CTL-BCP",
+      "ruleId": "R-AVAIL",
+      "controlId": "CTL-BCP"
+    }
   ]
 }

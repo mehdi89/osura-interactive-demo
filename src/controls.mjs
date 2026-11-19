@@ -1,0 +1,64 @@
+import { summarizeImpact } from "./ctp.mjs";
+
+// R1/R2 demo baseline. Deterministic and transparent; labels and thresholds await Andre's validation.
+// ponytail: rules live in code for the demo; the real build loads a published, versioned rule set (A4/A6).
+export const RULES_VERSION = "CTP demo rules v0 · synthetic, pending methodology validation";
+export const TIERS = ["Low", "Medium", "High", "Critical"];
+export const CONTROL_CONCLUSIONS = ["Supported", "Insufficient", "Contradicted", "Missing", "Not applicable"];
+export const GAP_CONCLUSIONS = ["Insufficient", "Contradicted", "Missing"];
+
+// Control library (separate from the rules that apply it). Keywords drive the simulated AI.
+export const CONTROL_LIBRARY = [
+  { id: "CTL-SEC", family: "Security assurance", name: "Independent security assurance", expectation: "Current SOC 2 Type II report or ISO 27001 certificate covering the contracted service", keywords: ["SOC 2", "service in scope", "carved out", "Auditor"] },
+  { id: "CTL-ACC", family: "Access control", name: "Privileged access management", expectation: "MFA for administrative access and evidenced periodic privileged access reviews", keywords: ["Multi-factor", "Privileged access", "administrative access"] },
+  { id: "CTL-DATA", family: "Data protection", name: "Data protection and deletion", expectation: "Contractual deletion commitment and a completed deletion test", keywords: ["deleted", "deletion", "personal data"] },
+  { id: "CTL-SUB", family: "Supply chain", name: "Subprocessor management", expectation: "Subprocessor list with security obligations flowed down", keywords: ["subprocessor", "Subprocessors", "flowed down"] },
+  { id: "CTL-BCP", family: "Resilience", name: "Business continuity and recovery testing", expectation: "A dated technical recovery test meeting the agreed RTO and RPO", keywords: ["RTO", "RPO", "failover", "restored", "continuity exercise"] },
+  { id: "CTL-IR", family: "Incident management", name: "Incident response and notification", expectation: "Incident response plan with a customer notification commitment", keywords: ["notified", "incident", "Incidents", "post-incident"] },
+  { id: "CTL-VUL", family: "Vulnerability management", name: "Penetration testing and remediation", expectation: "Penetration test within 12 months with high severity issues remediated", keywords: ["Penetration", "high severity", "remediated"] },
+];
+export const controlById = id => CONTROL_LIBRARY.find(row => row.id === id);
+
+// Intake context facts (index into engagement.answers) → named facts.
+const fact = (engagement, index) => engagement.answers?.[index] || "Unknown";
+export const contextFacts = engagement => ({
+  sensitiveData: fact(engagement, 0), production: fact(engagement, 1), criticalJourney: fact(engagement, 2), replaceable: fact(engagement, 3),
+});
+
+export const RULES = [
+  { id: "R-BASE", description: "Every in-scope supplier service", controls: ["CTL-SEC", "CTL-IR"], when: () => true, why: () => "Applies to every in-scope supplier service" },
+  { id: "R-DATA", description: "Personal or payment data is not No", controls: ["CTL-DATA", "CTL-SUB"], when: (f) => f.sensitiveData !== "No", why: (f) => `Personal or payment data: ${f.sensitiveData}` },
+  { id: "R-PROD", description: "Connects to production systems is not No, or tier High or above", controls: ["CTL-ACC", "CTL-VUL"], when: (f, tier) => f.production !== "No" || TIERS.indexOf(tier) >= 2, why: (f, tier) => f.production !== "No" ? `Connects to production systems: ${f.production}` : `${tier} inherent risk` },
+  { id: "R-AVAIL", description: "Critical journey is not No, not replaceable within a day, or tier High or above", controls: ["CTL-BCP"], when: (f, tier) => f.criticalJourney !== "No" || f.replaceable !== "Yes" || TIERS.indexOf(tier) >= 2, why: (f) => `Critical journey: ${f.criticalJourney}; replaceable within a day: ${f.replaceable}` },
+];
+
+// R1: inherent risk from the submitted answers, with the inputs that drove it. Unknown is never treated as low.
+export function calculateRisk(engagement) {
+  const questions = engagement.businessImpact?.questions || [];
+  const answers = Object.fromEntries(questions.map(q => [q.id, q.answer]));
+  const known = Object.fromEntries(Object.entries(answers).map(([id, a]) => [id, a === "Unknown" ? "High" : a]));
+  const impact = questions.length ? summarizeImpact(questions, known) : { score: null, label: "Not answered" };
+  const facts = contextFacts(engagement);
+  const drivers = [];
+  let tier = impact.score === 5 ? "High" : impact.score === 3 ? "Medium" : "Low";
+  const highs = questions.filter(q => q.answer === "High");
+  if (highs.length) drivers.push({ input: `${highs.length} impact answer(s) High`, detail: highs.slice(0, 3).map(q => q.label).join("; "), effect: "Base impact High" });
+  const unknownImpact = questions.filter(q => q.answer === "Unknown");
+  if (unknownImpact.length) drivers.push({ input: `${unknownImpact.length} impact answer(s) Unknown`, detail: unknownImpact.slice(0, 3).map(q => q.label).join("; "), effect: "Scored as High until confirmed" });
+  const raise = (to, input, effect) => { if (TIERS.indexOf(to) > TIERS.indexOf(tier)) tier = to; drivers.push({ input, effect }); };
+  if (facts.sensitiveData === "Yes") raise("High", "Personal or payment data: Yes", "At least High");
+  if (facts.criticalJourney === "Yes" && facts.replaceable === "No" && tier === "High") raise("Critical", "Critical journey and not replaceable within a day", "Raised to Critical");
+  const unknownFacts = Object.entries(facts).filter(([, v]) => v === "Unknown").map(([k]) => k);
+  if (unknownFacts.length) drivers.push({ input: `Unknown context facts: ${unknownFacts.join(", ")}`, effect: "Provisional until clarified" });
+  return { tier, provisional: unknownFacts.length > 0 || unknownImpact.length > 0, baseImpact: impact.label, drivers, rulesVersion: RULES_VERSION };
+}
+
+// R2: controls applied from the rating and facts, each with its rule and reason.
+export function deriveControls(engagement, tier) {
+  const facts = contextFacts(engagement);
+  const applied = new Map();
+  for (const rule of RULES) if (rule.when(facts, tier))
+    for (const controlId of rule.controls) if (!applied.has(controlId))
+      applied.set(controlId, { controlId, source: "rule", ruleId: rule.id, reason: rule.why(facts, tier), rulesVersion: RULES_VERSION });
+  return [...applied.values()];
+}

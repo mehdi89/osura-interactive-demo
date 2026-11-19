@@ -1,3 +1,4 @@
+import { addDocuments, concludeAll } from "./request-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -94,7 +95,7 @@ test("prepared packs carry an article label that remains in print; signed packs 
 
 test("closure is a preview when evidence predates the signed condition", () => {
   const c = context();
-  c.state = recordDecision(c.state, c.data, "Approve with conditions", "The evidence obligation is required.", { owner: "Decision Owner", due: "2026-11-20", evidence: "New service-scoped exercise" });
+  c.state = recordDecision(c.state, c.data, "Approve with conditions", "The evidence obligation is required.", { owner: "Decision Owner", due: "2026-11-20", evidence: "New service-scoped exercise" }, "Accept the open findings until their due dates.");
   c.state.supplierReceipt = { fileName: "old-exercise.pdf", reference: "OLD-01", at: "2026-10-01T10:00:00Z" };
   c.state.reviews = { "R-07": { conclusion: "Supported", at: new Date().toISOString(), evidenceVersions: ["OLD-01"] } };
   const html = render(Closure, c);
@@ -141,7 +142,7 @@ test("assurance navigation accepts click events and preserves the signed engagem
   c.update = patch => patches.push(patch);
   findElement(Overview(c), "Monitoring plan →").props.onClick({ type: "click" });
   assert.equal(routes.at(-1), "C08");
-  c.state = recordDecision(c.state, c.data, "Approve", "Evidence is acceptable.", null);
+  c.state = recordDecision(c.state, c.data, "Approve", "Evidence is acceptable.", null, "Accept the open findings until their due dates.");
   findElement(Pack(c), "Continue to active assurance →").props.onClick({ type: "click" });
   assert.equal(routes.at(-1), "C08");
   assert.equal(patches.at(-1).selected, c.state.signedPack.engagement.id);
@@ -166,9 +167,7 @@ function requestAction(state, action, values, identity = "analyst-01") {
 }
 function recommendedRequest() {
   let state = requestAction(createState(data), "scope", { service: request.service, risk: "High", plan: "Scoped manual review", rationale: "Classification follows the confirmed customer context and CTP method." });
-  state = requestAction(state, "evidence", { name: "Zapier_Service_Report_2026.pdf", source: "Customer-supplied service assurance report", version: "2026-v1", notes: "Covers the customer record synchronisation service." });
-  const evidenceId = requestAssessment(state, request).evidence[0].id;
-  state = requestAction(state, "review", { evidenceId, conclusion: "Partially supported", rationale: "Service coverage is confirmed; recovery proof remains an explicit limitation." });
+  state = concludeAll((st, action, values) => requestAction(st, action, values), addDocuments((st, action, values) => requestAction(st, action, values), state), request);
   return requestAction(state, "recommend", { outcome: "Approve with conditions", rationale: "Require a dated recovery exercise for the reviewed service." });
 }
 function readyRequest() {
@@ -191,15 +190,16 @@ test("new request case routes show actionable triage and prerequisites instead o
 });
 
 test("request handoffs keep QA available after rework and reserve decision forms for the customer", () => {
-  let state = requestAction(recommendedRequest(), "qa", { outcome: "Rework requested", rationale: "Name the specific recovery proof needed." }, "analyst-02");
+  let state = requestAction(recommendedRequest(), "qa", { outcome: "Rework requested", rationale: "Name the specific recovery proof needed.", challenge: "Which recovery proof closes the gap?" }, "analyst-02");
+  state = requestAction(state, "respondChallenge", { challengeId: requestAssessment(state, request).challenges[0].id, rationale: "A dated recovery exercise; finding raised." });
   state = requestAction(state, "recommend", { outcome: "Approve with conditions", rationale: "A dated contracted-service recovery exercise is the explicit closure proof." });
   const qa = render(Page, requestContext("analyst-02", "O08", state));
   assert.match(qa, /<form[^>]*class="request-flow-form"/);
-  assert.match(qa, />Record QA and send to customer<\/button>/);
-  assert.match(render(Page, requestContext("analyst-01", "O08", state)), />Record QA and send to customer<\/button>/);
+  assert.match(qa, />Record independent QA<\/button>/);
+  assert.doesNotMatch(render(Page, requestContext("analyst-01", "O08", state)), />Record independent QA<\/button>/);
   state = requestAction(state, "qa", { outcome: "Passed", rationale: "The revised condition resolves the independent challenge." }, "analyst-02");
   const analyst = render(Page, requestContext("analyst-01", "C06", state));
-  assert.match(analyst, /analysts can read this page but cannot sign/);
+  assert.match(analyst, /analysts can read this decision page but cannot sign/);
   assert.doesNotMatch(analyst, /<form|Review customer decision/);
   const customer = render(Page, requestContext("customer-morgan", "C06", state));
   assert.match(customer, /Your decision rationale/);
@@ -213,12 +213,12 @@ test("customer request for clarification returns the next action to the analyst 
   const html = render(Page, requestContext("analyst-01", "O02", state));
   assert.match(html, /Your next action/);
   assert.match(html, /Customer requested clarification: Explain who owns the outstanding recovery obligation/);
-  assert.match(html, />Save recommendation and go to QA<\/button>/);
+  assert.match(html, />Save recommendation and send to QA<\/button>/);
   assert.doesNotMatch(html, /Send reply to analyst|Download frozen decision record/);
 });
 
 test("signed request reports and monitoring open the same service's frozen record and condition", () => {
-  const state = requestAction(readyRequest(), "decision", { outcome: "Approve with conditions", rationale: "Accept subject to the named recovery obligation.", condition: { owner: "Zapier service owner", due: "2026-12-01", evidence: "Dated recovery test for customer record synchronisation" } }, "customer-morgan");
+  const state = requestAction(readyRequest(), "decision", { outcome: "Approve with conditions", riskAcceptance: "Accept the open findings until due.", rationale: "Accept subject to the named recovery obligation.", condition: { owner: "Zapier service owner", due: "2026-12-01", evidence: "Dated recovery test for customer record synchronisation" } }, "customer-morgan");
   const routes = [], patches = [];
   const c = requestContext("customer-morgan", "C16", state);
   c.navigate = route => routes.push(route);
@@ -227,8 +227,8 @@ test("signed request reports and monitoring open the same service's frozen recor
   assert.equal(routes.at(-1), "C07");
   assert.equal(patches.at(-1).selected, request.id);
   const pack = render(Page, requestContext("customer-morgan", "C07", state));
-  assert.match(pack, /Zapier_Service_Report_2026.pdf · 2026-v1/);
-  assert.match(pack, /Download frozen decision record/);
+  assert.match(pack, /SOC 2 Type II report · 2026-09/);
+  assert.match(pack, /Download JSON/);
   assert.match(pack, /Zapier service owner/);
   const analyst = { ...requestContext("analyst-01", "O15", state), navigate: c.navigate, update: c.update };
   assert.match(openRendered(Monitoring, analyst, "View Zapier review →"), /Dated recovery test for customer record synchronisation/);
@@ -258,7 +258,7 @@ test("risk grid accounts for pending triage and each new request review stage", 
 });
 
 test("new signed conditions appear in findings and open their service's customer or analyst follow-up", () => {
-  const state = requestAction(readyRequest(), "decision", { outcome: "Approve with conditions", rationale: "Proceed with the recovery obligation.", condition: { owner: "Zapier service owner", due: "2026-12-01", evidence: "Customer-scoped recovery proof" } }, "customer-morgan");
+  const state = requestAction(readyRequest(), "decision", { outcome: "Approve with conditions", riskAcceptance: "Accept the open findings until due.", rationale: "Proceed with the recovery obligation.", condition: { owner: "Zapier service owner", due: "2026-12-01", evidence: "Customer-scoped recovery proof" } }, "customer-morgan");
   for (const [identity, screenId, route] of [["customer-morgan", "C12", "C07"], ["analyst-01", "O07", "O09"]]) {
     const routes = [], patches = [];
     const c = { ...requestContext(identity, screenId, state), navigate: value => routes.push(value), update: value => patches.push(value) };
@@ -284,10 +284,20 @@ test("assessment register All retains a rejected signed request for later inspec
   assert.doesNotMatch(html, /No reviews match/);
 });
 
-test("the assigned analyst can complete QA on their own recommendation", () => {
-  const html = render(Page, requestContext("analyst-01", "O08", recommendedRequest()));
-  assert.match(html, />Record QA and send to customer<\/button>/);
-  assert.doesNotMatch(html, /independent reviewer/i);
+test("QA explains missing independent customer assignments rather than suggesting an unavailable handoff", () => {
+  const c = requestContext("analyst-01", "O08", recommendedRequest());
+  const author = { ...sessionUser(model, "analyst-01"), canQA: true };
+  const reviewer = sessionUser(model, "analyst-02");
+  c.demoUsers = [author, { ...reviewer, workspaceIds: ["ridgeway"] }, { ...reviewer, id: "inactive-qa", active: false }];
+  const blocked = render(Page, c);
+  assert.match(blocked, /No independent QA reviewer is assigned to this customer/);
+  assert.match(blocked, /Ask the Superadmin to assign another analyst with QA permission/);
+  assert.doesNotMatch(blocked, />Record independent QA<\/button>/);
+  c.demoUsers = [author, reviewer];
+  const available = render(Page, c);
+  assert.match(available, /Available independent reviewer/);
+  assert.ok(available.includes(reviewer.name));
+  assert.doesNotMatch(available, /No independent QA reviewer is assigned/);
 });
 
 test("customer overview and decision steps do not claim customer action during rework", () => {
@@ -350,7 +360,7 @@ test("assessment and inventory counts follow the current reviewed requirements",
 
 test("closure shows the exact eligible upload instead of an older supplier receipt", () => {
   const c = context();
-  c.state = recordDecision(c.state, c.data, "Approve with conditions", "Require newer scoped proof.", { owner: "A. Morgan", due: "2026-11-20", evidence: "Scoped exercise" });
+  c.state = recordDecision(c.state, c.data, "Approve with conditions", "Require newer scoped proof.", { owner: "A. Morgan", due: "2026-11-20", evidence: "Scoped exercise" }, "Accept the open findings until their due dates.");
   const signedAt = Date.parse(c.state.decision.at);
   c.state.supplierReceipt = { fileName: "old-supplier.pdf", reference: "OLD", at: new Date(signedAt - 1000).toISOString() };
   c.state.uploads = [{ name: "closure.pdf", version: "UPLOAD-NEW", receivedAt: new Date(signedAt + 1000).toISOString(), requirement: "R-07" }];
@@ -389,7 +399,7 @@ test("analyst evidence layout exposes support, gap, conclusion meaning and saved
 
 test("recorded conditional outcome presents its owner, date and required next obligation", () => {
   const c = context();
-  c.state = recordDecision(c.state, c.data, "Approve with conditions", "Proceed with owned follow-up.", { owner: "A. Morgan", due: "2026-11-20", evidence: "New scoped recovery exercise" });
+  c.state = recordDecision(c.state, c.data, "Approve with conditions", "Proceed with owned follow-up.", { owner: "A. Morgan", due: "2026-11-20", evidence: "New scoped recovery exercise" }, "Accept the open findings until their due dates.");
   const html = render(Pack, c);
   assert.match(html, /Decision recorded. Your next obligation is clear/);
   assert.match(html, /New scoped recovery exercise/);
@@ -534,13 +544,13 @@ test("QA and monitoring copy respect recorded outcomes and permissions", () => {
   assert.doesNotMatch(quality, /Record your independent challenge and a reasoned QA outcome|Northstar sponsor/);
   assert.match(quality, /A\. Morgan · Customer Decision Owner/);
   c.state = { ...c.state, qa: "More evidence required" };
-  assert.doesNotMatch(render(Quality, c), /independent QA permission/);
+  assert.match(render(Quality, c), /A different analyst with independent QA permission/);
   c.user = sessionUser(model, "analyst-02");
   c.state = { ...c.state, events: [{ action: "Analyst recommendation recorded", actorId: c.user.actorId }] };
-  assert.doesNotMatch(render(Quality, c), /independent QA permission/);
+  assert.match(render(Quality, c), /A different analyst with independent QA permission/);
   const customer = context();
   assert.match(render(Monitoring, customer), /Once signed, the customer decision stays frozen/);
-  customer.state = recordDecision(customer.state, customer.data, "Approve", "The reviewed evidence meets our needs.", null);
+  customer.state = recordDecision(customer.state, customer.data, "Approve", "The reviewed evidence meets our needs.", null, "Accept the open findings until their due dates.");
   assert.match(render(Monitoring, customer), /The signed decision stays frozen/);
 });
 

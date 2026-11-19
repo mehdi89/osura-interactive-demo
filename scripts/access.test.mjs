@@ -101,12 +101,14 @@ test("recommendations require an assigned analyst and retain a named immutable a
   assert.throws(()=>saveRequirementReview(initial,noAccess,"R-07",review),/do not have access/);
 });
 
-test("any assigned analyst can QA, including their own analysis, but not over unreviewed new evidence", () => {
+test("QA requires permission, a different reviewer and no unreviewed new evidence", () => {
   const initial=createState(base);
-  assert.doesNotThrow(()=>recordQA(initial,context("analyst-01"),"Passed","Checked"));
-  assert.throws(()=>recordQA(initial,context("superadmin"),"Passed","Checked"),/analyst/);
+  assert.throws(()=>recordQA(initial,context("analyst-01"),"Passed","Checked"),/permission/);
+  const self={...context("analyst-01"),access:{...sessionUser(model,"analyst-01"),canQA:true}};
+  assert.throws(()=>recordQA(initial,self,"Passed","Checked"),/own analysis/);
+  assert.throws(()=>recordQA(initial,context("superadmin"),"Passed","Checked"),/permission/);
   const byReviewer=saveRequirementReview(initial,context("analyst-02"),"IAM-04",{...review,conclusion:"Unknown"});
-  assert.doesNotThrow(()=>recordQA(byReviewer,context("analyst-02"),"Passed","Checked"));
+  assert.throws(()=>recordQA(byReviewer,context("analyst-02"),"Passed","Checked"),/own analysis/);
   assert.throws(()=>recordQA({...initial,pendingReviews:{"R-07":true}},context("analyst-02"),"Passed","Checked"),/new evidence/);
   const next=recordQA(initial,context("analyst-02"),"Passed with condition","Checked the scoped evidence");
   assert.equal(next.qaReview.actorId,"qa-reviewer-02");assert.equal(next.qaReview.prepared,false);
@@ -116,7 +118,7 @@ test("only customer Decision Owner signs; pack freezes review attribution and hi
   const state=recordQA(createState(base),context("analyst-02"),"Passed","Independent challenge completed");
   assert.throws(()=>recordDecision(state,context("superadmin"),"Approve","Proceed",null),/Decision Owner/);
   assert.throws(()=>recordDecision(state,context("analyst-01"),"Approve","Proceed",null),/Decision Owner/);
-  const next=recordDecision(state,context("customer-morgan"),"Approve","Customer accepts",null);
+  const next=recordDecision(state,context("customer-morgan"),"Approve","Customer accepts",null, "Accept the open findings until their due dates.");
   assert.equal(next.decision.actorId,"a-morgan");assert.equal(next.signedPack.qaReview.actorId,"qa-reviewer-02");
   state.qaReview.actor="Changed later";assert.notEqual(next.signedPack.qaReview.actor,"Changed later");
   assert.equal(next.events.at(-1).role,"customer");
@@ -159,12 +161,12 @@ test("saving from a filtered view preserves other customers' workflow records an
 });
 
 
-test("an analyst who authored a review can still record QA", () => {
+test("QA independence retains authors after their review is overwritten", () => {
   const initial = createState(base);
   const first = saveRequirementReview(initial, context("analyst-02"), "IAM-04", { ...review, conclusion: "Unknown" });
   const overwritten = saveRequirementReview(first, context("analyst-01"), "IAM-04", { ...review, judgement: "Revised independent review of the access record", conclusion: "Unknown" });
   assert.equal(overwritten.reviews["IAM-04"].actorId, "osura-analyst-01");
-  assert.doesNotThrow(() => recordQA(overwritten, context("analyst-02"), "Passed", "I authored the earlier version"));
+  assert.throws(() => recordQA(overwritten, context("analyst-02"), "Passed", "I authored the earlier version"), /own analysis/);
   const fresh = createState(base);
   assert.doesNotThrow(() => recordQA(fresh, context("analyst-02"), "Passed", "New isolated assessment"));
 });
