@@ -28,6 +28,7 @@ export const controlById = id => CONTROL_LIBRARY.find(row => row.id === id) || O
 const fact = (engagement, index) => engagement.answers?.[index] || "Unknown";
 export const contextFacts = engagement => ({
   sensitiveData: fact(engagement, 0), production: fact(engagement, 1), criticalJourney: fact(engagement, 2), replaceable: fact(engagement, 3),
+  unlocked: engagement.triage?.sections?.map(section => section.id) || [],
 });
 
 export const RULES = [
@@ -35,6 +36,10 @@ export const RULES = [
   { id: "R-DATA", description: "Personal or payment data is not No", controls: ["CTL-DATA", "CTL-SUB"], when: (f) => f.sensitiveData !== "No", why: (f) => `Personal or payment data: ${f.sensitiveData}` },
   { id: "R-PROD", description: "Connects to production systems is not No, or tier High or above", controls: ["CTL-ACC", "CTL-VUL"], when: (f, tier) => f.production !== "No" || TIERS.indexOf(tier) >= 2, why: (f, tier) => f.production !== "No" ? `Connects to production systems: ${f.production}` : `${tier} inherent risk` },
   { id: "R-AVAIL", description: "Critical journey is not No, not replaceable within a day, or tier High or above", controls: ["CTL-BCP"], when: (f, tier) => f.criticalJourney !== "No" || f.replaceable !== "Yes" || TIERS.indexOf(tier) >= 2, why: (f) => `Critical journey: ${f.criticalJourney}; replaceable within a day: ${f.replaceable}` },
+  { id: "R-TRIAGE-DATA", description: "Triage unlocked personal data protection", controls: ["CTL-DATA", "CTL-SUB"], when: (f) => f.unlocked.includes("personal_data"), why: () => "Triage: access to sensitive data is Yes or Unknown" },
+  { id: "R-TRIAGE-IP", description: "Triage unlocked intellectual property", controls: ["CTL-ACC"], when: (f) => f.unlocked.includes("ip_security"), why: () => "Triage: intellectual property involvement is Yes or Unknown" },
+  { id: "R-TRIAGE-PHYS", description: "Triage unlocked physical security", controls: ["CTL-BCP"], when: (f) => f.unlocked.includes("physical_security"), why: () => "Triage: IT services is Yes or Unknown" },
+  { id: "R-TRIAGE-SEC", description: "Triage unlocked information security", controls: ["CTL-ACC", "CTL-VUL", "CTL-IR"], when: (f) => f.unlocked.includes("infosec"), why: () => "Triage: at least one indicator is Yes or Unknown" },
 ];
 
 // R1: inherent risk from the submitted answers, with the inputs that drove it. Unknown is never treated as low.
@@ -53,9 +58,18 @@ export function calculateRisk(engagement) {
   const raise = (to, input, effect) => { if (TIERS.indexOf(to) > TIERS.indexOf(tier)) tier = to; drivers.push({ input, effect }); };
   if (facts.sensitiveData === "Yes") raise("High", "Personal or payment data: Yes", "At least High");
   if (facts.criticalJourney === "Yes" && facts.replaceable === "No" && tier === "High") raise("Critical", "Critical journey and not replaceable within a day", "Raised to Critical");
+  const triage = engagement.triage;
+  const unknownTriage = triage?.indicators.filter(row => row.answer === "Unknown") || [];
+  if (triage) {
+    const unlocked = triage.indicators.filter(row => row.answer !== "No");
+    drivers.push({ input: `Triage: ${unlocked.length} of ${triage.indicators.length} indicators Yes or Unknown`, detail: triage.sections.map(s => s.title).join("; ") || "No follow-up sections", effect: triage.sections.length ? "Follow-up sections and their controls added" : "No follow-up sections" });
+    const gaps = triage.sections.flatMap(s => s.questions).filter(q => q.type !== "text" && q.answer !== "Yes");
+    if (gaps.length) drivers.push({ input: `${gaps.length} triage follow-up answer(s) No or Unknown`, detail: gaps.slice(0, 3).map(q => q.text).join("; "), effect: "Analyst verifies against evidence" });
+    if (unknownTriage.length) drivers.push({ input: `Unknown triage indicators: ${unknownTriage.map(row => row.label).join(", ")}`, effect: "Provisional until clarified" });
+  }
   const unknownFacts = Object.entries(facts).filter(([, v]) => v === "Unknown").map(([k]) => k);
   if (unknownFacts.length) drivers.push({ input: `Unknown context facts: ${unknownFacts.join(", ")}`, effect: "Provisional until clarified" });
-  return { tier, provisional: unknownFacts.length > 0 || unknownImpact.length > 0, baseImpact: impact.label, drivers, rulesVersion: RULES_VERSION };
+  return { tier, provisional: unknownFacts.length > 0 || unknownImpact.length > 0 || unknownTriage.length > 0, baseImpact: impact.label, drivers, rulesVersion: RULES_VERSION };
 }
 
 // R2: controls applied from the rating and facts, each with its rule and reason.

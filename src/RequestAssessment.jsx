@@ -212,6 +212,7 @@ export default function RequestAssessment(c) {
           {unresolved.length > 0 && <Note warning>Unresolved facts: {unresolved.map(factLabel).join("; ")}. Unknown is never treated as low risk; the tier stays provisional until clarified.</Note>}
           <details><summary>Submitted business facts and impact answers</summary>
             <Fields items={Object.entries(engagement.answers || {}).map(([key, answer]) => [factLabel(key), record.factUpdates?.[key] ? `${answer} → ${record.factUpdates[key]} (clarified)` : answer])}/>
+            {engagement.triage && <><h3>Submitted service triage</h3><Fields items={engagement.triage.indicators.map(row => [row.label, row.answer])}/>{engagement.triage.sections.map(section => <Fields key={section.id} items={section.questions.map(q => [`${section.title}: ${q.text}`, q.answer || "Not provided"])}/>)}</>}
             {engagement.businessImpact && <><h3>Submitted CTP business impact</h3><ImpactAnswers questions={engagement.businessImpact.questions} answers={Object.fromEntries(engagement.businessImpact.questions.map(question => [question.id, question.answer]))}/></>}
           </details>
           <div className="risk-calculation"><h3>Calculated CTP inherent risk <Badge>{`${calculated.tier}${calculated.provisional ? " · provisional" : ""}`}</Badge></h3>

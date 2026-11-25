@@ -40,6 +40,18 @@ test("intake offers all 17 verbatim impact questions with blank defaults and an 
   assert.match(html, /four scope questions/);
 });
 
+test("triage step lists the eight indicators and unlocks follow-up sections from answers", () => {
+  const c = context({ screen: { id: "C03T", role: "customer" } });
+  let html = render(Intake, c);
+  assert.equal((html.match(/name="triage-[a-zA-Z]+" value="Unknown"/g) || []).length, 8);
+  assert.match(html, /No follow-up sections unlocked yet/);
+  c.state.intake.triageAnswers = { hasSensitiveDataAccess: "Yes" };
+  html = render(Intake, c);
+  assert.match(html, /Personal data protection · unlocked by Access to sensitive data/);
+  assert.match(html, /Information security/);
+  assert.doesNotMatch(html, /Physical security/);
+});
+
 test("review and request receipt preserve official impact answers without assigning a risk tier", () => {
   const c = context({ screen: { id: "C05", role: "customer" } });
   const answers = Object.fromEntries(data.biaQuestions.map(question => [question.id, "N/A"]));

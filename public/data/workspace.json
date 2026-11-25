@@ -1007,6 +1007,26 @@
       "id": "R-AVAIL",
       "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation",
       "description": "Critical journey is not No, not replaceable within a day, or tier High or above"
+    },
+    {
+      "id": "R-TRIAGE-DATA",
+      "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation",
+      "description": "Triage unlocked personal data protection"
+    },
+    {
+      "id": "R-TRIAGE-IP",
+      "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation",
+      "description": "Triage unlocked intellectual property"
+    },
+    {
+      "id": "R-TRIAGE-PHYS",
+      "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation",
+      "description": "Triage unlocked physical security"
+    },
+    {
+      "id": "R-TRIAGE-SEC",
+      "rulesVersion": "CTP demo rules v0 · synthetic, pending methodology validation",
+      "description": "Triage unlocked information security"
     }
   ],
   "controlRuleTargets": [
@@ -1044,6 +1064,41 @@
       "id": "R-AVAIL-CTL-BCP",
       "ruleId": "R-AVAIL",
       "controlId": "CTL-BCP"
+    },
+    {
+      "id": "R-TRIAGE-DATA-CTL-DATA",
+      "ruleId": "R-TRIAGE-DATA",
+      "controlId": "CTL-DATA"
+    },
+    {
+      "id": "R-TRIAGE-DATA-CTL-SUB",
+      "ruleId": "R-TRIAGE-DATA",
+      "controlId": "CTL-SUB"
+    },
+    {
+      "id": "R-TRIAGE-IP-CTL-ACC",
+      "ruleId": "R-TRIAGE-IP",
+      "controlId": "CTL-ACC"
+    },
+    {
+      "id": "R-TRIAGE-PHYS-CTL-BCP",
+      "ruleId": "R-TRIAGE-PHYS",
+      "controlId": "CTL-BCP"
+    },
+    {
+      "id": "R-TRIAGE-SEC-CTL-ACC",
+      "ruleId": "R-TRIAGE-SEC",
+      "controlId": "CTL-ACC"
+    },
+    {
+      "id": "R-TRIAGE-SEC-CTL-VUL",
+      "ruleId": "R-TRIAGE-SEC",
+      "controlId": "CTL-VUL"
+    },
+    {
+      "id": "R-TRIAGE-SEC-CTL-IR",
+      "ruleId": "R-TRIAGE-SEC",
+      "controlId": "CTL-IR"
     }
   ]
 }

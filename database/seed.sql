@@ -127,6 +127,10 @@ INSERT INTO "controlRules" ("id", "rulesVersion", "description") VALUES ('R-BASE
 INSERT INTO "controlRules" ("id", "rulesVersion", "description") VALUES ('R-DATA', 'CTP demo rules v0 · synthetic, pending methodology validation', 'Personal or payment data is not No');
 INSERT INTO "controlRules" ("id", "rulesVersion", "description") VALUES ('R-PROD', 'CTP demo rules v0 · synthetic, pending methodology validation', 'Connects to production systems is not No, or tier High or above');
 INSERT INTO "controlRules" ("id", "rulesVersion", "description") VALUES ('R-AVAIL', 'CTP demo rules v0 · synthetic, pending methodology validation', 'Critical journey is not No, not replaceable within a day, or tier High or above');
+INSERT INTO "controlRules" ("id", "rulesVersion", "description") VALUES ('R-TRIAGE-DATA', 'CTP demo rules v0 · synthetic, pending methodology validation', 'Triage unlocked personal data protection');
+INSERT INTO "controlRules" ("id", "rulesVersion", "description") VALUES ('R-TRIAGE-IP', 'CTP demo rules v0 · synthetic, pending methodology validation', 'Triage unlocked intellectual property');
+INSERT INTO "controlRules" ("id", "rulesVersion", "description") VALUES ('R-TRIAGE-PHYS', 'CTP demo rules v0 · synthetic, pending methodology validation', 'Triage unlocked physical security');
+INSERT INTO "controlRules" ("id", "rulesVersion", "description") VALUES ('R-TRIAGE-SEC', 'CTP demo rules v0 · synthetic, pending methodology validation', 'Triage unlocked information security');
 INSERT INTO "controlRuleTargets" ("id", "ruleId", "controlId") VALUES ('R-BASE-CTL-SEC', 'R-BASE', 'CTL-SEC');
 INSERT INTO "controlRuleTargets" ("id", "ruleId", "controlId") VALUES ('R-BASE-CTL-IR', 'R-BASE', 'CTL-IR');
 INSERT INTO "controlRuleTargets" ("id", "ruleId", "controlId") VALUES ('R-DATA-CTL-DATA', 'R-DATA', 'CTL-DATA');
@@ -134,4 +138,11 @@ INSERT INTO "controlRuleTargets" ("id", "ruleId", "controlId") VALUES ('R-DATA-C
 INSERT INTO "controlRuleTargets" ("id", "ruleId", "controlId") VALUES ('R-PROD-CTL-ACC', 'R-PROD', 'CTL-ACC');
 INSERT INTO "controlRuleTargets" ("id", "ruleId", "controlId") VALUES ('R-PROD-CTL-VUL', 'R-PROD', 'CTL-VUL');
 INSERT INTO "controlRuleTargets" ("id", "ruleId", "controlId") VALUES ('R-AVAIL-CTL-BCP', 'R-AVAIL', 'CTL-BCP');
+INSERT INTO "controlRuleTargets" ("id", "ruleId", "controlId") VALUES ('R-TRIAGE-DATA-CTL-DATA', 'R-TRIAGE-DATA', 'CTL-DATA');
+INSERT INTO "controlRuleTargets" ("id", "ruleId", "controlId") VALUES ('R-TRIAGE-DATA-CTL-SUB', 'R-TRIAGE-DATA', 'CTL-SUB');
+INSERT INTO "controlRuleTargets" ("id", "ruleId", "controlId") VALUES ('R-TRIAGE-IP-CTL-ACC', 'R-TRIAGE-IP', 'CTL-ACC');
+INSERT INTO "controlRuleTargets" ("id", "ruleId", "controlId") VALUES ('R-TRIAGE-PHYS-CTL-BCP', 'R-TRIAGE-PHYS', 'CTL-BCP');
+INSERT INTO "controlRuleTargets" ("id", "ruleId", "controlId") VALUES ('R-TRIAGE-SEC-CTL-ACC', 'R-TRIAGE-SEC', 'CTL-ACC');
+INSERT INTO "controlRuleTargets" ("id", "ruleId", "controlId") VALUES ('R-TRIAGE-SEC-CTL-VUL', 'R-TRIAGE-SEC', 'CTL-VUL');
+INSERT INTO "controlRuleTargets" ("id", "ruleId", "controlId") VALUES ('R-TRIAGE-SEC-CTL-IR', 'R-TRIAGE-SEC', 'CTL-IR');
 COMMIT;

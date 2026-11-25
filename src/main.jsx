@@ -117,6 +117,9 @@ import { createModelValidator, projectWorkspace } from "./data-model.mjs";
 import { createScenarioValidator } from "./scenarios.mjs";
 import { APPEARANCE_KEY, readAppearance, resolveTheme } from "./appearance.mjs";
 import { IMPACT_CHOICES, IMPACT_GROUPS, summarizeImpact, firstMissingImpact, snapshotImpact } from "./ctp.mjs";
+import { TRIAGE_CHOICES, TRIAGE_INDICATORS, FOLLOW_UP_CHOICES, unlockedSections, firstMissingTriage, snapshotTriage } from "./triage.mjs";
+// ponytail: C03T is a synthetic route like A01, so the 35 reference screens stay unchanged.
+const INTAKE_STEPS = ["C02", "C03", "C03T", "C04", "C05"];
 
 const Icon = ({ name, size = 16, ...props }) => {
   const Component = Icons[name] || Icons.Circle;
@@ -415,6 +418,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
     return () => { document.body.style.overflow = previousOverflow; sidebar?.removeEventListener("keydown", trap); menuButton.current?.focus(); };
   }, [mobileNav]);
   const baseScreen = screenId === "A01" ? { id: "A01", role: "superadmin", title: "Team & customer access", label: "Administration", subtitle: "Manage analysts, customer assignments and accountability.", nav: "A01" }
+    : screenId === "C03T" ? { id: "C03T", role: "customer", label: "Service triage", title: "What will {supplier} touch?", subtitle: "Your triage answers decide which follow-up questions apply.", nav: "C15" }
     : catalog.screens.find((s) => s.id === screenId) || catalog.screens[0];
   const visualTitles = { C01: ["Supplier portfolio", "Osura reviews supplier evidence and prepares a clear recommendation. Your team makes the final decision."], C14: ["Supplier register", "Approval belongs to a service, not every use of the supplier."], C15: ["Assessment register", "See the next owner, review state and exact service scope."], O16: ["Supplier directory", "Find the right supplier, service and customer before opening a record."], C06: ["Make your customer decision", "Review Osura’s advice, then record the outcome your organisation accepts."], O04: ["Evidence review", "Read the source, record your judgement, then compare the prepared proposal."], O07: ["Findings and actions", "Every material issue has a requirement, owner, due date and closure proof."], O14: ["Supplier communications", "Local outbox activity is separate from confirmed supplier delivery."], O15: ["Monitoring and reassessment", "See which obligation is due, who owns it and the evidence needed next."] };
   const screen = { ...baseScreen, ...(visualTitles[baseScreen.id] ? { title: visualTitles[baseScreen.id][0], subtitle: visualTitles[baseScreen.id][1] } : {}), ...(baseScreen.id === "C06" ? { label: workflowStatus(state).label } : {}) };
@@ -589,7 +593,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
     value
       .replaceAll(
         "{supplier}",
-        ["C03"].includes(screen.id)
+        ["C03", "C03T"].includes(screen.id)
           ? viewState.intake.supplier
           : engagement.supplier,
       )
@@ -602,7 +606,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
   const isSupplier = role === "supplier";
   const supplierInbox = isSupplier && Object.values(state.requestAssessments || {}).some(record => record.supplierAsks?.length);
   const emptyCustomerWorkspace = user?.active && role === "customer" && allowedWorkspaces.has(user.workspaceId);
-  const emptyCustomerPage = emptyCustomerWorkspace && ["C01", "C02", "C03", "C04", "C05", "C10", "C12", "C14", "C15", "C16"].includes(screen.id);
+  const emptyCustomerPage = emptyCustomerWorkspace && ["C01", "C02", "C03", "C03T", "C04", "C05", "C10", "C12", "C14", "C15", "C16"].includes(screen.id);
   const caseScreens = [
     "C06",
     "C07",
@@ -721,7 +725,7 @@ function App({ data: baseData, catalog, model, schema, validate, onDataChange, u
               <div className="eyebrow">
                 {isSupplier
                   ? `REQUEST ${data.request.reference}${screen.id === "S02" ? ` · ITEM ${state.supplierItem === data.request.items[1] ? 2 : 1} OF ${data.request.items.length}` : ""}`
-                  : `${role === "customer" ? data.workspace.name.toUpperCase() : "OSURA OPERATIONS"} / ${["C02", "C03", "C04", "C05"].includes(screen.id) ? `NEW REQUEST / STEP ${["C02", "C03", "C04", "C05"].indexOf(screen.id) + 1} OF 4` : screen.label.toUpperCase()}`}
+                  : `${role === "customer" ? data.workspace.name.toUpperCase() : "OSURA OPERATIONS"} / ${INTAKE_STEPS.includes(screen.id) ? `NEW REQUEST / STEP ${INTAKE_STEPS.indexOf(screen.id) + 1} OF ${INTAKE_STEPS.length}` : screen.label.toUpperCase()}`}
               </div>
               <h1>
                 {screen.id === "S02" &&
@@ -1184,7 +1188,7 @@ function Page(c) {
     ].includes(screen.id)
   )
     return <SecondaryCase {...c} />;
-  if (["C02", "C03", "C04", "C05"].includes(screen.id))
+  if (INTAKE_STEPS.includes(screen.id))
     return <Intake {...c} />;
   if (["C14", "C15", "C10", "O16"].includes(screen.id))
     return <Registers {...c} />;
@@ -1521,7 +1525,7 @@ function ImpactAnswers({ questions, answers }) {
 function Intake(c) {
   const { data, state, update, navigate, notify } = c;
   const intake = state.intake;
-  const step = ["C02", "C03", "C04", "C05"].indexOf(c.screen.id);
+  const step = INTAKE_STEPS.indexOf(c.screen.id);
   const [query, setQuery] = useState(intake.supplier);
   const issue = state.intakeIssue?.screen === c.screen.id ? state.intakeIssue : null;
   const [error, setError] = useState(issue?.message || "");
@@ -1536,8 +1540,8 @@ function Intake(c) {
     setError("");
     setMissingQuestion(null);
     const scopeChanged = ["supplier", "domain", "use", "purpose", "product"].some(key => Object.hasOwn(patch, key) && patch[key] !== intake[key]);
-    if (scopeChanged && Object.keys(intake.businessImpactAnswers || {}).length) notify("Service scope changed. Confirm the business facts and impact answers again.");
-    update({ intake: { ...intake, ...patch, ...(scopeChanged ? { answers: {}, businessImpactAnswers: {} } : {}) }, intakeSubmitted: false, intakeIssue: null });
+    if (scopeChanged && Object.keys({ ...intake.businessImpactAnswers, ...intake.triageAnswers }).length) notify("Service scope changed. Confirm the triage, business facts and impact answers again.");
+    update({ intake: { ...intake, ...patch, ...(scopeChanged ? { answers: {}, businessImpactAnswers: {}, triageAnswers: {}, triageFollowUps: {} } : {}) }, intakeSubmitted: false, intakeIssue: null });
   };
   const questions = [
     "Will the supplier process personal or payment data?",
@@ -1548,6 +1552,11 @@ function Intake(c) {
   const impactQuestions = data.biaQuestions;
   const impactAnswers = intake.businessImpactAnswers || {};
   const missingImpact = firstMissingImpact(impactQuestions, impactAnswers);
+  const triageAnswers = intake.triageAnswers || {};
+  const triageFollowUps = intake.triageFollowUps || {};
+  const triageSections = unlockedSections(triageAnswers);
+  const missingTriage = firstMissingTriage(triageAnswers, triageFollowUps);
+  const triageCount = TRIAGE_INDICATORS.filter(row => TRIAGE_CHOICES.includes(triageAnswers[row.id])).length;
   const impactCount = impactQuestions.filter(question => IMPACT_CHOICES.includes(impactAnswers[question.id])).length;
   const fail = (message, target) => {
     setError(message);
@@ -1563,18 +1572,23 @@ function Intake(c) {
       return;
     }
     const missing = questions.findIndex((_, i) => !["Yes", "No", "Unknown"].includes(intake.answers[i]));
-    if (step === 2 && missing !== -1) {
+    if (step === 2 && missingTriage) {
+      setMissingQuestion(missingTriage.id);
+      fail(missingTriage.message, missingTriage.id);
+      return;
+    }
+    if (step === 3 && missing !== -1) {
       setMissingQuestion(missing);
       fail(`Answer question ${missing + 1}: ${questions[missing]} Unknown is a valid answer.`, `intake-question-${missing}`);
       return;
     }
-    if (step === 2 && missingImpact) {
+    if (step === 3 && missingImpact) {
       const target = `intake-impact-${missingImpact.id}`;
       setMissingQuestion(target);
       fail(`Answer the business-impact question: ${missingImpact.label} Choose Unknown if you need to check.`, target);
       return;
     }
-    navigate(["C02", "C03", "C04", "C05"][step + 1]);
+    navigate(INTAKE_STEPS[step + 1]);
   };
   const submit = (e) => {
     e.preventDefault();
@@ -1589,6 +1603,8 @@ function Intake(c) {
       ? { screen: "C02", target: "intake-supplier", message: "Enter or select the supplier before submitting." }
       : (!intake.use || intake.use === "Another service") && !intake.purpose.trim()
         ? { screen: "C03", target: "intake-purpose", message: "Select an intended use or describe your purpose before submitting." }
+        : missingTriage
+          ? { screen: "C03T", target: missingTriage.id, question: missingTriage.id, message: missingTriage.message }
         : missing !== -1
           ? { screen: "C04", target: `intake-question-${missing}`, question: missing, message: `Answer question ${missing + 1}: ${questions[missing]} Unknown is a valid answer.` }
           : missingImpact
@@ -1611,6 +1627,7 @@ function Intake(c) {
       decisionOwnerId: c.user.actorId, questions: [...questions],
       answers: { ...intake.answers }, attachments: structuredClone(intake.attachments),
       businessImpact: snapshotImpact(impactQuestions, impactAnswers),
+      triage: snapshotTriage(triageAnswers, triageFollowUps),
     };
     const entry = actionEntry({ ...data, engagements: [...data.engagements, request], activeEngagementId: id, assessmentVersion: `${id}-intake` }, "Customer intake submitted", "Submitted business facts for analyst triage.");
     update({ intakeSubmitted: true, intakeReceipt: receipt, selected: id,
@@ -1620,11 +1637,11 @@ function Intake(c) {
   };
   return (
     <div className="op-intake">
-      <div className="stepper intake-steps">{["Supplier", "Intended use", "Business context", "Review"].map((label, i) => <button key={label} aria-current={i === step ? "step" : undefined} className={i === step ? "current" : i < step ? "done" : ""} disabled={i > step} onClick={() => navigate(["C02", "C03", "C04", "C05"][i])}><span>{i < step ? "✓" : i + 1}</span>{label}</button>)}</div>
+      <div className="stepper intake-steps">{["Supplier", "Intended use", "Triage", "Business context", "Review"].map((label, i) => <button key={label} aria-current={i === step ? "step" : undefined} className={i === step ? "current" : i < step ? "done" : ""} disabled={i > step} onClick={() => navigate(INTAKE_STEPS[i])}><span>{i < step ? "✓" : i + 1}</span>{label}</button>)}</div>
       <form id="intake-form" onSubmit={submit}>
         <div className="op-form-layout">
-          <Card title={["Find the supplier for this review", `Tell us how you will use ${intake.supplier || "this supplier"}`, "Business context and CTP impact", "Review your supplier request"][step]}>
-            <p className="op-intro">{["Confirm the legal entity before choosing a service.", "Choose one service for this review. A different use can have a different risk profile.", "Confirm the service facts, then answer the 17 CTP business-impact questions. These assess impact, not whether the supplier passed a security audit.", "Check the exact scope and facts that the analyst will receive."][step]}</p>
+          <Card title={["Find the supplier for this review", `Tell us how you will use ${intake.supplier || "this supplier"}`, "Service triage indicators", "Business context and CTP impact", "Review your supplier request"][step]}>
+            <p className="op-intro">{["Confirm the legal entity before choosing a service.", "Choose one service for this review. A different use can have a different risk profile.", "Answer eight indicators about what this service touches. Yes or Unknown unlocks the follow-up questions that apply; No leaves them out.", "Confirm the service facts, then answer the 17 CTP business-impact questions. These assess impact, not whether the supplier passed a security audit.", "Check the exact scope and facts that the analyst will receive."][step]}</p>
             {error && <div className="op-error-summary" role="alert"><b>One answer to complete</b><p>{error}</p><Link onClick={() => document.getElementById(missingQuestion !== null ? typeof missingQuestion === "string" ? missingQuestion : `intake-question-${missingQuestion}` : step === 0 ? "intake-supplier" : "intake-purpose")?.focus()}>Go to the missing {missingQuestion !== null ? "question" : "field"} →</Link></div>}
             {step === 0 && <>
               <Label title="Supplier name or domain · required"><input id="intake-supplier" value={query} onChange={e => { setQuery(e.target.value); setError(""); }} placeholder="Search supplier name or company domain" /></Label>
@@ -1637,9 +1654,17 @@ function Intake(c) {
               <Label title="Describe another service or add scope context" hint="Name the activity and the information or systems involved."><textarea id="intake-purpose" value={intake.purpose} onChange={e=>edit({purpose:e.target.value})} placeholder="Describe how your organisation will use the service"/></Label>
               <Label title="Product or service line · optional"><input value={intake.product} onChange={e=>edit({product:e.target.value})} placeholder="For example Marketing Hub"/></Label>
             </>}
-            {step === 2 && <h3>Service context · four scope questions</h3>}
-            {step === 2 && questions.map((q,i) => <fieldset className={`op-business-question ${missingQuestion===i?"has-error":""}`} key={q} id={`intake-question-${i}`} tabIndex={-1} aria-invalid={missingQuestion===i||undefined}><legend>{i+1}. {q} <small>required</small></legend><p>{["Include customer records, staff information and transaction details.","Include a live customer database, payment integration or employee identity system.","Consider the customer journey that depends on this specific service.","Include the time needed to migrate data, reconnect systems and train people."][i]} Unknown is a valid answer.</p><div className="op-radio-stack op-radio-inline">{["Yes","No","Unknown"].map(answer=><label className={`op-radio-row ${intake.answers[i]===answer?"is-selected":""}`} key={answer}><input type="radio" name={`business-fact-${i}`} checked={intake.answers[i]===answer} onChange={()=>edit({answers:{...intake.answers,[i]:answer}})}/><span>{answer}</span></label>)}</div>{missingQuestion===i&&<p className="op-field-error">Select Yes, No or Unknown to continue.</p>}</fieldset>)}
-            {step === 2 && <section aria-label="CTP business impact questions">
+            {step === 2 && <section aria-label="Service triage indicators">
+              <h3>Service triage indicators · {TRIAGE_INDICATORS.length} questions</h3>
+              {TRIAGE_INDICATORS.map((row, i) => <fieldset className={`op-business-question ${missingQuestion === `triage-${row.id}` ? "has-error" : ""}`} key={row.id} id={`triage-${row.id}`} tabIndex={-1} aria-invalid={missingQuestion === `triage-${row.id}` || undefined}><legend>{i + 1}. {row.label}: {row.question} <small>required</small></legend><p>{row.hint} Unknown is a valid answer.</p><div className="op-radio-stack op-radio-inline">{TRIAGE_CHOICES.map(answer => <label className={`op-radio-row ${triageAnswers[row.id] === answer ? "is-selected" : ""}`} key={answer}><input type="radio" name={`triage-${row.id}`} value={answer} checked={triageAnswers[row.id] === answer} onChange={() => edit({ triageAnswers: { ...triageAnswers, [row.id]: answer } })}/><span>{answer}</span></label>)}</div></fieldset>)}
+              {triageSections.length ? <Note>{`Unlocked: ${triageSections.map(s => s.title).join(", ")}. Answer what your organisation knows; the analyst verifies each answer against supplier evidence.`}</Note> : <Note>No follow-up sections unlocked yet. Yes or Unknown on an indicator adds the questions that apply.</Note>}
+              {triageSections.map(section => <fieldset className="op-impact-group" key={section.id}><legend>{section.title} · unlocked by {section.unlockedBy}</legend>{section.questions.map(q => q.type === "text"
+                ? <Label key={q.id} title={`${q.text} · optional`}><textarea id={`triage-${q.id}`} value={triageFollowUps[q.id] || ""} onChange={e => edit({ triageFollowUps: { ...triageFollowUps, [q.id]: e.target.value } })} placeholder="Comma-separated names, if known"/></Label>
+                : <fieldset className={`op-business-question ${missingQuestion === `triage-${q.id}` ? "has-error" : ""}`} key={q.id} id={`triage-${q.id}`} tabIndex={-1} aria-invalid={missingQuestion === `triage-${q.id}` || undefined}><legend>{q.text} <small>required</small></legend><div className="op-radio-stack op-radio-inline">{FOLLOW_UP_CHOICES.map(answer => <label className={`op-radio-row ${triageFollowUps[q.id] === answer ? "is-selected" : ""}`} key={answer}><input type="radio" name={`triage-${q.id}`} value={answer} checked={triageFollowUps[q.id] === answer} onChange={() => edit({ triageFollowUps: { ...triageFollowUps, [q.id]: answer } })}/><span>{answer}</span></label>)}</div></fieldset>)}</fieldset>)}
+            </section>}
+            {step === 3 && <h3>Service context · four scope questions</h3>}
+            {step === 3 && questions.map((q,i) => <fieldset className={`op-business-question ${missingQuestion===i?"has-error":""}`} key={q} id={`intake-question-${i}`} tabIndex={-1} aria-invalid={missingQuestion===i||undefined}><legend>{i+1}. {q} <small>required</small></legend><p>{["Include customer records, staff information and transaction details.","Include a live customer database, payment integration or employee identity system.","Consider the customer journey that depends on this specific service.","Include the time needed to migrate data, reconnect systems and train people."][i]} Unknown is a valid answer.</p><div className="op-radio-stack op-radio-inline">{["Yes","No","Unknown"].map(answer=><label className={`op-radio-row ${intake.answers[i]===answer?"is-selected":""}`} key={answer}><input type="radio" name={`business-fact-${i}`} checked={intake.answers[i]===answer} onChange={()=>edit({answers:{...intake.answers,[i]:answer}})}/><span>{answer}</span></label>)}</div>{missingQuestion===i&&<p className="op-field-error">Select Yes, No or Unknown to continue.</p>}</fieldset>)}
+            {step === 3 && <section aria-label="CTP business impact questions">
               <h3>CTP business impact · 17 questions</h3>
               <p>For each scenario, choose the impact on your business. N/A means not applicable. Choose Unknown if you need to check; it remains unresolved for analyst triage.</p>
               {Object.entries(IMPACT_GROUPS).map(([dimension, help]) => <fieldset className="op-impact-group" key={dimension}><legend>{dimension} · {impactQuestions.filter(question => question.dimension === dimension).length} questions</legend><p>{help}</p>{impactQuestions.filter(question => question.dimension === dimension).map(question => <fieldset className={`op-business-question op-impact-question ${missingQuestion === `intake-impact-${question.id}` ? "has-error" : ""}`} key={question.id} id={`intake-impact-${question.id}`} tabIndex={-1} aria-invalid={missingQuestion === `intake-impact-${question.id}` || undefined} aria-describedby={missingQuestion === `intake-impact-${question.id}` ? `impact-error-${question.id}` : undefined}><legend>{impactQuestions.indexOf(question) + 1}. {question.label} <small>required</small></legend>
@@ -1648,18 +1673,22 @@ function Intake(c) {
               </fieldset>)}</fieldset>)}
               <ImpactSummary questions={impactQuestions} answers={impactAnswers} />
             </section>}
-            {step === 3 && <>
+            {step === 4 && <>
               <Fields items={[["Supplier",intake.supplier],["Service",intake.use==="Another service"?intake.purpose:intake.use||intake.purpose],["Product",intake.product||"Not specified"],["Business owner",data.workspace.decisionOwner],...questions.map((q,i)=>[q,intake.answers[i]||"Not answered"]) ]}/>
               {Object.values(intake.answers).includes("Unknown")&&<Note warning>Unresolved facts: {questions.filter((_,i)=>intake.answers[i]==="Unknown").join("; ")} These remain for analyst triage.</Note>}
+              <h3>Service triage · submitted answers</h3>
+              <Fields items={TRIAGE_INDICATORS.map(row => [row.label, triageAnswers[row.id] || "Not answered"])}/>
+              {triageSections.map(section => <Fields key={section.id} items={section.questions.map(q => [`${section.title}: ${q.text}`, triageFollowUps[q.id] || (q.optional ? "Not provided" : "Not answered")])}/>)}
+              <Link onClick={()=>navigate("C03T")}>Edit triage →</Link>
               <h3>CTP business impact · submitted answers</h3>
               <ImpactAnswers questions={impactQuestions} answers={impactAnswers} />
               {impactQuestions.some(question => impactAnswers[question.id] === "Unknown") && <Note warning>Unresolved impact questions remain for analyst triage: {impactQuestions.filter(question => impactAnswers[question.id] === "Unknown").map(question => question.label).join("; ")}.</Note>}
               <Link onClick={()=>navigate("C04")}>Edit business context →</Link>
               <div className="op-section-rule"><h3>Supporting documents</h3><p>Optional scope descriptions or existing supplier documents.</p><UploadList files={intake.attachments} onChange={attachments=>edit({attachments})}/></div>
             </>}
-            {step>0&&<div className="op-form-footer"><span className="op-save-state"><Icon name="Check" size={14}/> Draft kept in this session · until refresh</span><div><Button onClick={()=>navigate(["C02","C03","C04"][step-1])}>Back</Button>{step===3?<Button primary type="submit" icon="ArrowRight">Submit request</Button>:<Button primary icon="ArrowRight" onClick={next}>{step===2?"Continue to review":"Continue to business context"}</Button>}</div></div>}
+            {step>0&&<div className="op-form-footer"><span className="op-save-state"><Icon name="Check" size={14}/> Draft kept in this session · until refresh</span><div><Button onClick={()=>navigate(INTAKE_STEPS[step-1])}>Back</Button>{step===4?<Button primary type="submit" icon="ArrowRight">Submit request</Button>:<Button primary icon="ArrowRight" onClick={next}>{step===3?"Continue to review":step===2?"Continue to business context":"Continue to triage"}</Button>}</div></div>}
           </Card>
-          <aside className="op-context-rail"><Card title="This request"><Fields items={[["Supplier",intake.supplier||"Not selected"],["Domain",intake.domain||"Not confirmed"],["Service",intake.use==="Another service"?intake.purpose||"Describe the service":intake.use||intake.purpose||"Not selected"],["Business facts",`${questions.filter((_, i) => ["Yes", "No", "Unknown"].includes(intake.answers[i])).length} of ${questions.length} answered`],["CTP impact",`${impactCount} of ${impactQuestions.length} answered`],["Documents",`${intake.attachments.length} attached`]]}/><div className="op-context-note"><h3>Why we ask</h3><p>Different uses of the same supplier can create different risks. Your answers determine the relevant review scope; they do not approve the supplier.</p></div><details className="op-help"><summary>What if I do not know an answer?</summary><p>Choose Unknown. It stays unresolved for an analyst to clarify and is never treated as No or inferred from public research.</p></details></Card><Card title="What happens to these facts?"><p>An assigned analyst confirms scope under the approved programme. Independent QA challenges the recommendation. Your Decision Owner signs the outcome.</p><Note>The base-impact summary does not set a final CTP inherent-risk tier or approve the supplier. Customer authority remains unchanged.</Note></Card></aside>
+          <aside className="op-context-rail"><Card title="This request"><Fields items={[["Supplier",intake.supplier||"Not selected"],["Domain",intake.domain||"Not confirmed"],["Service",intake.use==="Another service"?intake.purpose||"Describe the service":intake.use||intake.purpose||"Not selected"],["Business facts",`${questions.filter((_, i) => ["Yes", "No", "Unknown"].includes(intake.answers[i])).length} of ${questions.length} answered`],["Triage",`${triageCount} of ${TRIAGE_INDICATORS.length} answered · ${triageSections.length} section(s) unlocked`],["CTP impact",`${impactCount} of ${impactQuestions.length} answered`],["Documents",`${intake.attachments.length} attached`]]}/><div className="op-context-note"><h3>Why we ask</h3><p>Different uses of the same supplier can create different risks. Your answers determine the relevant review scope; they do not approve the supplier.</p></div><details className="op-help"><summary>What if I do not know an answer?</summary><p>Choose Unknown. It stays unresolved for an analyst to clarify and is never treated as No or inferred from public research.</p></details></Card><Card title="What happens to these facts?"><p>An assigned analyst confirms scope under the approved programme. Independent QA challenges the recommendation. Your Decision Owner signs the outcome.</p><Note>The base-impact summary does not set a final CTP inherent-risk tier or approve the supplier. Customer authority remains unchanged.</Note></Card></aside>
         </div>
       </form>
     </div>
